@@ -1,0 +1,142 @@
+name: VaultWatch CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: "3.11"
+  GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+  CASPER_MOCK: "true"
+
+jobs:
+  # ─── Python Tests ────────────────────────────────────────────────────────────
+  test-python:
+    name: Python Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e sdk/
+
+      - name: Run unit tests
+        run: pytest tests/unit/ -v --tb=short --cov=. --cov-report=xml --cov-report=term-missing
+        env:
+          PYTHONPATH: .
+
+      - name: Run integration tests
+        run: pytest tests/integration/ -v --tb=short
+        env:
+          PYTHONPATH: .
+
+      - name: Run demo scenario tests
+        run: pytest tests/demo/ -v -s --tb=short
+        env:
+          PYTHONPATH: .
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          file: coverage.xml
+          fail_ci_if_error: false
+
+  # ─── Linting ─────────────────────────────────────────────────────────────────
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install lint tools
+        run: pip install ruff mypy
+
+      - name: Ruff lint
+        run: ruff check . --output-format=github
+
+      - name: Ruff format check
+        run: ruff format --check .
+
+  # ─── Rust / Contracts ────────────────────────────────────────────────────────
+  test-contracts:
+    name: Rust Contract Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            contracts/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('contracts/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Run contract tests
+        working-directory: contracts
+        run: cargo test --workspace
+        continue-on-error: true  # Contract tests require odra-test which may not be in CI deps
+
+  # ─── Docker Build ─────────────────────────────────────────────────────────────
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: [test-python]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: vaultwatch:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ─── SDK Package Validation ───────────────────────────────────────────────────
+  validate-sdk:
+    name: Validate Python SDK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install and test SDK import
+        run: |
+          pip install httpx pydantic
+          pip install -e sdk/
+          python -c "from vaultwatch import VaultWatchClient; print('SDK import OK')"

@@ -1,0 +1,104 @@
+version: "3.9"
+
+services:
+
+  # ─── VaultWatch API ──────────────────────────────────────────────────────────
+  api:
+    build: .
+    container_name: vaultwatch-api
+    ports:
+      - "8000:8000"
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - CASPER_NODE_URL=${CASPER_NODE_URL:-http://casper-node:7777}
+      - CASPER_CHAIN_NAME=${CASPER_CHAIN_NAME:-casper-test}
+      - CASPER_MOCK=${CASPER_MOCK:-true}
+      - CASPER_SIDECAR_URL=${CASPER_SIDECAR_URL:-http://casper-node:9999/events/main}
+      - PYTHONPATH=/app
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+    volumes:
+      - .:/app:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - vaultwatch-net
+
+  # ─── VaultWatch Pipeline ─────────────────────────────────────────────────────
+  pipeline:
+    build: .
+    container_name: vaultwatch-pipeline
+    command: python pipeline.py
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - CASPER_NODE_URL=${CASPER_NODE_URL:-http://casper-node:7777}
+      - CASPER_CHAIN_NAME=${CASPER_CHAIN_NAME:-casper-test}
+      - CASPER_MOCK=${CASPER_MOCK:-true}
+      - CASPER_SIDECAR_URL=${CASPER_SIDECAR_URL:-http://casper-node:9999/events/main}
+      - PYTHONPATH=/app
+    volumes:
+      - .:/app:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - vaultwatch-net
+
+  # ─── MCP Server ───────────────────────────────────────────────────────────────
+  mcp:
+    build: .
+    container_name: vaultwatch-mcp
+    command: python vaultwatch_mcp/server.py
+    ports:
+      - "8080:8080"
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - CASPER_MOCK=${CASPER_MOCK:-true}
+      - PYTHONPATH=/app
+    volumes:
+      - .:/app:ro
+    restart: unless-stopped
+    networks:
+      - vaultwatch-net
+
+  # ─── Dashboard ────────────────────────────────────────────────────────────────
+  dashboard:
+    image: node:20-slim
+    container_name: vaultwatch-dashboard
+    working_dir: /app/dashboard
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    volumes:
+      - ./dashboard:/app/dashboard
+    networks:
+      - vaultwatch-net
+
+  # ─── OTel Collector (optional observability) ──────────────────────────────────
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: vaultwatch-otel
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "4317:4317"    # gRPC
+      - "4318:4318"    # HTTP
+      - "8888:8888"    # Prometheus metrics
+    networks:
+      - vaultwatch-net
+    profiles:
+      - observability
+
+networks:
+  vaultwatch-net:
+    driver: bridge
+
+volumes:
+  vaultwatch-data:

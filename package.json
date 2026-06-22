@@ -1,0 +1,45 @@
+{
+  "name": "vaultwatch",
+  "version": "4.0.0",
+  "description": "VaultWatch — DeFi Risk Intelligence on Casper",
+  "private": false,
+  "scripts": {
+    "record:demo": "python scripts/record_demo.py",
+    "demo:risk": "python scripts/demo_risk.py",
+    "demo:rwa": "python scripts/demo_rwa.py",
+    "demo:upgrade-policy": "python scripts/demo_upgrade_policy.py",
+    "deploy:contracts": "python scripts/deploy_contracts.py",
+    "api:dev": "uvicorn api.main:app --reload --host 0.0.0.0 --port 8000",
+    "pipeline:start": "python pipeline.py",
+    "mcp:start": "python vaultwatch_mcp/server.py",
+    "dashboard:dev": "cd dashboard && npm run dev",
+    "dashboard:build": "cd dashboard && npm run build",
+    "test": "pytest tests/ -v",
+    "test:unit": "pytest tests/unit/ -v",
+    "test:integration": "pytest tests/integration/ -v",
+    "test:demo": "pytest tests/demo/ -v -s",
+    "test:coverage": "pytest tests/ --cov=. --cov-report=html --cov-report=term-missing",
+    "lint": "ruff check . && mypy . --ignore-missing-imports",
+    "format": "ruff format ."
+  },
+  "keywords": [
+    "casper",
+    "defi",
+    "risk-intelligence",
+    "blockchain",
+    "ai-agents",
+    "mcp",
+    "rwa"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sodiq-code/vaultwatch"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "npm-run-all": "^4.1.5"
+  }
+}

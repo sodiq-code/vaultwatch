@@ -1,0 +1,165 @@
+import { useState } from 'react'
+
+const CARD = {
+  background: 'var(--surface)',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius)',
+  padding: 20,
+  marginBottom: 16,
+}
+
+const BTN = {
+  background: 'var(--accent)',
+  color: '#fff',
+  border: 'none',
+  borderRadius: 8,
+  padding: '10px 20px',
+  cursor: 'pointer',
+  fontSize: 14,
+  fontWeight: 600,
+}
+
+export default function RiskPanel({ apiUrl }) {
+  const [query, setQuery] = useState('')
+  const [protocol, setProtocol] = useState('')
+  const [result, setResult] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [findings, setFindings] = useState([])
+  const [findingsLoading, setFindingsLoading] = useState(false)
+
+  const handleQuery = async () => {
+    if (!query.trim()) return
+    setLoading(true)
+    setError(null)
+    setResult(null)
+    try {
+      const r = await fetch(`${apiUrl}/risk/query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, protocol: protocol || undefined }),
+      })
+      if (!r.ok) {
+        const err = await r.json()
+        throw new Error(err.detail || `HTTP ${r.status}`)
+      }
+      const data = await r.json()
+      setResult(data.result)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadFindings = async () => {
+    setFindingsLoading(true)
+    try {
+      const r = await fetch(`${apiUrl}/risk/findings?limit=20`)
+      const data = await r.json()
+      setFindings(data.findings || [])
+    } catch {
+      setFindings([])
+    } finally {
+      setFindingsLoading(false)
+    }
+  }
+
+  return (
+    <div>
+      <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Risk Intelligence</h1>
+      <p style={{ color: 'var(--text-muted)', marginBottom: 20 }}>
+        Query the AI agent for DeFi protocol risk analysis powered by Groq Compound.
+      </p>
+
+      <div style={CARD}>
+        <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 14 }}>Ask the Risk Agent</h2>
+        <textarea
+          data-testid="risk-query-input"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="e.g. What are the main risk factors for Uniswap v3 on Casper?"
+          style={{
+            width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)',
+            borderRadius: 8, color: 'var(--text)', padding: 12, fontSize: 14,
+            resize: 'vertical', minHeight: 80, outline: 'none', marginBottom: 10,
+          }}
+          onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) handleQuery() }}
+        />
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <input
+            value={protocol}
+            onChange={e => setProtocol(e.target.value)}
+            placeholder="Protocol (optional)"
+            style={{
+              background: 'var(--surface2)', border: '1px solid var(--border)',
+              borderRadius: 8, color: 'var(--text)', padding: '10px 12px',
+              fontSize: 13, outline: 'none', width: 180,
+            }}
+          />
+          <button
+            data-testid="query-submit"
+            onClick={handleQuery}
+            disabled={loading || !query.trim()}
+            style={{ ...BTN, opacity: loading || !query.trim() ? 0.5 : 1 }}
+          >
+            {loading ? 'Analyzing...' : 'Analyze'}
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div style={{ ...CARD, borderColor: 'var(--danger)', background: '#1a0a0a' }}>
+          <span style={{ color: 'var(--danger)' }}>Error: {error}</span>
+        </div>
+      )}
+
+      {result && (
+        <div style={{ ...CARD, borderColor: 'var(--accent)' }}>
+          <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 10, color: 'var(--accent)' }}>
+            Analysis Result
+          </h3>
+          <p style={{ marginBottom: 8 }}>{result.summary || result.content || JSON.stringify(result)}</p>
+          {result.risk_factors && result.risk_factors.length > 0 && (
+            <div>
+              <strong style={{ fontSize: 12, color: 'var(--text-muted)' }}>Risk Factors:</strong>
+              <ul style={{ marginTop: 4, paddingLeft: 18 }}>
+                {result.risk_factors.map((f, i) => (
+                  <li key={i} style={{ color: 'var(--warning)', fontSize: 13 }}>{f}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {result.confidence !== undefined && (
+            <div style={{ marginTop: 8, color: 'var(--text-muted)', fontSize: 12 }}>
+              Confidence: {(result.confidence * 100).toFixed(0)}%
+            </div>
+          )}
+        </div>
+      )}
+
+      <div style={{ ...CARD }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <h2 style={{ fontSize: 15, fontWeight: 600 }}>Recent Findings</h2>
+          <button onClick={loadFindings} disabled={findingsLoading}
+            style={{ ...BTN, padding: '6px 14px', fontSize: 12, background: 'var(--surface2)', color: 'var(--text)' }}>
+            {findingsLoading ? 'Loading...' : 'Refresh'}
+          </button>
+        </div>
+        {findings.length === 0 ? (
+          <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>No findings yet. Run an analysis above.</p>
+        ) : (
+          findings.map((f, i) => (
+            <div key={i} style={{
+              padding: '10px 12px', background: 'var(--surface2)',
+              borderRadius: 8, marginBottom: 8, fontSize: 13,
+            }}>
+              <div style={{ fontWeight: 600 }}>{f.protocol || 'Unknown protocol'}</div>
+              <div style={{ color: 'var(--text-muted)' }}>{f.summary || f.content || JSON.stringify(f).slice(0, 100)}</div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
