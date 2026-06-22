@@ -1,3 +1,4 @@
+
 /// AgentBehaviorIndex — On-chain AI agent accountability index
 ///
 /// FLAGSHIP FEATURE — First of its kind on Casper.
@@ -7,7 +8,6 @@
 /// No other submission — cred402, CasperFlow — has anything like this.
 
 use odra::prelude::*;
-use odra::{Address, Mapping, UnwrapOrRevert, Var};
 
 #[odra::odra_type]
 pub struct AgentMetrics {
@@ -109,9 +109,9 @@ impl AgentBehaviorIndex {
 
     fn assert_owner(&self) {
         let caller = self.env().caller();
-        let owner = self.owner.get_or_revert(self.env());
+        let owner = self.owner.get_or_revert_with(ExecutionError::User(1));
         if caller != owner {
-            self.env().revert(odra::ExecutionError::UnauthorizedInvoker);
+            self.env().revert(ExecutionError::User(1));
         }
     }
 }

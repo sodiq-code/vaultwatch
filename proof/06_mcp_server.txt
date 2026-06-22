@@ -1,0 +1,29 @@
+=== MCP SERVER CONFIGURATION ===
+FastMCP 15-Tool Server:
+-rw-r--r-- 1 user user 16K Jun 22 21:54 /home/user/vaultwatch/vaultwatch_mcp/server.py
+
+Available Tools:
+@mcp.tool()
+async def get_market_state() -> dict:
+@mcp.tool()
+async def detect_anomaly(address: str, amount_cspr: float = 0.0,
+@mcp.tool()
+async def get_rwa_risk(asset_type: str = "stablecoin") -> dict:
+@mcp.tool()
+async def query_findings(severity: Optional[str] = None, limit: int = 10,
+@mcp.tool()
+async def pay_for_intel(caller_address: str, target_address: str,
+@mcp.tool()
+async def get_audit_trail(address: str, limit: int = 5) -> dict:
+@mcp.tool()
+async def subscribe_alerts(address: str, webhook_url: str,
+@mcp.tool()
+async def get_agent_trace(finding_id: int) -> dict:
+@mcp.tool()
+async def get_risk_score(address: str) -> dict:
+@mcp.tool()
+async def stream_events(limit: int = 5) -> dict:
+
+MCP Dependencies:
+groq>=0.11.0
+fastmcp>=0.1.0

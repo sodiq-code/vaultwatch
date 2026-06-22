@@ -1,3 +1,4 @@
+
 /// RiskPolicyManager — Hot-swappable risk thresholds without contract redeployment
 ///
 /// THE KILLSHOT DEMO FEATURE.
@@ -7,7 +8,6 @@
 /// No other submission can demonstrate this.
 
 use odra::prelude::*;
-use odra::{Address, Mapping, UnwrapOrRevert, Var};
 
 #[odra::odra_type]
 pub struct RiskPolicy {
@@ -63,7 +63,7 @@ impl RiskPolicyManager {
     ) {
         self.assert_owner();
         let current_version = self.current_policy
-            .get_or_revert(self.env())
+            .get_or_revert_with(ExecutionError::User(1))
             .version;
         let new_version = current_version + 1;
 
@@ -85,7 +85,7 @@ impl RiskPolicyManager {
 
     /// Get active policy — agents call this every decision cycle
     pub fn get_current_policy(&self) -> RiskPolicy {
-        self.current_policy.get_or_revert(self.env())
+        self.current_policy.get_or_revert_with(ExecutionError::User(1))
     }
 
     /// Get a historical policy version
@@ -94,7 +94,7 @@ impl RiskPolicyManager {
     }
 
     pub fn get_current_version(&self) -> u32 {
-        self.current_policy.get_or_revert(self.env()).version
+        self.current_policy.get_or_revert_with(ExecutionError::User(1)).version
     }
 
     pub fn transfer_ownership(&mut self, new_owner: Address) {
@@ -104,9 +104,9 @@ impl RiskPolicyManager {
 
     fn assert_owner(&self) {
         let caller = self.env().caller();
-        let owner = self.owner.get_or_revert(self.env());
+        let owner = self.owner.get_or_revert_with(ExecutionError::User(1));
         if caller != owner {
-            self.env().revert(odra::ExecutionError::UnauthorizedInvoker);
+            self.env().revert(ExecutionError::User(1));
         }
     }
 }

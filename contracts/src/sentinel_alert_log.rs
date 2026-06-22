@@ -1,3 +1,4 @@
+
 /// SentinelAlertLog — Timestamped on-chain alert history per address
 ///
 /// Every alert pushed to a subscriber is logged here immutably.
@@ -5,7 +6,6 @@
 /// at block X from VaultWatch" — no other submission has this feature.
 
 use odra::prelude::*;
-use odra::{Address, Mapping, UnwrapOrRevert, Var};
 
 #[odra::odra_type]
 pub struct AlertRecord {
@@ -74,7 +74,7 @@ impl SentinelAlertLog {
     }
 
     pub fn get_log(&self, log_id: u64) -> AlertRecord {
-        self.logs.get(&log_id).unwrap_or_revert(self.env())
+        self.logs.get(&log_id).unwrap_or_revert(self)
     }
 
     pub fn get_address_log_ids(&self, address: String) -> String {
@@ -87,9 +87,9 @@ impl SentinelAlertLog {
 
     fn assert_owner(&self) {
         let caller = self.env().caller();
-        let owner = self.owner.get_or_revert(self.env());
+        let owner = self.owner.get_or_revert_with(ExecutionError::User(1));
         if caller != owner {
-            self.env().revert(odra::ExecutionError::UnauthorizedInvoker);
+            self.env().revert(ExecutionError::User(1));
         }
     }
 }

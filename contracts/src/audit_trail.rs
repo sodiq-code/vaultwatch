@@ -1,3 +1,4 @@
+
 /// AuditTrail — Immutable on-chain log of every VaultWatch finding
 ///
 /// Every risk finding that passes the full agent pipeline (SelfCorrection +
@@ -5,7 +6,6 @@
 /// Any Casper DeFi protocol can verify: "was there a CRITICAL alert at block X?"
 
 use odra::prelude::*;
-use odra::{Address, Mapping, UnwrapOrRevert, Var};
 
 /// A single immutable finding record
 #[odra::odra_type]
@@ -73,7 +73,7 @@ impl AuditTrail {
 
     /// Get a finding by ID
     pub fn get_finding(&self, id: u64) -> Finding {
-        self.findings.get(&id).unwrap_or_revert(self.env())
+        self.findings.get(&id).unwrap_or_revert(self)
     }
 
     /// Get total finding count
@@ -89,9 +89,9 @@ impl AuditTrail {
 
     fn assert_owner(&self) {
         let caller = self.env().caller();
-        let owner = self.owner.get_or_revert(self.env());
+        let owner = self.owner.get_or_revert_with(ExecutionError::User(1));
         if caller != owner {
-            self.env().revert(odra::ExecutionError::UnauthorizedInvoker);
+            self.env().revert(ExecutionError::User(1));
         }
     }
 }

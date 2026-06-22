@@ -1,3 +1,4 @@
+
 /// RiskOracle — Live risk scores queryable by any Casper DeFi protocol
 ///
 /// Any protocol on Casper can call get_risk_score(address) to retrieve the
@@ -5,7 +6,6 @@
 /// contract call, live risk intelligence, no account required.
 
 use odra::prelude::*;
-use odra::{Address, Mapping, UnwrapOrRevert, Var};
 
 #[odra::odra_type]
 pub struct RiskScore {
@@ -71,9 +71,9 @@ impl RiskOracle {
 
     fn assert_owner(&self) {
         let caller = self.env().caller();
-        let owner = self.owner.get_or_revert(self.env());
+        let owner = self.owner.get_or_revert_with(ExecutionError::User(1));
         if caller != owner {
-            self.env().revert(odra::ExecutionError::UnauthorizedInvoker);
+            self.env().revert(ExecutionError::User(1));
         }
     }
 }

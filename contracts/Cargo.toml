@@ -1,77 +1,26 @@
-[workspace]
-resolver = "2"
-members = [
-    "src/audit_trail",
-    "src/risk_oracle",
-    "src/sentinel_credit",
-    "src/sentinel_registry",
-    "src/sentinel_alert_log",
-    "src/agent_behavior_index",
-    "src/risk_policy_manager",
-    "src/subscriber_vault",
-]
-
-[workspace.package]
-version = "4.0.0"
-authors = ["VaultWatch <dev@vaultwatch.io>"]
+[package]
+name = "vaultwatch-contracts"
+version = "0.1.0"
 edition = "2021"
-license = "MIT"
-repository = "https://github.com/sodiq-code/vaultwatch"
 
-[workspace.dependencies]
-odra = { version = "1.4.0", features = ["casper"] }
-odra-casper-wasm-env = "1.4.0"
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+odra = "2.8.0"
+
+[build-dependencies]
+odra-build = "2.8.0"
+
+[dev-dependencies]
+odra-test = "2.8.0"
+
+[[bin]]
+name = "vaultwatch_contracts_build_contract"
+path = "bin/build_contract.rs"
 
 [profile.release]
-codegen-units = 1
-lto = true
 opt-level = "z"
-overflow-checks = true
-panic = "abort"
-strip = "debuginfo"
-
-[profile.dev]
-opt-level = 0
-debug = true
-
-# ─── Per-contract packages ────────────────────────────────────────────────────
-
-[[workspace.metadata.contracts]]
-name = "AuditTrail"
-path = "src/audit_trail"
-wasm = "audit_trail.wasm"
-
-[[workspace.metadata.contracts]]
-name = "RiskOracle"
-path = "src/risk_oracle"
-wasm = "risk_oracle.wasm"
-
-[[workspace.metadata.contracts]]
-name = "SentinelCredit"
-path = "src/sentinel_credit"
-wasm = "sentinel_credit.wasm"
-
-[[workspace.metadata.contracts]]
-name = "SentinelRegistry"
-path = "src/sentinel_registry"
-wasm = "sentinel_registry.wasm"
-
-[[workspace.metadata.contracts]]
-name = "SentinelAlertLog"
-path = "src/sentinel_alert_log"
-wasm = "sentinel_alert_log.wasm"
-
-[[workspace.metadata.contracts]]
-name = "AgentBehaviorIndex"
-path = "src/agent_behavior_index"
-wasm = "agent_behavior_index.wasm"
-
-[[workspace.metadata.contracts]]
-name = "RiskPolicyManager"
-path = "src/risk_policy_manager"
-wasm = "risk_policy_manager.wasm"
-
-[[workspace.metadata.contracts]]
-name = "SubscriberVault"
-path = "src/subscriber_vault"
-wasm = "subscriber_vault.wasm"
+lto = true
+codegen-units = 1
+strip = true

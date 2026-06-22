@@ -1,0 +1,52 @@
+=== BUILD OUTPUT ===
+warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+💁  [1;32mINFO :[0m [32mSaving /home/user/vaultwatch/contracts/wasm/AuditTrail.wasm[0m
+   Compiling vaultwatch-contracts v0.1.0 (/home/user/vaultwatch/contracts)
+    Finished `release` profile [optimized] target(s) in 0.33s
+warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+💁  [1;32mINFO :[0m [32mSaving /home/user/vaultwatch/contracts/wasm/RiskOracle.wasm[0m
+   Compiling vaultwatch-contracts v0.1.0 (/home/user/vaultwatch/contracts)
+    Finished `release` profile [optimized] target(s) in 0.33s
+warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+💁  [1;32mINFO :[0m [32mSaving /home/user/vaultwatch/contracts/wasm/SentinelCredit.wasm[0m
+   Compiling vaultwatch-contracts v0.1.0 (/home/user/vaultwatch/contracts)
+    Finished `release` profile [optimized] target(s) in 0.32s
+warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+💁  [1;32mINFO :[0m [32mSaving /home/user/vaultwatch/contracts/wasm/SentinelRegistry.wasm[0m
+   Compiling vaultwatch-contracts v0.1.0 (/home/user/vaultwatch/contracts)
+    Finished `release` profile [optimized] target(s) in 0.36s
+warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+💁  [1;32mINFO :[0m [32mSaving /home/user/vaultwatch/contracts/wasm/SentinelAlertLog.wasm[0m
+   Compiling vaultwatch-contracts v0.1.0 (/home/user/vaultwatch/contracts)
+    Finished `release` profile [optimized] target(s) in 0.32s
+warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+💁  [1;32mINFO :[0m [32mSaving /home/user/vaultwatch/contracts/wasm/AgentBehaviorIndex.wasm[0m
+   Compiling vaultwatch-contracts v0.1.0 (/home/user/vaultwatch/contracts)
+    Finished `release` profile [optimized] target(s) in 0.31s
+warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+💁  [1;32mINFO :[0m [32mSaving /home/user/vaultwatch/contracts/wasm/RiskPolicyManager.wasm[0m
+   Compiling vaultwatch-contracts v0.1.0 (/home/user/vaultwatch/contracts)
+    Finished `release` profile [optimized] target(s) in 0.32s
+warning: the following packages contain code that will be rejected by a future version of Rust: proc-macro-error2 v2.0.1
+note: to see what the problems were, use the option `--future-incompat-report`, or run `cargo report future-incompatibilities --id 1`
+💁  [1;32mINFO :[0m [32mSaving /home/user/vaultwatch/contracts/wasm/SubscriberVault.wasm[0m
+💁  [1;32mINFO :[0m [32mOptimizing wasm files...[0m
+🤦  [1;31mERROR :[0m [31mThere was an error while running wasm-opt - is it installed?[0m
+
+All 8 WASMs compiled successfully:
+total 128K
+-rwxr-xr-x 1 user user 14K Jun 22 22:59 AgentBehaviorIndex.wasm
+-rwxr-xr-x 1 user user 14K Jun 22 22:59 AuditTrail.wasm
+-rwxr-xr-x 1 user user 14K Jun 22 22:59 RiskOracle.wasm
+-rwxr-xr-x 1 user user 14K Jun 22 22:59 RiskPolicyManager.wasm
+-rwxr-xr-x 1 user user 14K Jun 22 22:59 SentinelAlertLog.wasm
+-rwxr-xr-x 1 user user 14K Jun 22 22:59 SentinelCredit.wasm
+-rwxr-xr-x 1 user user 14K Jun 22 22:59 SentinelRegistry.wasm
+-rwxr-xr-x 1 user user 14K Jun 22 22:59 SubscriberVault.wasm

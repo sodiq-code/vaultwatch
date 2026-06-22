@@ -1,0 +1,52 @@
+=== TEST RESULTS ===
+Running contract tests...
+    | --------------- associated function or constant `deploy` not found for this struct because it doesn't satisfy `_: Deployer<SubscriberVaultHostRef>` or `_: OdraContract`
+...
+139 |         let mut contract = SubscriberVaultHostRef::deploy(&env, NoArgs);
+    |                                                    ^^^^^^ associated function or constant cannot be called due to unsatisfied trait bounds
+    |
+    = note: the following trait bounds were not satisfied:
+            `__subscriber_vault_test_parts::SubscriberVaultHostRef: OdraContract`
+            which is required by `__subscriber_vault_test_parts::SubscriberVaultHostRef: Deployer<__subscriber_vault_test_parts::SubscriberVaultHostRef>`
+            `&__subscriber_vault_test_parts::SubscriberVaultHostRef: OdraContract`
+            which is required by `&__subscriber_vault_test_parts::SubscriberVaultHostRef: Deployer<&__subscriber_vault_test_parts::SubscriberVaultHostRef>`
+            `&mut __subscriber_vault_test_parts::SubscriberVaultHostRef: OdraContract`
+            which is required by `&mut __subscriber_vault_test_parts::SubscriberVaultHostRef: Deployer<&mut __subscriber_vault_test_parts::SubscriberVaultHostRef>`
+note: the trait `OdraContract` must be implemented
+   --> /home/user/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/odra-core-2.8.1/src/contract.rs:2:1
+    |
+  2 | pub trait OdraContract {
+    | ^^^^^^^^^^^^^^^^^^^^^^
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following trait defines an item `deploy`, perhaps you need to implement it:
+            candidate #1: `Deployer`
+
+error[E0599]: the associated function or constant `deploy` exists for struct `__subscriber_vault_test_parts::SubscriberVaultHostRef`, but its trait bounds were not satisfied
+   --> src/subscriber_vault.rs:153:52
+    |
+ 31 | #[odra::module]
+    | --------------- associated function or constant `deploy` not found for this struct because it doesn't satisfy `_: Deployer<SubscriberVaultHostRef>` or `_: OdraContract`
+...
+153 |         let mut contract = SubscriberVaultHostRef::deploy(&env, NoArgs);
+    |                                                    ^^^^^^ associated function or constant cannot be called due to unsatisfied trait bounds
+    |
+    = note: the following trait bounds were not satisfied:
+            `__subscriber_vault_test_parts::SubscriberVaultHostRef: OdraContract`
+            which is required by `__subscriber_vault_test_parts::SubscriberVaultHostRef: Deployer<__subscriber_vault_test_parts::SubscriberVaultHostRef>`
+            `&__subscriber_vault_test_parts::SubscriberVaultHostRef: OdraContract`
+            which is required by `&__subscriber_vault_test_parts::SubscriberVaultHostRef: Deployer<&__subscriber_vault_test_parts::SubscriberVaultHostRef>`
+            `&mut __subscriber_vault_test_parts::SubscriberVaultHostRef: OdraContract`
+            which is required by `&mut __subscriber_vault_test_parts::SubscriberVaultHostRef: Deployer<&mut __subscriber_vault_test_parts::SubscriberVaultHostRef>`
+note: the trait `OdraContract` must be implemented
+   --> /home/user/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/odra-core-2.8.1/src/contract.rs:2:1
+    |
+  2 | pub trait OdraContract {
+    | ^^^^^^^^^^^^^^^^^^^^^^
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following trait defines an item `deploy`, perhaps you need to implement it:
+            candidate #1: `Deployer`
+
+Some errors have detailed explanations: E0308, E0422, E0425, E0599.
+For more information about an error, try `rustc --explain E0308`.
+warning: `vaultwatch-contracts` (lib test) generated 7 warnings
+error: could not compile `vaultwatch-contracts` (lib test) due to 53 previous errors; 7 warnings emitted

@@ -1,3 +1,5 @@
+use odra::casper_types::U512;
+
 /// SubscriberVault — Escrowed prepay balance for bulk subscribers
 ///
 /// Protocols prepay CSPR into escrow. Each query deducts from balance.
@@ -5,7 +7,6 @@
 /// one-off queries. Real subscription model, on-chain, no middlemen.
 
 use odra::prelude::*;
-use odra::{Address, Mapping, UnwrapOrRevert, Var, casper_types::U512};
 
 #[odra::odra_type]
 pub struct VaultAccount {
@@ -99,7 +100,7 @@ impl SubscriberVault {
                 let locked = self.total_locked.get_or_default() + amount;
                 self.total_locked.set(locked);
             }
-            None => self.env().revert(odra::ExecutionError::UnwrapError),
+            None => self.env().revert(ExecutionError::UnwrapError),
         }
     }
 
@@ -120,9 +121,9 @@ impl SubscriberVault {
 
     fn assert_vault_owner(&self) {
         let caller = self.env().caller();
-        let owner = self.vault_owner.get_or_revert(self.env());
+        let owner = self.vault_owner.get_or_revert_with(ExecutionError::User(1));
         if caller != owner {
-            self.env().revert(odra::ExecutionError::UnauthorizedInvoker);
+            self.env().revert(ExecutionError::User(1));
         }
     }
 }

@@ -1,0 +1,12 @@
+=== TECHNOLOGY STACK ===
+Smart Contracts (Casper):
+rustc 1.98.0-nightly (91fe22da8 2026-06-21)
+cargo 1.98.0-nightly (a595d0da2 2026-06-20)
+cargo-odra 0.1.7
+
+Python Backend:
+Python 3.13.5
+
+Frontend:
+v26.3.1
+11.16.0

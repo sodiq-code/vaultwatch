@@ -1,0 +1,21 @@
+=== COMPILED WASM CONTRACTS ===
+8 Odra 2.8.0 Contracts Built:
+total 128K
+-rwxr-xr-x 1 user user 14K Jun 22 22:59 AgentBehaviorIndex.wasm
+-rwxr-xr-x 1 user user 14K Jun 22 22:59 AuditTrail.wasm
+-rwxr-xr-x 1 user user 14K Jun 22 22:59 RiskOracle.wasm
+-rwxr-xr-x 1 user user 14K Jun 22 22:59 RiskPolicyManager.wasm
+-rwxr-xr-x 1 user user 14K Jun 22 22:59 SentinelAlertLog.wasm
+-rwxr-xr-x 1 user user 14K Jun 22 22:59 SentinelCredit.wasm
+-rwxr-xr-x 1 user user 14K Jun 22 22:59 SentinelRegistry.wasm
+-rwxr-xr-x 1 user user 14K Jun 22 22:59 SubscriberVault.wasm
+
+Odra.toml Configuration:
+fqn = "audit_trail::AuditTrail"
+fqn = "risk_oracle::RiskOracle"
+fqn = "sentinel_credit::SentinelCredit"
+fqn = "sentinel_registry::SentinelRegistry"
+fqn = "sentinel_alert_log::SentinelAlertLog"
+fqn = "agent_behavior_index::AgentBehaviorIndex"
+fqn = "risk_policy_manager::RiskPolicyManager"
+fqn = "subscriber_vault::SubscriberVault"

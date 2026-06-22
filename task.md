@@ -1,63 +1,49 @@
-# VaultWatch Build Progress
+# VaultWatch Deployment Task
 
-## Status: COMPLETE ✅
+## Status: ACTIVE — June 22, 2026
 
-## All Files Done
-- [x] Repo init (main branch)
-- [x] Directory structure
-- [x] .env.example + .env (gitignored)
-- [x] .gitignore
-- [x] contracts/src/audit_trail.rs
-- [x] contracts/src/risk_oracle.rs
-- [x] contracts/src/sentinel_credit.rs
-- [x] contracts/src/sentinel_registry.rs
-- [x] contracts/src/sentinel_alert_log.rs
-- [x] contracts/src/agent_behavior_index.rs
-- [x] contracts/src/risk_policy_manager.rs
-- [x] contracts/src/subscriber_vault.rs
-- [x] contracts/Cargo.toml
-- [x] agents/scanner_agent.py
-- [x] agents/anomaly_agent.py
-- [x] agents/self_correction_agent.py
-- [x] agents/rwa_agent.py
-- [x] agents/safety_guard.py
-- [x] agents/audit_agent.py
-- [x] agents/intel_agent.py
-- [x] agents/__init__.py
-- [x] streaming/sidecar_client.py (fixed duplicate stream() → run())
-- [x] vaultwatch_mcp/server.py (15 tools, renamed from mcp/ to fix package collision)
-- [x] vaultwatch_mcp/__init__.py
-- [x] api/main.py (FastAPI)
-- [x] api/__init__.py
-- [x] casper_client.py
-- [x] pipeline.py
-- [x] sdk/vaultwatch/__init__.py
-- [x] sdk/vaultwatch/client.py
-- [x] sdk/setup.py
-- [x] tests/unit/ (8 files — 66 tests)
-- [x] tests/integration/ (5 files — 37 tests)
-- [x] tests/demo/test_demo_scenario.py
-- [x] scripts/deploy_contracts.py
-- [x] scripts/demo_risk.py
-- [x] scripts/demo_rwa.py
-- [x] scripts/demo_upgrade_policy.py
-- [x] scripts/record_demo.py
-- [x] package.json
-- [x] requirements.txt
-- [x] Dockerfile + docker-compose.yml
-- [x] .github/workflows/ci.yml
-- [x] dashboard/ (React/Vite — index.html, App.jsx, 5 components)
-- [x] README.md
-- [x] docs/ARCHITECTURE.md
+## Objective
+Get VaultWatch on-chain (Casper Testnet) before June 30 deadline.
+Minimum: 1 transaction hash on testnet for hackathon eligibility.
 
-## Test Results
-107 tests passing, 0 failing
-- Unit: 66 passed
-- Integration: 37 passed
-- Demo: 4 passed
+## Keypair (GENERATED)
+- Private: 199f8420c8df39e16d0b12d5afdcc34f2e61f6604e2d1aeaef8883d55cd71d55
+- Public: e35b10cce65eb92e30ec83ea23d7654482509b0cc3313bcbe54a207a407499a2
+- Faucet format: 01e35b10cce65eb92e30ec83ea23d7654482509b0cc3313bcbe54a207a407499a2
+- Account hash: account-hash-dfe3488c7283d3944a399c7836bf6f482b969399cadccb75e8e126dcc74f3602
 
-## Key Fixes Applied
-- Renamed mcp/ → vaultwatch_mcp/ (collision with fastmcp's mcp package)
-- Fixed duplicate stream()/run() in SidecarClient
-- Fixed pipeline worker tests (async task-based approach)
-- Rewrote MCP tool tests to match actual server function signatures
+## Testnet Status
+- Testnet is LIVE: block 8,268,303+, node 2.2.1
+- DNS for rpc.testnet.casperlabs.io does NOT resolve from sandbox
+- cspr.cloud testnet RPC: https://node.testnet.cspr.cloud/rpc (needs API key)
+- tatum.io testnet RPC: https://casper-testnet.gateway.tatum.io (needs free API key)
+
+## Faucet Status
+- testnet.cspr.live/tools/faucet: WORKS but requires wallet sign-in (browser only)
+- direct API: No unauthenticated faucet endpoint found
+- validationcloud.io: No Casper listed
+- Strategy: Use python casper-sdk + cspr.cloud or tatum to submit deploy
+
+## Pending Steps (priority order)
+1. [BLOCKING] Get RPC access → sign up for Tatum free account (email signup)
+2. [BLOCKING] Fund account → can use tatum RPC to submit a self-fund via SDK
+   OR: Use cspr.click skill from Casper AI Toolkit
+3. Install Odra/cargo toolchain OR use Python casper SDK to deploy
+4. Deploy contracts → get 8 TX hashes
+5. Update README with TX hashes
+6. Push to GitHub
+7. Demo video
+
+## Key Resources
+- Casper AI Toolkit: https://www.casper.network/ai
+- CSPR.click AI Agent Skill: installable coding skill
+- Odra docs: https://docs.odra.dev
+- Tatum dashboard: https://dashboard.tatum.io
+- cspr.build signup: https://cspr.build (has account portal somewhere)
+- RPC alternatives: NOWNodes (form at dorahacks discussion)
+
+## Notes
+- Hackathon requires: working prototype + transaction on testnet + demo video + GitHub
+- The faucet sends 5000 CSPR to the account - once funded all deploys work
+- casper-python-sdk is available on PyPI: pip install casper-sdk
+- Casper uses WASM deploys (not EVM), so toolchain matters

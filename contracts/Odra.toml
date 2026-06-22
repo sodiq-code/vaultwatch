@@ -1,0 +1,23 @@
+[[contracts]]
+fqn = "audit_trail::AuditTrail"
+
+[[contracts]]
+fqn = "risk_oracle::RiskOracle"
+
+[[contracts]]
+fqn = "sentinel_credit::SentinelCredit"
+
+[[contracts]]
+fqn = "sentinel_registry::SentinelRegistry"
+
+[[contracts]]
+fqn = "sentinel_alert_log::SentinelAlertLog"
+
+[[contracts]]
+fqn = "agent_behavior_index::AgentBehaviorIndex"
+
+[[contracts]]
+fqn = "risk_policy_manager::RiskPolicyManager"
+
+[[contracts]]
+fqn = "subscriber_vault::SubscriberVault"

@@ -1,3 +1,5 @@
+use odra::casper_types::U512;
+
 /// SentinelCredit — x402 credit ledger for pay-per-intelligence queries
 ///
 /// Protocols deposit CSPR credits. Each intelligence query deducts from balance.
@@ -5,7 +7,6 @@
 /// This is the economic engine of VaultWatch — not a flat API, a market.
 
 use odra::prelude::*;
-use odra::{Address, Mapping, UnwrapOrRevert, Var, casper_types::U512};
 
 #[odra::odra_type]
 pub struct CreditAccount {
@@ -112,9 +113,9 @@ impl SentinelCredit {
 
     fn assert_owner(&self) {
         let caller = self.env().caller();
-        let owner = self.owner.get_or_revert(self.env());
+        let owner = self.owner.get_or_revert_with(ExecutionError::User(1));
         if caller != owner {
-            self.env().revert(odra::ExecutionError::UnauthorizedInvoker);
+            self.env().revert(ExecutionError::User(1));
         }
     }
 }

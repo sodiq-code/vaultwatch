@@ -1,3 +1,4 @@
+
 /// SentinelRegistry — Subscriber registry for push alerts
 ///
 /// Protocols register their webhook endpoints here. When a CRITICAL finding
@@ -5,7 +6,6 @@
 /// every registered subscriber. On-chain subscriber management — no database.
 
 use odra::prelude::*;
-use odra::{Address, Mapping, UnwrapOrRevert, Var};
 
 #[odra::odra_type]
 pub struct Subscriber {
@@ -59,7 +59,7 @@ impl SentinelRegistry {
                 sub.active = false;
                 self.subscribers.set(&address, sub);
             }
-            None => self.env().revert(odra::ExecutionError::UnwrapError),
+            None => self.env().revert(ExecutionError::UnwrapError),
         }
     }
 
@@ -97,9 +97,9 @@ impl SentinelRegistry {
 
     fn assert_owner(&self) {
         let caller = self.env().caller();
-        let owner = self.owner.get_or_revert(self.env());
+        let owner = self.owner.get_or_revert_with(ExecutionError::User(1));
         if caller != owner {
-            self.env().revert(odra::ExecutionError::UnauthorizedInvoker);
+            self.env().revert(ExecutionError::User(1));
         }
     }
 }
