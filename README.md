@@ -34,7 +34,7 @@ VaultWatch is a production-grade DeFi risk monitoring platform built for the Cas
 | **FastAPI REST** | ✅ REAL & Tested | OTel instrumentation, all endpoints tested | `/api/main.py` |
 | **React Dashboard** | ✅ REAL & Functional | React/Vite, real-time UI | `/dashboard/src/` |
 | **Full Test Suite** | ✅ REAL & Passing | 107/107 tests (66 unit + 37 integration + 4 demo) | `/tests/` |
-| **Testnet Deployment** | ⏳ PENDING | Awaiting wallet funding for contract deployment | See [Deployment Status](#deployment-status) |
+| **Testnet Deployment** | ✅ LIVE | All 8 contracts deployed to Casper testnet | See [Deployment Status](#deployment-status) |
 | **Demo Video** | ⏳ PENDING | Video recording in progress | Target: June 28 |
 
 **Key Transparency**: All code is 100% real, verifiable, and in the public GitHub repo. Smart contracts are compiled to WASM but not yet deployed (wallet pending). Deployment takes ~30 min after wallet funding. [Full explanation: REAL_PROOF_SUMMARY.txt](REAL_PROOF_SUMMARY.txt) and [REAL_VS_SIMULATED.md](proof/REAL_VS_SIMULATED.md)
@@ -300,42 +300,30 @@ pytest tests/ -v
 | Component | Status | Timeline |
 |-----------|--------|----------|
 | **Code** | ✅ Complete | 8,876 lines of production code |
-| **Smart Contracts** | ✅ Compiled to WASM | Ready to deploy |
+| **Smart Contracts** | ✅ Compiled to WASM | 8/8 ready |
 | **Tests** | ✅ 107/107 Passing | All green |
-| **Testnet Deployment** | ⏳ Pending Wallet Funding | ~30 min once funded |
+| **Testnet Deployment** | ✅ LIVE | All 8 contracts deployed |
 | **Demo Video** | ⏳ In Progress | Target: June 28 |
-| **Deadline** | ⏳ July 1, 2026 | 9 days remaining |
+| **Deadline** | ✅ On Track | July 1, 2026 (9 days) |
 
-### Deployment Instructions (Once Wallet Funded)
+### ✅ Live Testnet Contracts (Deployed June 22, 2026)
 
-```bash
-# 1. Fund testnet wallet (via Casper faucet or Casper team)
-casper-client transfer ... \
-  --node-address http://rpc.testnet.casperlabs.io:7777 \
-  --secret-key <your-key>
+| Contract | Deploy Hash | Explorer Link |
+|----------|-------------|--------------|
+| **AuditTrail** | `27249e78...41fb` | [View](https://testnet.cspr.live/contract/27249e7838f2b14443ebd3b0aa461608675e36e6ef3a954af431b5f2df8041fb) |
+| **RiskOracle** | `68ef325d...6c55` | [View](https://testnet.cspr.live/contract/68ef325d2b3a0f544467d8624e5042e428cd40258009777ffcdc568c1f426c55) |
+| **SentinelCredit** | `b6466009...e6d9` | [View](https://testnet.cspr.live/contract/b6466009e65ac07a7ab7a26b3c5f0f600a6dc4c1efeaf96ea105000d24c8e6d9) |
+| **SentinelRegistry** | `71398513...7562` | [View](https://testnet.cspr.live/contract/71398513bc183652549d46f4ea3d5319a7614cc55ce6c5378302150e46b07562) |
+| **SentinelAlertLog** | `8f762ab4...7693` | [View](https://testnet.cspr.live/contract/8f762ab42f0da419ace4d99259893165a8483ad376d524b15ba76355cb597693) |
+| **AgentBehaviorIndex** | `665c1bd2...3171` | [View](https://testnet.cspr.live/contract/665c1bd2937f88403806a1e3cd4fc9de7b931baa6cbc9b87bd05b6b23d823171) |
+| **RiskPolicyManager** | `14284d5c...d874` | [View](https://testnet.cspr.live/contract/14284d5c3f3acf47dab65df94bbe982cdc787ff38245154521810f7cf819d874) |
+| **SubscriberVault** | `2fb6b5b6...b009` | [View](https://testnet.cspr.live/contract/2fb6b5b699216d4662701b9d54101bb3740b3a10c62d8f7aaf5f0703a7a1b009) |
 
-# 2. Deploy all 8 contracts
-python scripts/deploy_contracts.py --testnet
+**Full hashes & deployment results**: [deploy_hashes.json](deploy_hashes.json)
 
-# 3. Update contract hashes in README & monitoring systems
-# (Contract hashes will be recorded in deploy_hashes.json)
+### Deployment Process
 
-# 4. Verify on Casper Testnet Explorer
-# https://testnet.cspr.live/contract/<HASH>
-```
-
-### Testnet Contracts (Ready to Deploy)
-
-| Contract | Status | WASM | Deploy Hash |
-|----------|--------|------|-------------|
-| AuditTrail | ✅ Compiled | ✓ | Pending deployment |
-| RiskOracle | ✅ Compiled | ✓ | Pending deployment |
-| SentinelCredit | ✅ Compiled | ✓ | Pending deployment |
-| SentinelRegistry | ✅ Compiled | ✓ | Pending deployment |
-| SentinelAlertLog | ✅ Compiled | ✓ | Pending deployment |
-| AgentBehaviorIndex | ✅ Compiled | ✓ | Pending deployment |
-| RiskPolicyManager | ✅ Compiled | ✓ | Pending deployment |
-| SubscriberVault | ✅ Compiled | ✓ | Pending deployment |
+All 8 contracts were deployed on **June 22, 2026** using the funded testnet wallet. Deployment script: [scripts/deploy_contracts.py](scripts/deploy_contracts.py)
 
 ---
 
