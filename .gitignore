@@ -12,7 +12,6 @@ venv/
 node_modules/
 .DS_Store
 *.mp4
-*.png
 recordings/
 target/
 Cargo.lock
