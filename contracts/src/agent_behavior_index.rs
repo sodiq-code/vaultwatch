@@ -1,11 +1,10 @@
 
 /// AgentBehaviorIndex — On-chain AI agent accountability index
 ///
-/// FLAGSHIP FEATURE — First of its kind on Casper.
 /// Every agent's decisions are scored on-chain: confidence averages,
-/// correction rates, false positive history. Creates a live trust score
-/// for the AI system itself. Judges can verify: the AI is accountable.
-/// No other submission — cred402, CasperFlow — has anything like this.
+/// correction rates, and false positive history. Creates a live trust score
+/// for the AI system itself — providing transparent, verifiable accountability
+/// for every AI-driven decision on the Casper network.
 
 use odra::prelude::*;
 

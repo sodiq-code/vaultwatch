@@ -1,38 +1,38 @@
-# ⬡ VaultWatch
+# VaultWatch
 
 **AI-Powered DeFi Risk Intelligence Agent on Casper**
 
-VaultWatch is a production-grade DeFi risk monitoring and intelligence platform built natively on the Casper blockchain. Six Groq-powered AI agents continuously monitor on-chain activity, classify anomalies in real time, and write verified findings to eight Odra smart contracts — all instrumented end-to-end with OpenTelemetry and served via a 15-tool FastMCP server callable from Claude Desktop.
-
-**Casper Agentic Buildathon 2026** · **Deadline: July 1, 2026**
+VaultWatch is a production-grade DeFi risk monitoring and intelligence platform built natively on the Casper blockchain. Six Groq-powered AI agents continuously monitor on-chain activity, classify anomalies in real time, and write verified findings to eight Odra smart contracts — all instrumented end-to-end with OpenTelemetry and exposed via a 15-tool FastMCP server callable from Claude Desktop.
 
 [![CI](https://github.com/sodiq-code/vaultwatch/actions/workflows/ci.yml/badge.svg)](https://github.com/sodiq-code/vaultwatch/actions/workflows/ci.yml)
 [![Tests](https://img.shields.io/badge/tests-107%2F107%20passing-brightgreen.svg)](tests/)
+[![PyPI](https://img.shields.io/pypi/v/casper-sentinel.svg)](https://pypi.org/project/casper-sentinel/)
+[![npm](https://img.shields.io/npm/v/casper-sentinel-mcp.svg)](https://www.npmjs.com/package/casper-sentinel-mcp)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![Casper Testnet](https://img.shields.io/badge/casper-testnet%20live-orange.svg)](https://testnet.cspr.live/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-success.svg)](LICENSE)
-[![Contracts](https://img.shields.io/badge/contracts-8%2F8%20compiled-blue.svg)](contracts/wasm/)
-[![Live Dashboard](https://img.shields.io/badge/dashboard-live%20on%20vercel-black.svg)](https://dashboard-rho-amber-89.vercel.app)
 
 ---
 
-## ⬡ Official Submission
+## Submission Details
 
 | | |
 |---|---|
 | **Hackathon** | [Casper Agentic Buildathon 2026](https://dorahacks.io/hackathon/casper-agentic-buildathon/detail) |
 | **Repository** | https://github.com/sodiq-code/vaultwatch |
 | **Live Dashboard** | https://dashboard-rho-amber-89.vercel.app |
-| **Network** | Casper Testnet (casper-test) |
-| **Status** | ✅ Code complete · ✅ 8 contracts compiled to WASM · ✅ Dashboard live |
+| **Python SDK** | https://pypi.org/project/casper-sentinel/4.0.0/ |
+| **MCP Package** | https://www.npmjs.com/package/casper-sentinel-mcp |
+| **Network** | Casper Testnet (`casper-test`) |
+| **Deployer Account** | `0202c223a43185563f404720fbb7028305cd79d6046ffdf7b746cfa42294c43db1d0` |
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ╔══════════════════════════════════════════════════════════════════════╗
-║              DATA SOURCES  (all live, all verified)                 ║
+║                    DATA SOURCES (live)                               ║
 ║                                                                      ║
 ║  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌─────────┐  ║
 ║  │ CSPR.cloud   │  │ Casper       │  │ CSPR.trade   │  │  Groq   │  ║
@@ -46,7 +46,6 @@ VaultWatch is a production-grade DeFi risk monitoring and intelligence platform 
 ╔══════════════════════════════════════════════════════════════════════╗
 ║         VaultWatch FastMCP Server  (15 tools)                       ║
 ║         Transport: stdio + HTTP/SSE                                  ║
-║         Claude Desktop: add vaultwatch-mcp to config → live queries ║
 ╚══════════════════════════════╦═══════════════════════════════════════╝
                                │
                                ▼
@@ -78,57 +77,57 @@ VaultWatch is a production-grade DeFi risk monitoring and intelligence platform 
 ║                  ║  ║  RiskPolicyManager    ║  ║                  ║
 ╚══════════════════╝  ║  SubscriberVault      ║  ╚══════════════════╝
                       ╚═══════════════════════╝
-
-  Python SDK: pip install vaultwatch
-  MCP Server: python vaultwatch_mcp/server.py
-  Demo:       npm run demo:risk | demo:rwa | demo:upgrade-policy
-  CI/CD:      GitHub Actions — lint → test → docker build on every push
 ```
 
 ---
 
-## ✨ What Makes VaultWatch Different
+## Key Differentiators
 
 | Feature | Description |
 |---------|-------------|
-| **AgentBehaviorIndex (on-chain)** | Every AI agent's decisions are scored on-chain — confidence averages, correction rates, false positive history. Live trust score for the AI system itself. No other Casper submission has this. |
-| **RiskPolicyManager (hot-swap)** | Risk thresholds upgradable without contract redeployment. `npm run demo:upgrade-policy` updates policy and agents adapt instantly — no redeployment. |
-| **Self-Correction Loop** | Low-confidence findings trigger a re-query with expanded context (max 2 retries). If still below threshold → SKIP. Nothing garbage reaches the chain. |
-| **Groq Compound + Casper SSE** | Two live data streams in one pipeline — real-time on-chain events + live web intelligence via Groq Compound. |
-| **x402 Pay-per-Query** | SubscriberVault contract holds prepaid CSPR balance. Each MCP query deducts from balance. Real subscription model, on-chain. |
-| **OTel Industry Standard** | Every agent span exported to any OTel sink. One env var → full agent observability in existing Grafana stack. Industry-first for Casper. |
-| **SafetyGuard Inline** | llama-prompt-guard-2-86m runs on every query in <50ms. Prompt injection and adversarial inputs blocked before they reach the agent pipeline. |
+| **AgentBehaviorIndex (on-chain)** | Every AI agent's decisions are scored on-chain — confidence averages, correction rates, false positive history. A live, verifiable trust score for the AI system itself. |
+| **RiskPolicyManager (hot-swap)** | Risk thresholds are upgradable without contract redeployment. `npm run demo:upgrade-policy` changes policy live and agents adapt instantly. |
+| **Self-Correction Loop** | Low-confidence findings trigger a re-query with expanded context (max 2 retries). If confidence remains below threshold, the finding is discarded — nothing unreliable reaches the chain. |
+| **Groq Compound + Casper SSE** | Two live data streams in one pipeline — real-time on-chain events via Casper Sidecar SSE and live web intelligence via Groq Compound. |
+| **x402 Pay-per-Query** | SubscriberVault contract holds prepaid CSPR. Each MCP query deducts from the on-chain balance — a real subscription primitive, fully on-chain. |
+| **OpenTelemetry (Industry Standard)** | Every agent span exported to any OTel sink via a single environment variable. Full agent observability in existing Grafana stacks. |
+| **SafetyGuard Inline** | `llama-prompt-guard-2-86m` runs on every query in under 50ms, blocking prompt injection and adversarial inputs before they reach the agent pipeline. |
 
 ---
 
-## 🔗 Smart Contracts — Casper Testnet
+## Smart Contracts — Casper Testnet
 
-**8 contracts written in Rust (Odra 2.8.0), compiled to WASM**
+**8 contracts written in Rust (Odra 2.8.0), compiled to WASM, deployed to `casper-test`**
 
-| # | Contract | Purpose | WASM Artifact |
-|----|----------|---------|---------------|
-| 1 | **AuditTrail** | Immutable on-chain audit log for all agent actions | [AuditTrail.wasm](contracts/wasm/AuditTrail.wasm) |
-| 2 | **RiskOracle** | Stores and retrieves DeFi risk scores on-chain | [RiskOracle.wasm](contracts/wasm/RiskOracle.wasm) |
-| 3 | **SentinelCredit** | Credit scoring for DeFi protocols | [SentinelCredit.wasm](contracts/wasm/SentinelCredit.wasm) |
-| 4 | **SentinelRegistry** | Registry for monitored protocols and agents | [SentinelRegistry.wasm](contracts/wasm/SentinelRegistry.wasm) |
-| 5 | **SentinelAlertLog** | On-chain alert storage and retrieval | [SentinelAlertLog.wasm](contracts/wasm/SentinelAlertLog.wasm) |
-| 6 | **AgentBehaviorIndex** | Tracks AI agent behavior patterns on-chain | [AgentBehaviorIndex.wasm](contracts/wasm/AgentBehaviorIndex.wasm) |
-| 7 | **RiskPolicyManager** | Governance for risk thresholds and policies | [RiskPolicyManager.wasm](contracts/wasm/RiskPolicyManager.wasm) |
-| 8 | **SubscriberVault** | Holds prepaid CSPR for x402 pay-per-query billing | [SubscriberVault.wasm](contracts/wasm/SubscriberVault.wasm) |
+Deployer: `0202c223a43185563f404720fbb7028305cd79d6046ffdf7b746cfa42294c43db1d0`  
+Deployment date: June 23, 2026
+
+| Contract | Deploy Hash | Explorer |
+|----------|-------------|---------|
+| **AuditTrail** | `9be661d1ed21ac8d762233108ec57b0a8a9e50580ad7b82066cd5690f69a86c4` | [View on testnet.cspr.live](https://testnet.cspr.live/deploy/9be661d1ed21ac8d762233108ec57b0a8a9e50580ad7b82066cd5690f69a86c4) |
+| **RiskOracle** | `c8341d32cb40667a3c61f8b49389104e211ad1ae57833c79a084d5bbf805f541` | [View on testnet.cspr.live](https://testnet.cspr.live/deploy/c8341d32cb40667a3c61f8b49389104e211ad1ae57833c79a084d5bbf805f541) |
+| **SentinelCredit** | `2101c5c55305fd5fb23fdf3c24029dc493fa07c5722e006313525eec80a0b8c6` | [View on testnet.cspr.live](https://testnet.cspr.live/deploy/2101c5c55305fd5fb23fdf3c24029dc493fa07c5722e006313525eec80a0b8c6) |
+| **SentinelRegistry** | `bb722bbd2ac8698419e59fd87f86e52d0ac59cae0e7542f2efa7a3cefdeb6acc` | [View on testnet.cspr.live](https://testnet.cspr.live/deploy/bb722bbd2ac8698419e59fd87f86e52d0ac59cae0e7542f2efa7a3cefdeb6acc) |
+| **SentinelAlertLog** | `e98ca94c5f88474019b7459a3203d0ca3cb0cf2ae594e2c0ee2042f948f0fa50` | [View on testnet.cspr.live](https://testnet.cspr.live/deploy/e98ca94c5f88474019b7459a3203d0ca3cb0cf2ae594e2c0ee2042f948f0fa50) |
+| **AgentBehaviorIndex** | `6061dfdeb871f932375da817032f2c890eaf85b77f07a77a6d81811871c79928` | [View on testnet.cspr.live](https://testnet.cspr.live/deploy/6061dfdeb871f932375da817032f2c890eaf85b77f07a77a6d81811871c79928) |
+| **RiskPolicyManager** | `5b4a65a946f96edd1673d379557356b0e8c1e2ac75efbdd591eaeb436ba61e6e` | [View on testnet.cspr.live](https://testnet.cspr.live/deploy/5b4a65a946f96edd1673d379557356b0e8c1e2ac75efbdd591eaeb436ba61e6e) |
+| **SubscriberVault** | `340557ddf3509f15aca0e94216aa419f083bdf2b3241ad2773a5feda079fb1f7` | [View on testnet.cspr.live](https://testnet.cspr.live/deploy/340557ddf3509f15aca0e94216aa419f083bdf2b3241ad2773a5feda079fb1f7) |
 
 WASM artifacts: [`contracts/wasm/`](contracts/wasm/) · Contract source: [`contracts/src/`](contracts/src/)
 
 ---
 
-## 🚀 Quickstart
+## Quickstart
 
 ### Prerequisites
+
 - Python 3.11+
-- Node.js 18+ (for dashboard & npm scripts)
+- Node.js 18+
 - Docker (optional, for full stack)
-- Groq API key (free at [console.groq.com](https://console.groq.com))
+- Groq API key — free at [console.groq.com](https://console.groq.com)
 
 ### Install
+
 ```bash
 git clone https://github.com/sodiq-code/vaultwatch
 cd vaultwatch
@@ -136,13 +135,15 @@ pip install -r requirements.txt
 ```
 
 ### Configure
+
 ```bash
 cp .env.example .env
 # Set GROQ_API_KEY in .env (required)
-# Everything else runs in mock mode by default
+# All other services run in mock mode by default
 ```
 
-### Run full stack (Docker)
+### Run (Docker)
+
 ```bash
 docker-compose up
 # API:       http://localhost:8000
@@ -151,7 +152,8 @@ docker-compose up
 # Docs:      http://localhost:8000/docs
 ```
 
-### Run components individually
+### Run individually
+
 ```bash
 # Agent pipeline
 python pipeline.py
@@ -168,7 +170,7 @@ cd dashboard && npm install && npm run dev
 
 ---
 
-## 🧪 Test Suite — 107/107 Passing
+## Test Suite — 107/107 Passing
 
 ```bash
 pytest tests/ -v
@@ -176,13 +178,11 @@ pytest tests/ -v
 
 ```
 tests/unit/           66 tests  — agents, SDK, safety guard, contracts
-tests/integration/    37 tests  — API endpoints, MCP tools, pipeline, streaming  
+tests/integration/    37 tests  — API endpoints, MCP tools, pipeline, streaming
 tests/demo/            4 tests  — end-to-end scenario walkthroughs
-────────────────────────────────
-Total:               107 tests  ✅ all passing
+──────────────────────────────
+Total:               107 tests  — all passing
 ```
-
-Test breakdown by file:
 
 | File | Tests | Coverage |
 |------|-------|----------|
@@ -203,9 +203,7 @@ Test breakdown by file:
 
 ---
 
-## 🤖 Agent Pipeline
-
-Each agent is specialized with a purpose-built Groq model:
+## Agent Pipeline
 
 ```
 Event (Casper SSE / CSPR.cloud)
@@ -220,8 +218,8 @@ Event (Casper SSE / CSPR.cloud)
     │
     ▼
 [3] SelfCorrectionAgent    llama-3.3-70b-versatile
-    confidence < 0.75? → re-query with expanded context (max 2 retries)
-    Still low? → SKIP (nothing garbage reaches the chain)
+    confidence < 0.75 → re-query with expanded context (max 2 retries)
+    Still low → discard (only high-confidence findings reach the chain)
     │
     ▼
 [4] RWAAgent               compound-beta (live web search)
@@ -232,7 +230,7 @@ Event (Casper SSE / CSPR.cloud)
     │
     ▼
 [5] AuditAgent             llama-3.1-8b-instant
-    Construct Casper deploy TX → write to AuditTrail.rs on testnet
+    Construct Casper deploy TX → write to AuditTrail contract on testnet
     │
     ▼
 [6] IntelAgent             llama-3.1-8b-instant
@@ -241,9 +239,9 @@ Event (Casper SSE / CSPR.cloud)
 
 ---
 
-## 🔧 15 MCP Tools
+## 15 MCP Tools
 
-Every tool is implemented, tested, and callable from Claude Desktop:
+All tools are implemented, tested, and callable from Claude Desktop:
 
 ```python
 tools = [
@@ -257,7 +255,7 @@ tools = [
     "get_agent_trace",        # OTel trace for any agent execution
     "get_risk_score",         # Aggregate risk score for any Casper address
     "stream_events",          # Subscribe to live SSE event stream
-    "get_agent_behavior",     # Agent performance index from on-chain
+    "get_agent_behavior",     # Agent performance index from on-chain data
     "upgrade_policy",         # Hot-swap thresholds on RiskPolicyManager
     "get_alert_history",      # Historical alerts from SentinelAlertLog
     "register_subscriber",    # Add address to SentinelRegistry
@@ -266,6 +264,11 @@ tools = [
 ```
 
 ### Claude Desktop Integration
+
+```bash
+npm install -g casper-sentinel-mcp
+```
+
 ```json
 {
   "mcpServers": {
@@ -280,34 +283,37 @@ tools = [
 
 ---
 
-## 📦 Smart Contracts
+## Smart Contracts
 
-All 8 contracts written in Rust with the [Odra framework](https://odra.dev), compiled to WASM, ready for Casper testnet deployment.
+8 contracts written in Rust with the [Odra framework](https://odra.dev), compiled to WASM, deployed to Casper testnet.
 
-| Contract | Role | Key Innovation |
+| Contract | Role | Key Capability |
 |----------|------|----------------|
-| **AuditTrail** | Immutable on-chain log of every finding | Tamper-proof audit record per address |
+| **AuditTrail** | Immutable on-chain log of every agent action | Tamper-proof audit record per address |
 | **RiskOracle** | Risk scores queryable by any Casper protocol | Open risk data layer for the ecosystem |
-| **SentinelCredit** | x402 credit ledger for pay-per-query | Monetization primitive for risk intelligence |
+| **SentinelCredit** | x402 credit ledger for pay-per-query billing | Monetization primitive for risk intelligence |
 | **SentinelRegistry** | Subscriber registry for push alerts | Protocol-native alert subscriptions |
 | **SentinelAlertLog** | Timestamped alert history per address | Compliance-grade alert auditability |
-| **AgentBehaviorIndex** | AI agent performance + confidence on-chain | **First AI accountability primitive on Casper** |
-| **RiskPolicyManager** | Hot-swappable risk thresholds | Live governance of AI agent policy |
+| **AgentBehaviorIndex** | AI agent performance + confidence on-chain | On-chain accountability layer for AI systems |
+| **RiskPolicyManager** | Hot-swappable risk thresholds | Live governance of agent policy without redeployment |
 | **SubscriberVault** | Escrowed prepay balance for subscribers | Bulk subscription with on-chain escrow |
 
 ### Build from source
+
 ```bash
 cd contracts
 cargo odra build --release
-ls wasm/   # 8 × .wasm files, ~14KB each
+ls wasm/   # 8 × .wasm files
 ```
 
 ---
 
-## 📚 Python SDK
+## Python SDK
+
+Published on PyPI: [`casper-sentinel`](https://pypi.org/project/casper-sentinel/4.0.0/)
 
 ```bash
-pip install -e sdk/
+pip install casper-sentinel
 ```
 
 ```python
@@ -319,8 +325,8 @@ async def main():
 
         # Risk assessment
         result = await client.query_risk(
-            "What are the main risks for Uniswap v3 on Casper?",
-            protocol="Uniswap",
+            "What are the current risks for this protocol?",
+            protocol="CasperSwap",
             timeframe="7d"
         )
         print(result["analysis"])
@@ -352,18 +358,18 @@ asyncio.run(main())
 
 ---
 
-## 🌐 REST API
+## REST API
 
 **OpenAPI docs**: http://localhost:8000/docs
 
 ```
 GET  /health                       Health check
 POST /api/risk/query               Query risk for a protocol
-POST /api/risk/detect-anomaly      Detect anomalies in metrics
-POST /api/rwa/assess               Assess real-world assets
+POST /api/risk/detect-anomaly      Detect anomalies in on-chain metrics
+POST /api/rwa/assess               Assess real-world asset risk
 POST /api/audit/query              Query on-chain audit trail
 POST /api/policy/check             Check policy compliance
-POST /api/policy/set               Set new risk policy
+POST /api/policy/set               Update risk policy
 GET  /api/contracts/{hash}         Get contract state
 POST /api/contracts/deploy         Deploy contract to testnet
 GET  /api/metrics                  System metrics
@@ -372,10 +378,10 @@ GET  /api/agents/status            Agent pipeline status
 
 ---
 
-## 🎬 Demo Scripts
+## Demo Scripts
 
 ```bash
-# Trigger full risk detection pipeline (mock event → agent pipeline → on-chain write)
+# Full risk detection pipeline: mock event → agent pipeline → on-chain write
 npm run demo:risk
 
 # RWA enrichment with live Groq Compound web search
@@ -383,16 +389,13 @@ npm run demo:rwa
 
 # Hot-swap RiskPolicyManager threshold on testnet (live TX)
 npm run demo:upgrade-policy
-
-# Auto-record full demo as .mp4 (Playwright)
-npm run record:demo
 ```
 
-**`demo:upgrade-policy`** is the flagship demo: risk threshold changes on testnet live, agents immediately reclassify at new threshold, new on-chain finding — all in 30 seconds. No restart. No redeploy.
+`demo:upgrade-policy` is the flagship demonstration: a risk threshold change propagates to testnet, agents immediately reclassify at the new threshold, and a new on-chain finding is written — no restart, no redeployment.
 
 ---
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 vaultwatch/
@@ -407,18 +410,18 @@ vaultwatch/
 │
 ├── contracts/
 │   ├── src/
-│   │   ├── audit_trail.rs        # ✅ LIVE: 27249e78...
-│   │   ├── risk_oracle.rs        # ✅ LIVE: 68ef325d...
-│   │   ├── sentinel_credit.rs    # ✅ LIVE: b6466009...
-│   │   ├── sentinel_registry.rs  # ✅ LIVE: 71398513...
-│   │   ├── sentinel_alert_log.rs # ✅ LIVE: 8f762ab4...
-│   │   ├── agent_behavior_index.rs # ✅ LIVE: 665c1bd2...
-│   │   ├── risk_policy_manager.rs  # ✅ LIVE: 14284d5c...
-│   │   └── subscriber_vault.rs   # ✅ LIVE: 2fb6b5b6...
+│   │   ├── audit_trail.rs
+│   │   ├── risk_oracle.rs
+│   │   ├── sentinel_credit.rs
+│   │   ├── sentinel_registry.rs
+│   │   ├── sentinel_alert_log.rs
+│   │   ├── agent_behavior_index.rs
+│   │   ├── risk_policy_manager.rs
+│   │   └── subscriber_vault.rs
 │   └── wasm/                     # 8 compiled WASM artifacts
 │
 ├── vaultwatch_mcp/
-│   ├── server.py                 # FastMCP — 15 tools (500+ lines)
+│   ├── server.py                 # FastMCP — 15 tools
 │   └── __init__.py
 │
 ├── api/
@@ -433,10 +436,10 @@ vaultwatch/
 │       └── otel_instrumentation.py
 │
 ├── streaming/
-│   └── sidecar_client.py         # Casper Sidecar SSE pipeline
+│   └── sidecar_client.py         # Casper Sidecar SSE client
 │
 ├── dashboard/
-│   └── src/                      # React/Vite frontend (800+ lines)
+│   └── src/                      # React/Vite frontend
 │
 ├── tests/
 │   ├── unit/                     # 66 unit tests
@@ -447,12 +450,11 @@ vaultwatch/
 │   ├── demo_risk.py
 │   ├── demo_rwa.py
 │   ├── demo_upgrade_policy.py
-│   ├── deploy_contracts.py
-│   └── record_demo.py
+│   └── deploy_contracts.py
 │
 ├── pipeline.py                   # Main agent pipeline orchestrator
-├── casper_client.py              # Casper Python SDK wrapper
-├── deploy_hashes.json            # Contract deploy hash references
+├── casper_client.py              # Casper network client wrapper
+├── deploy_hashes.json            # Live contract deploy hashes (casper-test)
 ├── docker-compose.yml
 ├── Dockerfile
 ├── requirements.txt
@@ -461,7 +463,7 @@ vaultwatch/
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 ```bash
 # Required
@@ -470,13 +472,13 @@ GROQ_API_KEY=your_groq_key           # Free at console.groq.com
 # Casper Network
 CASPER_NODE_URL=https://rpc.testnet.casperlabs.io/rpc
 CASPER_CHAIN_NAME=casper-test
-CASPER_ACCOUNT_SECRET_KEY=your_key   # For live testnet deploys
+CASPER_ACCOUNT_SECRET_KEY=your_key   # For live testnet interactions
 
-# CSPR.cloud (optional — enables contract state queries)
+# CSPR.cloud (enables contract state queries)
 CSPR_CLOUD_API_URL=https://api.testnet.cspr.cloud
 CSPR_CLOUD_API_KEY=your_key
 
-# Casper Sidecar (real-time streaming)
+# Casper Sidecar (real-time event streaming)
 CASPER_SIDECAR_URL=http://127.0.0.1:18888/events/main
 
 # x402 Pay-per-Query
@@ -489,17 +491,17 @@ API_PORT=8000
 # Dashboard
 VITE_API_URL=http://localhost:8000
 
-# OpenTelemetry (optional — stdout by default)
+# OpenTelemetry (stdout by default, any OTel sink supported)
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
 OTEL_SERVICE_NAME=vaultwatch
 
-# Mock mode (tests run without Casper node)
+# Mock mode (runs without a live Casper node — safe for CI)
 CASPER_MOCK=true
 ```
 
 ---
 
-## 🔁 CI/CD
+## CI/CD
 
 Every push to `main` runs:
 
@@ -513,13 +515,13 @@ Every push to `main` runs:
 
 ---
 
-## 🌱 Ecosystem Integration
+## Ecosystem Integration
 
-Any Casper DeFi protocol integrates VaultWatch in 3 steps:
+Any Casper DeFi protocol can integrate VaultWatch in three steps:
 
 ```bash
 # 1. Install SDK
-pip install -e sdk/
+pip install casper-sentinel
 
 # 2. Configure
 export GROQ_API_KEY=your_key
@@ -527,24 +529,44 @@ export CASPER_NODE_URL=https://rpc.testnet.casperlabs.io/rpc
 
 # 3. Query
 python -c "
-from vaultwatch import VaultWatchClient
 import asyncio
+from vaultwatch import VaultWatchClient
+
 async def main():
     async with VaultWatchClient('http://localhost:8000') as c:
-        r = await c.query_risk('Is this protocol safe?', protocol='MyProtocol')
+        r = await c.query_risk('Assess current protocol risk', protocol='MyProtocol')
         print(r)
+
 asyncio.run(main())
 "
 ```
 
-**OTel integration** — one env var, full agent traces in existing Grafana stack:
+**OTel integration** — one environment variable, full agent traces in your existing Grafana stack:
+
 ```bash
 OTEL_EXPORTER_OTLP_ENDPOINT=http://your-grafana-agent:4317 python pipeline.py
 ```
 
 ---
 
-## 📄 License
+## Links
+
+| Resource | URL |
+|----------|-----|
+| Repository | https://github.com/sodiq-code/vaultwatch |
+| Live Dashboard | https://dashboard-rho-amber-89.vercel.app |
+| Python SDK (PyPI) | https://pypi.org/project/casper-sentinel/4.0.0/ |
+| MCP Package (npm) | https://www.npmjs.com/package/casper-sentinel-mcp |
+| Casper Testnet Explorer | https://testnet.cspr.live/ |
+| Casper Developer Docs | https://docs.casper.network/ |
+| Odra Framework | https://odra.dev/ |
+| Groq Console | https://console.groq.com/ |
+| FastMCP | https://github.com/jlowin/fastmcp |
+| CSPR.cloud API | https://docs.cspr.cloud/ |
+
+---
+
+## License
 
 MIT License · Copyright (c) 2026 Sodiq Jimoh
 
@@ -556,20 +578,4 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ---
 
-## 🔗 Links
-
-| | |
-|---|---|
-| **Repository** | https://github.com/sodiq-code/vaultwatch |
-| **Hackathon** | https://dorahacks.io/hackathon/casper-agentic-buildathon/detail |
-| **Casper Testnet Explorer** | https://testnet.cspr.live/ |
-| **Casper Testnet Faucet** | https://testnet.cspr.live/faucet |
-| **Casper Developer Docs** | https://docs.casper.network/ |
-| **Odra Framework** | https://odra.dev/ |
-| **Groq Console** | https://console.groq.com/ |
-| **FastMCP** | https://github.com/jlowin/fastmcp |
-| **CSPR.cloud API** | https://docs.cspr.cloud/ |
-
----
-
-**Built by [Sodiq Jimoh](https://github.com/sodiq-code) · Casper Agentic Buildathon 2026**
+**Built by [Sodiq Jimoh](https://github.com/sodiq-code) for the Casper Agentic Buildathon 2026**
