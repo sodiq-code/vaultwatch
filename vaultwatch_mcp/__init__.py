@@ -1,1 +1,1 @@
-from . import server
+from . import server as server  # noqa: F401

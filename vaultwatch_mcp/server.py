@@ -6,22 +6,22 @@ Published: npm install vaultwatch-mcp (calls this via npx)
 Any Claude Desktop user can query VaultWatch live via MCP protocol.
 """
 
-import asyncio
 import json
 import os
+import sys
 import time
 from typing import Optional
+
 from fastmcp import FastMCP
 from opentelemetry import trace
+
+# === Path setup for agent imports ===
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+from agents.intel_agent import IntelAgent, _findings_store
 
 tracer = trace.get_tracer("vaultwatch.mcp_server")
 
 mcp = FastMCP("VaultWatch")
-
-# === Import agent internals for live data ===
-import sys
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from agents.intel_agent import IntelAgent, _findings_store
 
 
 # ─── Tool 1: get_market_state ───────────────────────────────────────────────

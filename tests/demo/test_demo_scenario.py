@@ -4,9 +4,7 @@ Simulates the full demonstration flow without a live node.
 """
 
 import pytest
-import asyncio
-import time
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 from agents.scanner_agent import ScannerAgent
 from agents.anomaly_agent import AnomalyAgent, AnomalyResult

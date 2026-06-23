@@ -12,7 +12,6 @@ import sys
 import asyncio
 import logging
 import subprocess
-import time
 from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")

@@ -49,7 +49,6 @@ class SafetyGuard:
             ],
             response_format={"type": "json_object"},
         )
-        import json
         return json.loads(resp.choices[0].message.content)
 
     async def check(self, query: str) -> dict:

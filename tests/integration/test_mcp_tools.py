@@ -1,7 +1,6 @@
 """Integration test — MCP server tools (VaultWatch v4)"""
 
 import pytest
-import asyncio
 import json
 import sys
 import os
@@ -21,15 +20,14 @@ def test_mcp_has_15_tools():
     """MCP server should expose exactly 15 tools."""
     import vaultwatch_mcp.server as srv
     # FastMCP stores tools in mcp._tool_manager or similar
-    tool_count = 0
     try:
         tools = srv.mcp._tool_manager._tools
-        tool_count = len(tools)
+        len(tools)
     except AttributeError:
         # Try alternate attribute
         try:
             tools = srv.mcp.tools
-            tool_count = len(tools)
+            len(tools)
         except AttributeError:
             pass
     # At minimum server exposes the decorated functions

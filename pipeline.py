@@ -10,8 +10,7 @@ import os
 import asyncio
 import logging
 import signal
-import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider

@@ -12,7 +12,6 @@ OTel: span with tx_hash, contract_target, gas_used
 """
 
 import asyncio
-import json
 import logging
 import os
 import time
@@ -53,7 +52,8 @@ class AuditAgent:
 
     async def record(self, action: str, actor: str, details: str = "") -> str:
         """Record an audit entry on-chain (or mock). Returns deploy hash."""
-        import time, hashlib
+        import time
+        import hashlib
         with tracer.start_as_current_span("audit.record") as span:
             span.set_attribute("action", action)
             span.set_attribute("actor", actor)

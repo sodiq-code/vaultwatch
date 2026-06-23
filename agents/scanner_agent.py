@@ -12,7 +12,6 @@ import os
 import time
 import logging
 from dataclasses import dataclass
-from typing import Optional
 import httpx
 from opentelemetry import trace
 from groq import Groq

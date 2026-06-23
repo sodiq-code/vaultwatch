@@ -9,7 +9,6 @@ from __future__ import annotations
 import os
 import sys
 import json
-import time
 import logging
 import argparse
 from pathlib import Path

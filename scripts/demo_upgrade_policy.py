@@ -71,7 +71,7 @@ async def run_demo() -> None:
         print_policy("  BEFORE", upgrade["old"])
         print_policy("  AFTER", upgrade["new"])
 
-        print(f"\n  Submitting upgrade to RiskPolicyManager...")
+        print("\n  Submitting upgrade to RiskPolicyManager...")
         t0 = time.time()
 
         deploy_hash = casper.call_contract(

@@ -12,7 +12,6 @@ import logging
 import os
 import time
 from dataclasses import dataclass
-from typing import Optional
 from opentelemetry import trace
 from groq import Groq
 from .scanner_agent import RawEvent

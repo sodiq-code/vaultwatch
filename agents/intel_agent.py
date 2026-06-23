@@ -67,7 +67,6 @@ class IntelAgent:
             ],
             response_format={"type": "json_object"},
         )
-        import json
         return json.loads(resp.choices[0].message.content)
 
     async def analyze(self, query: str, protocol: str = None, extra_context: dict = None) -> dict:
@@ -155,11 +154,10 @@ class IntelAgent:
     async def _push_alerts(self, record: OnChainRecord, finding: dict):
         """Push alert to all registered subscribers via webhook"""
         with tracer.start_as_current_span("intel.push_alerts") as span:
-            import httpx
 
             # In production: read from SentinelRegistry contract
             # For demo: push to any registered webhook
-            alert_payload = {
+            {
                 "source": "VaultWatch",
                 "version": "v4",
                 "finding_id": finding["id"],

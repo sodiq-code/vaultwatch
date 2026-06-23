@@ -1,7 +1,7 @@
 """Unit tests — AuditAgent"""
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 from agents.audit_agent import AuditAgent
 from casper_client import CasperContractClient

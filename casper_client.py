@@ -6,7 +6,6 @@ Wraps casper-python-sdk for deploy + contract call operations.
 from __future__ import annotations
 
 import os
-import json
 import time
 import logging
 from typing import Any, Dict, List, Optional
@@ -21,7 +20,7 @@ tracer = trace.get_tracer("vaultwatch.casper_client")
 # ---------------------------------------------------------------------------
 try:
     from pycspr import NodeClient, NodeConnection, KeyAlgorithm  # type: ignore
-    from pycspr.types import Deploy, DeployParameters, ExecutableDeployItem  # type: ignore
+    from pycspr.types import Deploy, ExecutableDeployItem  # type: ignore
     from pycspr.factory import create_deploy_parameters  # type: ignore
     _SDK_AVAILABLE = True
 except ImportError:  # pragma: no cover

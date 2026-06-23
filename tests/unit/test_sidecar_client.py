@@ -1,9 +1,7 @@
 """Unit tests — SidecarClient"""
 
 import pytest
-import asyncio
-import json
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import patch
 
 from streaming.sidecar_client import SidecarClient
 

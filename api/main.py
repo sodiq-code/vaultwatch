@@ -9,12 +9,10 @@ from __future__ import annotations
 import os
 import time
 import logging
-import asyncio
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Query
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from opentelemetry import trace
