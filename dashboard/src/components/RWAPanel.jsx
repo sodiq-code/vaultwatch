@@ -12,7 +12,7 @@ const DEFAULT_ASSET = {
   credit_rating: 'AAA',
 }
 
-export default function RWAPanel({ apiUrl }) {
+export default function RWAPanel({ apiFetch }) {
   const [asset, setAsset] = useState(DEFAULT_ASSET)
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -26,7 +26,7 @@ export default function RWAPanel({ apiUrl }) {
     setError(null)
     setResult(null)
     try {
-      const r = await fetch(`${apiUrl}/rwa/assess`, {
+      const data = await apiFetch('/rwa/assess', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -35,8 +35,6 @@ export default function RWAPanel({ apiUrl }) {
           maturity_days: parseInt(asset.maturity_days),
         }),
       })
-      if (!r.ok) throw new Error(`HTTP ${r.status}`)
-      const data = await r.json()
       setResult(data.assessment)
     } catch (e) {
       setError(e.message)
@@ -46,8 +44,8 @@ export default function RWAPanel({ apiUrl }) {
   }
 
   useEffect(() => {
-    fetch(`${apiUrl}/rwa/assets`).then(r => r.json()).then(d => setAssets(d.assets || [])).catch(() => {})
-  }, [apiUrl])
+    apiFetch('/rwa/assets').then(d => setAssets(d.assets || [])).catch(() => {})
+  }, [apiFetch])
 
   const verdict = result?.verdict
   const verdictColor = verdict === 'APPROVED' ? 'var(--success)' : verdict === 'REJECTED' ? 'var(--danger)' : 'var(--warning)'
@@ -55,7 +53,9 @@ export default function RWAPanel({ apiUrl }) {
   return (
     <div>
       <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>RWA Assessment</h1>
-      <p style={{ color: 'var(--text-muted)', marginBottom: 20 }}>Evaluate real-world assets for on-chain tokenisation viability on Casper.</p>
+      <p style={{ color: 'var(--text-muted)', marginBottom: 20 }}>
+        Evaluate real-world assets for on-chain tokenisation viability on Casper via Groq Compound web intelligence.
+      </p>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         <div style={CARD}>
@@ -89,7 +89,7 @@ export default function RWAPanel({ apiUrl }) {
           </div>
           <button onClick={handleAssess} disabled={loading}
             style={{ marginTop: 14, width: '100%', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '11px 0', cursor: 'pointer', fontSize: 14, fontWeight: 600, opacity: loading ? 0.5 : 1 }}>
-            {loading ? 'Assessing...' : 'Assess Asset'}
+            {loading ? 'Assessing via Groq Compound...' : 'Assess Asset'}
           </button>
           {error && <p style={{ color: 'var(--danger)', marginTop: 8, fontSize: 13 }}>Error: {error}</p>}
         </div>
@@ -100,11 +100,11 @@ export default function RWAPanel({ apiUrl }) {
             <>
               <div style={{ textAlign: 'center', marginBottom: 16 }}>
                 <div style={{ fontSize: 36, fontWeight: 800, color: verdictColor }}>
-                  {verdict === 'APPROVED' ? '✓ APPROVED' : verdict === 'REJECTED' ? '✗ REJECTED' : '? REVIEW'}
+                  {verdict === 'APPROVED' ? '✓ APPROVED' : verdict === 'REJECTED' ? '✗ REJECTED' : '⚠ REVIEW'}
                 </div>
                 {result.risk_score !== undefined && (
                   <div style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>
-                    Risk Score: {result.risk_score}
+                    Risk Score: {result.risk_score}/100
                   </div>
                 )}
               </div>
@@ -114,10 +114,15 @@ export default function RWAPanel({ apiUrl }) {
                   <p style={{ marginTop: 4 }}>{result.notes}</p>
                 </div>
               )}
+              {result.groq_model && (
+                <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted)' }}>
+                  Powered by: {result.groq_model}
+                </div>
+              )}
             </>
           ) : (
             <p style={{ color: 'var(--text-muted)', textAlign: 'center', paddingTop: 40, fontSize: 13 }}>
-              Fill in asset details and assess to see the verdict.
+              Fill in asset details and click assess to see the verdict.
             </p>
           )}
         </div>
@@ -125,12 +130,21 @@ export default function RWAPanel({ apiUrl }) {
 
       {assets.length > 0 && (
         <div style={CARD}>
-          <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Tracked Assets ({assets.length})</h2>
+          <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Previously Assessed Assets ({assets.length})</h2>
           <div style={{ display: 'grid', gap: 8 }}>
             {assets.map((a, i) => (
-              <div key={i} style={{ background: 'var(--surface2)', borderRadius: 8, padding: '10px 14px', fontSize: 13, display: 'flex', justifyContent: 'space-between' }}>
-                <span>{a.asset_id || a.id}</span>
-                <span style={{ color: 'var(--text-muted)' }}>{a.asset_type}</span>
+              <div key={i} style={{ background: 'var(--surface2)', borderRadius: 8, padding: '10px 14px', fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontFamily: 'monospace' }}>{a.asset_id || a.id}</span>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{a.asset_type}</span>
+                  {a.verdict && (
+                    <span style={{
+                      fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
+                      background: a.verdict === 'APPROVED' ? '#16321a' : '#3a1a1a',
+                      color: a.verdict === 'APPROVED' ? 'var(--success)' : 'var(--danger)',
+                    }}>{a.verdict}</span>
+                  )}
+                </div>
               </div>
             ))}
           </div>

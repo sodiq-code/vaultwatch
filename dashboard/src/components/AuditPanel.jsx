@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 
 const CARD = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 20, marginBottom: 16 }
 
-export default function AuditPanel({ apiUrl }) {
+export default function AuditPanel({ apiFetch }) {
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(false)
   const [limit, setLimit] = useState(50)
@@ -12,8 +12,7 @@ export default function AuditPanel({ apiUrl }) {
   const loadLog = async () => {
     setLoading(true)
     try {
-      const r = await fetch(`${apiUrl}/audit/log?limit=${limit}`)
-      const data = await r.json()
+      const data = await apiFetch(`/audit/log?limit=${limit}`)
       setEntries(data.entries || [])
     } catch {
       setEntries([])
@@ -22,7 +21,7 @@ export default function AuditPanel({ apiUrl }) {
     }
   }
 
-  useEffect(() => { loadLog() }, [apiUrl, limit])
+  useEffect(() => { loadLog() }, [limit])
 
   const handleWrite = async () => {
     const params = new URLSearchParams({
@@ -30,8 +29,7 @@ export default function AuditPanel({ apiUrl }) {
       actor: writeForm.actor,
       details: writeForm.details,
     })
-    const r = await fetch(`${apiUrl}/audit/write?${params}`, { method: 'POST' })
-    const data = await r.json()
+    const data = await apiFetch(`/audit/write?${params}`, { method: 'POST' })
     setWriteResult(data)
     loadLog()
   }
@@ -39,7 +37,9 @@ export default function AuditPanel({ apiUrl }) {
   return (
     <div>
       <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Audit Log</h1>
-      <p style={{ color: 'var(--text-muted)', marginBottom: 20 }}>On-chain audit trail — all actions recorded on Casper via AuditTrail contract.</p>
+      <p style={{ color: 'var(--text-muted)', marginBottom: 20 }}>
+        On-chain audit trail — all agent actions recorded via AuditTrail.rs contract on Casper testnet.
+      </p>
 
       <div style={CARD}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
@@ -73,7 +73,7 @@ export default function AuditPanel({ apiUrl }) {
                 {entries.map((e, i) => (
                   <tr key={i} style={{ borderBottom: '1px solid var(--border)', opacity: 0.9 }}>
                     <td style={{ padding: '8px 12px', color: 'var(--text-muted)' }}>{e.id || i + 1}</td>
-                    <td style={{ padding: '8px 12px', color: 'var(--accent)' }}>{e.action}</td>
+                    <td style={{ padding: '8px 12px', color: 'var(--accent)', fontFamily: 'monospace', fontSize: 12 }}>{e.action}</td>
                     <td style={{ padding: '8px 12px' }}>{e.actor}</td>
                     <td style={{ padding: '8px 12px', color: 'var(--text-muted)', maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {e.details}
@@ -87,7 +87,10 @@ export default function AuditPanel({ apiUrl }) {
       </div>
 
       <div style={CARD}>
-        <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 14 }}>Write Audit Entry</h2>
+        <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 14 }}>Write Audit Entry (Demo)</h2>
+        <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 12 }}>
+          Simulates writing to AuditTrail.rs contract on Casper testnet.
+        </p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
           <div>
             <label style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Action</label>
@@ -98,7 +101,7 @@ export default function AuditPanel({ apiUrl }) {
           <div>
             <label style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Actor</label>
             <input value={writeForm.actor} onChange={e => setWriteForm(f => ({ ...f, actor: e.target.value }))}
-              placeholder="e.g. admin"
+              placeholder="e.g. AuditAgent"
               style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', padding: '9px 12px', fontSize: 13, outline: 'none', width: '100%' }} />
           </div>
         </div>
@@ -111,7 +114,7 @@ export default function AuditPanel({ apiUrl }) {
         </button>
         {writeResult && (
           <p style={{ marginTop: 8, color: 'var(--success)', fontSize: 13 }}>
-            Submitted — hash: {writeResult.deploy_hash?.slice(0, 32)}...
+            Submitted — deploy hash: <span style={{ fontFamily: 'monospace' }}>{writeResult.deploy_hash?.slice(0, 32)}...</span>
           </p>
         )}
       </div>

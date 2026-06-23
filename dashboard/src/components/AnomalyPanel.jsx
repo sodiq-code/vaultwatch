@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { RadialBarChart, RadialBar, Cell, ResponsiveContainer } from 'recharts'
 
 const CARD = {
   background: 'var(--surface)',
@@ -29,7 +28,7 @@ const DEFAULT_METRICS = {
   liquidity_ratio: 0.65,
 }
 
-export default function AnomalyPanel({ apiUrl }) {
+export default function AnomalyPanel({ apiFetch }) {
   const [metrics, setMetrics] = useState(DEFAULT_METRICS)
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -42,7 +41,7 @@ export default function AnomalyPanel({ apiUrl }) {
     setError(null)
     setResult(null)
     try {
-      const r = await fetch(`${apiUrl}/anomaly/detect`, {
+      const data = await apiFetch('/anomaly/detect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -54,8 +53,7 @@ export default function AnomalyPanel({ apiUrl }) {
           liquidity_ratio: parseFloat(metrics.liquidity_ratio),
         }),
       })
-      if (!r.ok) throw new Error(`HTTP ${r.status}`)
-      setResult(await r.json())
+      setResult(data)
     } catch (e) {
       setError(e.message)
     } finally {
@@ -70,7 +68,7 @@ export default function AnomalyPanel({ apiUrl }) {
     <div>
       <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Anomaly Detection</h1>
       <p style={{ color: 'var(--text-muted)', marginBottom: 20 }}>
-        Enter protocol metrics to detect anomalies and get a risk score.
+        Enter protocol metrics — AnomalyAgent (llama-3.3-70b-versatile) classifies risk with self-correction loop.
       </p>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
@@ -128,6 +126,11 @@ export default function AnomalyPanel({ apiUrl }) {
               <div style={{ textAlign: 'center', marginBottom: 16 }}>
                 <div style={{ fontSize: 52, fontWeight: 800, color: riskColor }}>{riskScore.toFixed(0)}</div>
                 <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>out of 100</div>
+                {result.confidence !== undefined && (
+                  <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 4 }}>
+                    Confidence: {(result.confidence * 100).toFixed(0)}%
+                  </div>
+                )}
               </div>
 
               {result.anomalies && result.anomalies.length > 0 ? (
@@ -150,6 +153,11 @@ export default function AnomalyPanel({ apiUrl }) {
                 <div style={{ background: 'var(--surface2)', borderRadius: 8, padding: 12, fontSize: 13 }}>
                   <strong style={{ color: 'var(--text-muted)', fontSize: 11 }}>RECOMMENDATION</strong>
                   <p style={{ marginTop: 4 }}>{result.recommendation}</p>
+                </div>
+              )}
+              {result.agent && (
+                <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted)' }}>
+                  Classified by: {result.agent}
                 </div>
               )}
             </>

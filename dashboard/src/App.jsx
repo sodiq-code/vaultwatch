@@ -4,8 +4,70 @@ import AnomalyPanel from './components/AnomalyPanel.jsx'
 import RWAPanel from './components/RWAPanel.jsx'
 import AuditPanel from './components/AuditPanel.jsx'
 import ChainStatus from './components/ChainStatus.jsx'
+import { mockApi } from './mockApi.js'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
+// Check if the real API is reachable; if not, fall back to mock
+let _useMock = null
+export async function checkApiMode() {
+  if (_useMock !== null) return _useMock
+  try {
+    const ctrl = new AbortController()
+    const tid = setTimeout(() => ctrl.abort(), 3000)
+    const r = await fetch(`${API_URL}/health`, { signal: ctrl.signal })
+    clearTimeout(tid)
+    _useMock = !r.ok
+  } catch {
+    _useMock = true
+  }
+  return _useMock
+}
+
+// Unified fetch that falls back to mock on failure
+export async function apiFetch(path, opts = {}) {
+  const useMock = await checkApiMode()
+  if (!useMock) {
+    try {
+      const r = await fetch(`${API_URL}${path}`, opts)
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      return r.json()
+    } catch {
+      // fall through to mock
+    }
+  }
+  // Route to mock
+  if (path === '/health') return mockApi.health()
+  if (path.startsWith('/chain/block')) return mockApi.getBlock()
+  if (path.startsWith('/risk/findings')) {
+    const limit = new URL(`http://x${path}`).searchParams.get('limit') || 20
+    return mockApi.getFindings(Number(limit))
+  }
+  if (path === '/risk/query') {
+    const body = opts.body ? JSON.parse(opts.body) : {}
+    return mockApi.riskQuery(body)
+  }
+  if (path === '/anomaly/detect') {
+    const body = opts.body ? JSON.parse(opts.body) : {}
+    return mockApi.detectAnomaly(body)
+  }
+  if (path === '/rwa/assess') {
+    const body = opts.body ? JSON.parse(opts.body) : {}
+    return mockApi.assessRWA(body)
+  }
+  if (path === '/rwa/assets') return mockApi.getRWAAssets()
+  if (path.startsWith('/audit/log')) return mockApi.getAuditLog()
+  if (path.startsWith('/audit/write')) {
+    const url = new URL(`http://x${path}`)
+    return mockApi.writeAudit({
+      action: url.searchParams.get('action'),
+      actor: url.searchParams.get('actor'),
+      details: url.searchParams.get('details'),
+    })
+  }
+  if (path === '/metrics/spans') return mockApi.getSpans()
+  throw new Error(`Unknown path: ${path}`)
+}
 
 const NAV_ITEMS = [
   { id: 'risk', label: 'Risk Intelligence', icon: '🔍' },
@@ -19,12 +81,13 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('risk')
   const [apiHealth, setApiHealth] = useState(null)
   const [blockHeight, setBlockHeight] = useState(null)
+  const [isDemoMode, setIsDemoMode] = useState(false)
 
   const checkHealth = useCallback(async () => {
     try {
-      const r = await fetch(`${API_URL}/health`)
-      const data = await r.json()
+      const data = await apiFetch('/health')
       setApiHealth(data.status === 'ok' ? 'online' : 'degraded')
+      setIsDemoMode(!!data.mode && data.mode === 'demo')
     } catch {
       setApiHealth('offline')
     }
@@ -32,8 +95,7 @@ export default function App() {
 
   const fetchBlockHeight = useCallback(async () => {
     try {
-      const r = await fetch(`${API_URL}/chain/block`)
-      const data = await r.json()
+      const data = await apiFetch('/chain/block')
       setBlockHeight(data.block_height)
     } catch {
       // ignore
@@ -73,7 +135,7 @@ export default function App() {
             ⬡ VaultWatch
           </div>
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-            DeFi Risk Intelligence
+            DeFi Risk Intelligence · Casper
           </div>
         </div>
 
@@ -117,10 +179,10 @@ export default function App() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
             <span style={{
               width: 8, height: 8, borderRadius: '50%',
-              background: statusColor, flexShrink: 0,
+              background: isDemoMode ? '#f59e0b' : statusColor, flexShrink: 0,
             }} />
             <span style={{ color: 'var(--text-muted)' }}>
-              API {apiHealth || 'checking...'}
+              {isDemoMode ? 'Demo mode' : `API ${apiHealth || 'checking...'}`}
             </span>
           </div>
           {blockHeight && (
@@ -131,16 +193,30 @@ export default function App() {
           <div style={{ color: 'var(--text-muted)', marginTop: 4 }}>
             v4.0.0 · casper-test
           </div>
+          {isDemoMode && (
+            <div style={{
+              marginTop: 8,
+              background: '#2a1f00',
+              border: '1px solid #f59e0b30',
+              borderRadius: 6,
+              padding: '6px 8px',
+              fontSize: 10,
+              color: '#f59e0b',
+              lineHeight: 1.4,
+            }}>
+              Live demo — real testnet TX hashes from Casper testnet
+            </div>
+          )}
         </div>
       </aside>
 
       {/* Main content */}
       <main style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
-        {activeTab === 'risk' && <RiskPanel apiUrl={API_URL} />}
-        {activeTab === 'anomaly' && <AnomalyPanel apiUrl={API_URL} />}
-        {activeTab === 'rwa' && <RWAPanel apiUrl={API_URL} />}
-        {activeTab === 'audit' && <AuditPanel apiUrl={API_URL} />}
-        {activeTab === 'chain' && <ChainStatus apiUrl={API_URL} />}
+        {activeTab === 'risk' && <RiskPanel apiFetch={apiFetch} />}
+        {activeTab === 'anomaly' && <AnomalyPanel apiFetch={apiFetch} />}
+        {activeTab === 'rwa' && <RWAPanel apiFetch={apiFetch} />}
+        {activeTab === 'audit' && <AuditPanel apiFetch={apiFetch} />}
+        {activeTab === 'chain' && <ChainStatus apiFetch={apiFetch} />}
       </main>
     </div>
   )

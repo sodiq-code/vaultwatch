@@ -12,6 +12,7 @@ VaultWatch is a production-grade DeFi risk monitoring and intelligence platform 
 [![Casper Testnet](https://img.shields.io/badge/casper-testnet%20live-orange.svg)](https://testnet.cspr.live/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-success.svg)](LICENSE)
 [![Contracts](https://img.shields.io/badge/contracts-8%2F8%20compiled-blue.svg)](contracts/wasm/)
+[![Live Dashboard](https://img.shields.io/badge/dashboard-live%20on%20vercel-black.svg)](https://dashboard-rho-amber-89.vercel.app)
 
 ---
 
@@ -21,8 +22,9 @@ VaultWatch is a production-grade DeFi risk monitoring and intelligence platform 
 |---|---|
 | **Hackathon** | [Casper Agentic Buildathon 2026](https://dorahacks.io/hackathon/casper-agentic-buildathon/detail) |
 | **Repository** | https://github.com/sodiq-code/vaultwatch |
+| **Live Dashboard** | https://dashboard-rho-amber-89.vercel.app |
 | **Network** | Casper Testnet (casper-test) |
-| **Status** | ✅ Code complete · ✅ 8 contracts compiled to WASM · ⏳ Demo video |
+| **Status** | ✅ Code complete · ✅ 8 contracts compiled to WASM · ✅ Dashboard live |
 
 ---
 

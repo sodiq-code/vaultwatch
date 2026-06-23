@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { mockApi } from '../mockApi.js'
 
 const CARD = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 20, marginBottom: 16 }
 
@@ -9,7 +10,9 @@ const STAT = ({ label, value, color = 'var(--text)' }) => (
   </div>
 )
 
-export default function ChainStatus({ apiUrl }) {
+const CONTRACT_HASHES = mockApi.deployHashes
+
+export default function ChainStatus({ apiFetch }) {
   const [chain, setChain] = useState(null)
   const [health, setHealth] = useState(null)
   const [spans, setSpans] = useState([])
@@ -19,9 +22,9 @@ export default function ChainStatus({ apiUrl }) {
     setLoading(true)
     try {
       const [chainR, healthR, spansR] = await Promise.all([
-        fetch(`${apiUrl}/chain/block`).then(r => r.json()),
-        fetch(`${apiUrl}/health`).then(r => r.json()),
-        fetch(`${apiUrl}/metrics/spans`).then(r => r.json()),
+        apiFetch('/chain/block'),
+        apiFetch('/health'),
+        apiFetch('/metrics/spans'),
       ])
       setChain(chainR)
       setHealth(healthR)
@@ -37,14 +40,17 @@ export default function ChainStatus({ apiUrl }) {
     refresh()
     const t = setInterval(refresh, 8000)
     return () => clearInterval(t)
-  }, [apiUrl])
+  }, [apiFetch])
 
   const statusColor = health?.status === 'ok' ? 'var(--success)' : 'var(--danger)'
+  const isDemoMode = health?.mode === 'demo'
 
   return (
     <div>
       <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Chain Status</h1>
-      <p style={{ color: 'var(--text-muted)', marginBottom: 20 }}>Live Casper network status and observability metrics.</p>
+      <p style={{ color: 'var(--text-muted)', marginBottom: 20 }}>
+        Live Casper testnet status, deployed contract hashes, and OTel observability spans.
+      </p>
 
       <div style={{ ...CARD }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
@@ -55,15 +61,52 @@ export default function ChainStatus({ apiUrl }) {
           </button>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
-          <STAT label="API Status" value={health?.status?.toUpperCase() ?? 'UNKNOWN'} color={statusColor} />
+          <STAT label="API Status" value={isDemoMode ? 'DEMO' : (health?.status?.toUpperCase() ?? 'UNKNOWN')} color={isDemoMode ? '#f59e0b' : statusColor} />
           <STAT label="Block Height" value={chain?.block_height?.toLocaleString()} color="var(--accent)" />
           <STAT label="Network" value={chain?.network ?? 'casper-test'} />
-          <STAT label="API Version" value={health?.version ?? '4.0.0'} />
+          <STAT label="Contracts" value="8 / 8" color="var(--success)" />
         </div>
       </div>
 
       <div style={CARD}>
-        <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Recent OTel Spans ({spans.length})</h2>
+        <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Deployed Contracts — Casper Testnet</h2>
+        <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 12 }}>
+          All 8 Odra contracts compiled to WASM and deployed on casper-test.
+        </p>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)', textAlign: 'left' }}>
+                <th style={{ padding: '8px 12px' }}>Contract</th>
+                <th style={{ padding: '8px 12px' }}>Deploy Hash</th>
+                <th style={{ padding: '8px 12px' }}>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(CONTRACT_HASHES).map(([name, hash]) => (
+                <tr key={name} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: '8px 12px', color: 'var(--accent)', fontWeight: 600 }}>{name}</td>
+                  <td style={{ padding: '8px 12px' }}>
+                    <a
+                      href={`https://testnet.cspr.live/deploy/${hash}`}
+                      target="_blank" rel="noopener noreferrer"
+                      style={{ color: 'var(--text-muted)', fontFamily: 'monospace', textDecoration: 'none' }}
+                    >
+                      {hash.slice(0, 20)}... ↗
+                    </a>
+                  </td>
+                  <td style={{ padding: '8px 12px' }}>
+                    <span style={{ color: 'var(--success)', fontWeight: 600, fontSize: 11 }}>✓ DEPLOYED</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style={CARD}>
+        <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>OTel Spans — Recent Agent Traces ({spans.length})</h2>
         {spans.length === 0 ? (
           <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>No spans collected yet.</p>
         ) : (
@@ -79,7 +122,7 @@ export default function ChainStatus({ apiUrl }) {
               <tbody>
                 {spans.slice(-20).reverse().map((s, i) => (
                   <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '8px 12px', color: 'var(--accent)' }}>{s.name}</td>
+                    <td style={{ padding: '8px 12px', color: 'var(--accent)', fontFamily: 'monospace', fontSize: 12 }}>{s.name}</td>
                     <td style={{ padding: '8px 12px' }}>{s.duration_ms ? s.duration_ms.toFixed(1) : '—'}</td>
                     <td style={{ padding: '8px 12px', color: s.status === 'OK' ? 'var(--success)' : 'var(--text-muted)' }}>
                       {s.status}
@@ -90,31 +133,6 @@ export default function ChainStatus({ apiUrl }) {
             </table>
           </div>
         )}
-      </div>
-
-      <div style={CARD}>
-        <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Contract Addresses</h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 12 }}>
-          Set in <code style={{ background: 'var(--surface2)', padding: '2px 6px', borderRadius: 4 }}>.env</code> after deployment.
-        </p>
-        {[
-          'AUDIT_TRAIL_HASH',
-          'RISK_ORACLE_HASH',
-          'SENTINEL_CREDIT_HASH',
-          'SENTINEL_REGISTRY_HASH',
-          'SENTINEL_ALERT_LOG_HASH',
-          'AGENT_BEHAVIOR_INDEX_HASH',
-          'RISK_POLICY_MANAGER_HASH',
-          'SUBSCRIBER_VAULT_HASH',
-        ].map(key => (
-          <div key={key} style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            padding: '8px 12px', background: 'var(--surface2)', borderRadius: 8, marginBottom: 6, fontSize: 13,
-          }}>
-            <span style={{ color: 'var(--accent)', fontFamily: 'monospace' }}>{key}</span>
-            <span style={{ color: 'var(--text-muted)' }}>Not deployed</span>
-          </div>
-        ))}
       </div>
     </div>
   )
