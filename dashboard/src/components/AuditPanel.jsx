@@ -57,11 +57,11 @@ export default function AuditPanel({ api }) {
       <p style={{ color: 'var(--text-muted)', marginBottom: 20, fontSize: 13 }}>
         On-chain audit trail — all agent actions recorded via AuditTrail contract on Casper Testnet.{' '}
         <a
-          href={`https://testnet.cspr.live/contract-package/${CONTRACT_HASHES.AuditTrail}`}
+          href={`https://testnet.cspr.live/deploy/${CONTRACT_HASHES.AuditTrail}`}
           target="_blank" rel="noopener noreferrer"
           style={{ color: 'var(--accent)', fontSize: 12 }}
         >
-          View AuditTrail contract ↗
+          View AuditTrail deploy ↗
         </a>
       </p>
 
@@ -134,10 +134,10 @@ export default function AuditPanel({ api }) {
         <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>Write Audit Entry</h2>
         <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 14 }}>
           Simulates AuditAgent writing to the{' '}
-          <a href={`https://testnet.cspr.live/contract-package/${CONTRACT_HASHES.AuditTrail}`}
+          <a href={`https://testnet.cspr.live/deploy/${CONTRACT_HASHES.AuditTrail}`}
             target="_blank" rel="noopener noreferrer"
             style={{ color: 'var(--accent)' }}>
-            AuditTrail contract ↗
+            AuditTrail deploy ↗
           </a>{' '}
           on Casper Testnet.
         </p>

@@ -12,7 +12,7 @@ const STAT = ({ label, value, sub, color = 'var(--text)' }) => (
 )
 
 // Casper testnet explorer — deploy hash leads to the contract deploy page
-const CONTRACT_EXPLORER_BASE = 'https://testnet.cspr.live/contract-package/'
+const CONTRACT_EXPLORER_BASE = 'https://testnet.cspr.live/deploy/'
 
 export default function ChainStatus({ api }) {
   const [blockHeight, setBlockHeight] = useState(getLiveBlockHeight())

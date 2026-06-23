@@ -190,10 +190,10 @@ export default function RWAPanel({ api }) {
                 {result.groq_model && <span>Model: {result.groq_model}</span>}
                 <span>
                   Written to:{' '}
-                  <a href={`https://testnet.cspr.live/contract-package/${CONTRACT_HASHES.RiskOracle}`}
+                  <a href={`https://testnet.cspr.live/deploy/${CONTRACT_HASHES.RiskOracle}`}
                     target="_blank" rel="noopener noreferrer"
                     style={{ color: 'var(--accent)', fontFamily: 'monospace' }}>
-                    RiskOracle contract ↗
+                    RiskOracle deploy ↗
                   </a>
                 </span>
               </div>

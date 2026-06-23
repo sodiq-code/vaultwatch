@@ -196,8 +196,8 @@ export default function App() {
             lineHeight: 1.4,
           }}>
             ● Live Groq AI — real-time analysis<br />
-            ● 8 contracts on Casper Testnet<br />
-            ● Casper Agentic Buildathon 2026
+            ● 8 Odra contracts · casper-test<br />
+            ● llama-3.3-70b-versatile
           </div>
         </div>
       </aside>
