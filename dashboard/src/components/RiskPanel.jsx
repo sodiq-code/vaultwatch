@@ -65,7 +65,7 @@ function FindingCard({ f }) {
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         {/* Contract link — clearly labeled as contract verification */}
         <a
-          href={`https://testnet.cspr.live/deploy/${f.contract_hash}`}
+          href={`https://testnet.cspr.live/contract-package/${f.contract_hash}`}
           target="_blank" rel="noopener noreferrer"
           style={{
             color: 'var(--accent)', fontSize: 11, fontFamily: 'monospace',
@@ -245,7 +245,7 @@ export default function RiskPanel({ api }) {
               <span>
                 Written to:{' '}
                 <a
-                  href={`https://testnet.cspr.live/deploy/${result.on_chain_hash}`}
+                  href={`https://testnet.cspr.live/contract-package/${result.on_chain_hash}`}
                   target="_blank" rel="noopener noreferrer"
                   style={{ color: 'var(--accent)', fontFamily: 'monospace' }}
                 >
