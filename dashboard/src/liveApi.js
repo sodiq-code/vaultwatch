@@ -23,7 +23,7 @@ export const CONTRACT_HASHES = {
 }
 
 // Simulated block height (Casper testnet ~1 block per 65s)
-let _blockHeight = 2_847_391
+let _blockHeight = 8_279_455
 let _blockTimestamp = Date.now()
 let _cspr_price = null
 let _price_last_fetched = 0

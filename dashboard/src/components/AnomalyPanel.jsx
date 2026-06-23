@@ -202,7 +202,7 @@ export default function AnomalyPanel({ api }) {
                   <span>
                     On-chain:{' '}
                     <a
-                      href={`https://testnet.cspr.live/deploy/${CONTRACT_HASHES.AuditTrail}`}
+                      href={`https://testnet.cspr.live/deploy/${CONTRACT_HASHES.SentinelAlertLog}`}
                       target="_blank" rel="noopener noreferrer"
                       style={{ color: 'var(--accent)', fontFamily: 'monospace' }}
                     >
