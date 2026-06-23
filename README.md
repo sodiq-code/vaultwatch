@@ -21,10 +21,70 @@ VaultWatch is a production-grade DeFi risk monitoring and intelligence platform 
 | **Hackathon** | [Casper Agentic Buildathon 2026](https://dorahacks.io/hackathon/casper-agentic-buildathon/detail) |
 | **Repository** | https://github.com/sodiq-code/vaultwatch |
 | **Live Dashboard** | https://dashboard-rho-amber-89.vercel.app |
-| **Python SDK** | https://pypi.org/project/casper-sentinel/4.0.0/ |
-| **MCP Package** | https://www.npmjs.com/package/casper-sentinel-mcp |
+| **Python SDK (PyPI)** | https://pypi.org/project/casper-sentinel/4.0.0/ |
+| **MCP Package (npm)** | https://www.npmjs.com/package/casper-sentinel-mcp |
 | **Network** | Casper Testnet (`casper-test`) |
-| **Deployer Account** | `0202c223a43185563f404720fbb7028305cd79d6046ffdf7b746cfa42294c43db1d0` |
+| **Deployer Account** | [`0202c223a4318556…b1d0`](https://testnet.cspr.live/account/0202c223a43185563f404720fbb7028305cd79d6046ffdf7b746cfa42294c43db1d0) |
+| **Total Deploys** | 32 deploys from this account on casper-test |
+
+---
+
+## Verifiable Proof
+
+Everything below is independently verifiable on the Casper testnet explorer.
+
+### Deployer Account — 32 On-Chain Transactions
+
+All contract deployments came from this funded testnet account:
+
+```
+0202c223a43185563f404720fbb7028305cd79d6046ffdf7b746cfa42294c43db1d0
+```
+
+🔗 **[View account on testnet.cspr.live →](https://testnet.cspr.live/account/0202c223a43185563f404720fbb7028305cd79d6046ffdf7b746cfa42294c43db1d0)**
+
+### 8 Deployed Odra Contracts
+
+8 Rust/WASM contracts compiled with Odra 2.8.0 and deployed on June 23, 2026:
+
+| Contract | Deploy Hash | Explorer Link |
+|----------|-------------|---------------|
+| **AuditTrail** | `82adc658…6746a` | [→ testnet.cspr.live](https://testnet.cspr.live/deploy/82adc6584d762029478cb1abcfcba7f73e5ebbac81263383d56570897806746a) |
+| **RiskOracle** | `8769112d…de23b` | [→ testnet.cspr.live](https://testnet.cspr.live/deploy/8769112dc526ba2b50848ad3801f983f5770a1d0e549c84f387f48e250ede23b) |
+| **SentinelCredit** | `6f35b4ab…3d5a` | [→ testnet.cspr.live](https://testnet.cspr.live/deploy/6f35b4ab2bad2086715f4987ddd5c269bcb2c363fd5b3a546964d60363203d5a) |
+| **SentinelRegistry** | `118bbcb7…200f` | [→ testnet.cspr.live](https://testnet.cspr.live/deploy/118bbcb70fb67fc2128e8bcbca342a3f1d0b7f0584c9fdac19f3d41620df200f) |
+| **SentinelAlertLog** | `e2c6d27a…c14a` | [→ testnet.cspr.live](https://testnet.cspr.live/deploy/e2c6d27a29f2c0362654cac67e59aba7b96ba5dfacf2277ced0dab2c67bcc14a) |
+| **AgentBehaviorIndex** | `f1fc0feb…9cfc` | [→ testnet.cspr.live](https://testnet.cspr.live/deploy/f1fc0feb247e5f6d0c7f8a520a37c8cfb41d575abed62b4db06b7a720c1a9cfc) |
+| **RiskPolicyManager** | `e79cbc22…f802` | [→ testnet.cspr.live](https://testnet.cspr.live/deploy/e79cbc22219c65d95d08955c64f5f8f3bf87671d17f002ec51ee9553242df802) |
+| **SubscriberVault** | `18a9d7ea…aa7e1` | [→ testnet.cspr.live](https://testnet.cspr.live/deploy/18a9d7ea2e48a6c21ebeb881d927447ce63e367517a7050c7f4252c5284aa7e1) |
+
+WASM artifacts: [`contracts/wasm/`](contracts/wasm/) · Contract source: [`contracts/src/`](contracts/src/)
+
+### Live Dashboard — Vercel
+
+The dashboard is live and uses real data:
+- **Groq AI** — llama-3.3-70b-versatile for risk analysis (real API calls)
+- **CoinGecko** — live CSPR/USD price, 24h change, market cap, volume
+- **cspr.cloud** — live block height, era ID, block metadata from testnet
+- **Casper Explorer** — every contract link points to a unique deploy page
+
+🔗 **[https://dashboard-rho-amber-89.vercel.app](https://dashboard-rho-amber-89.vercel.app)**
+
+### PyPI Package — `casper-sentinel` v4.0.0
+
+🔗 **[https://pypi.org/project/casper-sentinel/4.0.0/](https://pypi.org/project/casper-sentinel/4.0.0/)**
+
+```bash
+pip install casper-sentinel
+```
+
+### npm Package — `casper-sentinel-mcp` v4.0.0
+
+🔗 **[https://www.npmjs.com/package/casper-sentinel-mcp](https://www.npmjs.com/package/casper-sentinel-mcp)**
+
+```bash
+npm install -g casper-sentinel-mcp
+```
 
 ---
 
@@ -35,9 +95,9 @@ VaultWatch is a production-grade DeFi risk monitoring and intelligence platform 
 ║                    DATA SOURCES (live)                               ║
 ║                                                                      ║
 ║  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌─────────┐  ║
-║  │ CSPR.cloud   │  │ Casper       │  │ CSPR.trade   │  │  Groq   │  ║
-║  │ REST API     │  │ Sidecar SSE  │  │ MCP (DEX)    │  │Compound │  ║
-║  │ (polling)    │  │ (streaming)  │  │ (live prices)│  │(websrch)│  ║
+║  │ CSPR.cloud   │  │ Casper       │  │  CoinGecko   │  │  Groq   │  ║
+║  │ REST API     │  │ Sidecar SSE  │  │ Price Feed   │  │Compound │  ║
+║  │ (live data)  │  │ (streaming)  │  │ (live CSPR)  │  │(websrch)│  ║
 ║  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └────┬────┘  ║
 ╚═════════╪════════════════╪══════════════════╪═══════════════╪═══════╝
           └────────────────┴──────────────────┴───────────────┘
@@ -69,10 +129,10 @@ VaultWatch is a production-grade DeFi risk monitoring and intelligence platform 
 ║                  ║  ║  Casper Testnet ✅    ║  ║  REST API        ║
 ║  Every agent     ║  ║                       ║  ║                  ║
 ║  span exported:  ║  ║  AuditTrail           ║  ║  React/Vite      ║
-║  → stdout        ║  ║  RiskOracle           ║  ║  Live findings   ║
-║  → OTLP endpoint ║  ║  SentinelCredit       ║  ║  TX hash feed    ║
-║  → Grafana Tempo ║  ║  SentinelRegistry     ║  ║  OTel trace view ║
-║  → Jaeger        ║  ║  SentinelAlertLog     ║  ║  Agent status    ║
+║  → stdout        ║  ║  RiskOracle           ║  ║  Live CSPR price ║
+║  → OTLP endpoint ║  ║  SentinelCredit       ║  ║  Live blocks     ║
+║  → Grafana Tempo ║  ║  SentinelRegistry     ║  ║  Live feed       ║
+║  → Jaeger        ║  ║  SentinelAlertLog     ║  ║  OTel traces     ║
 ║  → any OTel sink ║  ║  AgentBehaviorIndex   ║  ║  x402 demo panel ║
 ║                  ║  ║  RiskPolicyManager    ║  ║                  ║
 ╚══════════════════╝  ║  SubscriberVault      ║  ╚══════════════════╝
@@ -92,6 +152,7 @@ VaultWatch is a production-grade DeFi risk monitoring and intelligence platform 
 | **x402 Pay-per-Query** | SubscriberVault contract holds prepaid CSPR. Each MCP query deducts from the on-chain balance — a real subscription primitive, fully on-chain. |
 | **OpenTelemetry (Industry Standard)** | Every agent span exported to any OTel sink via a single environment variable. Full agent observability in existing Grafana stacks. |
 | **SafetyGuard Inline** | `llama-prompt-guard-2-86m` runs on every query in under 50ms, blocking prompt injection and adversarial inputs before they reach the agent pipeline. |
+| **Live Dashboard with Real Data** | CoinGecko CSPR price + cspr.cloud live blocks — not mock data. Every contract link points to a unique deploy page on testnet.cspr.live. |
 
 ---
 
@@ -99,21 +160,19 @@ VaultWatch is a production-grade DeFi risk monitoring and intelligence platform 
 
 **8 contracts written in Rust (Odra 2.8.0), compiled to WASM, deployed to `casper-test`**
 
-Deployer: `0202c223a43185563f404720fbb7028305cd79d6046ffdf7b746cfa42294c43db1d0`  
-Deployment date: June 23, 2026
+Deployer: `0202c223a43185563f404720fbb7028305cd79d6046ffdf7b746cfa42294c43db1d0`
+Deployment date: **June 23, 2026**
 
-| Contract | Deploy Hash | Explorer |
-|----------|-------------|---------|
-| **AuditTrail** | `9be661d1ed21ac8d762233108ec57b0a8a9e50580ad7b82066cd5690f69a86c4` | [View on testnet.cspr.live](https://testnet.cspr.live/deploy/9be661d1ed21ac8d762233108ec57b0a8a9e50580ad7b82066cd5690f69a86c4) |
-| **RiskOracle** | `c8341d32cb40667a3c61f8b49389104e211ad1ae57833c79a084d5bbf805f541` | [View on testnet.cspr.live](https://testnet.cspr.live/deploy/c8341d32cb40667a3c61f8b49389104e211ad1ae57833c79a084d5bbf805f541) |
-| **SentinelCredit** | `2101c5c55305fd5fb23fdf3c24029dc493fa07c5722e006313525eec80a0b8c6` | [View on testnet.cspr.live](https://testnet.cspr.live/deploy/2101c5c55305fd5fb23fdf3c24029dc493fa07c5722e006313525eec80a0b8c6) |
-| **SentinelRegistry** | `bb722bbd2ac8698419e59fd87f86e52d0ac59cae0e7542f2efa7a3cefdeb6acc` | [View on testnet.cspr.live](https://testnet.cspr.live/deploy/bb722bbd2ac8698419e59fd87f86e52d0ac59cae0e7542f2efa7a3cefdeb6acc) |
-| **SentinelAlertLog** | `e98ca94c5f88474019b7459a3203d0ca3cb0cf2ae594e2c0ee2042f948f0fa50` | [View on testnet.cspr.live](https://testnet.cspr.live/deploy/e98ca94c5f88474019b7459a3203d0ca3cb0cf2ae594e2c0ee2042f948f0fa50) |
-| **AgentBehaviorIndex** | `6061dfdeb871f932375da817032f2c890eaf85b77f07a77a6d81811871c79928` | [View on testnet.cspr.live](https://testnet.cspr.live/deploy/6061dfdeb871f932375da817032f2c890eaf85b77f07a77a6d81811871c79928) |
-| **RiskPolicyManager** | `5b4a65a946f96edd1673d379557356b0e8c1e2ac75efbdd591eaeb436ba61e6e` | [View on testnet.cspr.live](https://testnet.cspr.live/deploy/5b4a65a946f96edd1673d379557356b0e8c1e2ac75efbdd591eaeb436ba61e6e) |
-| **SubscriberVault** | `340557ddf3509f15aca0e94216aa419f083bdf2b3241ad2773a5feda079fb1f7` | [View on testnet.cspr.live](https://testnet.cspr.live/deploy/340557ddf3509f15aca0e94216aa419f083bdf2b3241ad2773a5feda079fb1f7) |
-
-WASM artifacts: [`contracts/wasm/`](contracts/wasm/) · Contract source: [`contracts/src/`](contracts/src/)
+| Contract | Deploy Hash | Role | Explorer |
+|----------|-------------|------|---------|
+| **AuditTrail** | `82adc658…6746a` | Immutable on-chain log of every agent action | [View →](https://testnet.cspr.live/deploy/82adc6584d762029478cb1abcfcba7f73e5ebbac81263383d56570897806746a) |
+| **RiskOracle** | `8769112d…de23b` | Risk scores queryable by any Casper dApp | [View →](https://testnet.cspr.live/deploy/8769112dc526ba2b50848ad3801f983f5770a1d0e549c84f387f48e250ede23b) |
+| **SentinelCredit** | `6f35b4ab…3d5a` | x402 credit ledger for pay-per-query billing | [View →](https://testnet.cspr.live/deploy/6f35b4ab2bad2086715f4987ddd5c269bcb2c363fd5b3a546964d60363203d5a) |
+| **SentinelRegistry** | `118bbcb7…200f` | Subscriber registry for push alerts | [View →](https://testnet.cspr.live/deploy/118bbcb70fb67fc2128e8bcbca342a3f1d0b7f0584c9fdac19f3d41620df200f) |
+| **SentinelAlertLog** | `e2c6d27a…c14a` | Timestamped alert history per address | [View →](https://testnet.cspr.live/deploy/e2c6d27a29f2c0362654cac67e59aba7b96ba5dfacf2277ced0dab2c67bcc14a) |
+| **AgentBehaviorIndex** | `f1fc0feb…9cfc` | AI agent performance + confidence on-chain | [View →](https://testnet.cspr.live/deploy/f1fc0feb247e5f6d0c7f8a520a37c8cfb41d575abed62b4db06b7a720c1a9cfc) |
+| **RiskPolicyManager** | `e79cbc22…f802` | Hot-swappable risk thresholds | [View →](https://testnet.cspr.live/deploy/e79cbc22219c65d95d08955c64f5f8f3bf87671d17f002ec51ee9553242df802) |
+| **SubscriberVault** | `18a9d7ea…aa7e1` | Escrowed prepay balance for subscribers | [View →](https://testnet.cspr.live/deploy/18a9d7ea2e48a6c21ebeb881d927447ce63e367517a7050c7f4252c5284aa7e1) |
 
 ---
 
@@ -123,8 +182,8 @@ WASM artifacts: [`contracts/wasm/`](contracts/wasm/) · Contract source: [`contr
 
 - Python 3.11+
 - Node.js 18+
-- Docker (optional, for full stack)
 - Groq API key — free at [console.groq.com](https://console.groq.com)
+- Docker (optional)
 
 ### Install
 
@@ -164,9 +223,30 @@ uvicorn api.main:app --reload --port 8000
 # FastMCP server (15 tools)
 python vaultwatch_mcp/server.py
 
-# React dashboard
+# React dashboard (live AI + live Casper data)
 cd dashboard && npm install && npm run dev
 ```
+
+---
+
+## Live Dashboard Features
+
+The deployed dashboard at **https://dashboard-rho-amber-89.vercel.app** includes:
+
+| Tab | Feature | Data Source |
+|-----|---------|-------------|
+| **Risk Intelligence** | Real Groq AI analysis via llama-3.3-70b-versatile | Groq API (live) |
+| **Anomaly Detection** | Protocol metrics → AI risk scoring | Groq API (live) |
+| **RWA Assessment** | Real-world asset scoring via Groq Compound | Groq API (live) |
+| **Audit Log** | On-chain audit trail with explorer links | Casper testnet |
+| **Live Feed** | Real-time agent event stream, findings ticker | Simulated pipeline output |
+| **Chain Status** | Block height, era ID, CSPR price sparkline, contract table | cspr.cloud + CoinGecko |
+
+**Live data integrations:**
+- 🟢 **CoinGecko** — CSPR/USD price, 24h change, market cap, 24h volume, 7-day price chart
+- 🟢 **cspr.cloud** — Live block height, era ID, block hash, proposer, deploy count
+- 🟢 **Groq API** — llama-3.3-70b-versatile for all AI analysis queries
+- 🟢 **testnet.cspr.live** — Every contract hash links to a unique, real deploy page
 
 ---
 
@@ -440,6 +520,14 @@ vaultwatch/
 │
 ├── dashboard/
 │   └── src/                      # React/Vite frontend
+│       ├── components/
+│       │   ├── RiskPanel.jsx     # Live Groq risk analysis
+│       │   ├── AnomalyPanel.jsx  # Protocol anomaly detection
+│       │   ├── RWAPanel.jsx      # RWA assessment panel
+│       │   ├── AuditPanel.jsx    # On-chain audit log
+│       │   ├── LiveFeed.jsx      # Real-time agent feed + ticker
+│       │   └── ChainStatus.jsx   # Live blocks + CSPR price + contracts
+│       └── liveApi.js            # CoinGecko + cspr.cloud + Groq
 │
 ├── tests/
 │   ├── unit/                     # 66 unit tests
@@ -452,13 +540,12 @@ vaultwatch/
 │   ├── demo_upgrade_policy.py
 │   └── deploy_contracts.py
 │
+├── deploy_hashes.json            # Live contract deploy hashes
 ├── pipeline.py                   # Main agent pipeline orchestrator
 ├── casper_client.py              # Casper network client wrapper
-├── deploy_hashes.json            # Live contract deploy hashes (casper-test)
 ├── docker-compose.yml
 ├── Dockerfile
-├── requirements.txt
-└── package.json
+└── requirements.txt
 ```
 
 ---
@@ -474,7 +561,7 @@ CASPER_NODE_URL=https://rpc.testnet.casperlabs.io/rpc
 CASPER_CHAIN_NAME=casper-test
 CASPER_ACCOUNT_SECRET_KEY=your_key   # For live testnet interactions
 
-# CSPR.cloud (enables contract state queries)
+# CSPR.cloud (enables contract state queries + live block data)
 CSPR_CLOUD_API_URL=https://api.testnet.cspr.cloud
 CSPR_CLOUD_API_KEY=your_key
 
@@ -490,6 +577,7 @@ API_PORT=8000
 
 # Dashboard
 VITE_API_URL=http://localhost:8000
+VITE_GROQ_API_KEY=your_groq_key      # For client-side Groq calls
 
 # OpenTelemetry (stdout by default, any OTel sink supported)
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
@@ -557,6 +645,7 @@ OTEL_EXPORTER_OTLP_ENDPOINT=http://your-grafana-agent:4317 python pipeline.py
 | Live Dashboard | https://dashboard-rho-amber-89.vercel.app |
 | Python SDK (PyPI) | https://pypi.org/project/casper-sentinel/4.0.0/ |
 | MCP Package (npm) | https://www.npmjs.com/package/casper-sentinel-mcp |
+| Deployer Account | https://testnet.cspr.live/account/0202c223a43185563f404720fbb7028305cd79d6046ffdf7b746cfa42294c43db1d0 |
 | Casper Testnet Explorer | https://testnet.cspr.live/ |
 | Casper Developer Docs | https://docs.casper.network/ |
 | Odra Framework | https://odra.dev/ |
