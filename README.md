@@ -336,18 +336,19 @@ vaultwatch/
 
 ### ✅ All Contracts Live on Casper Testnet (June 22, 2026)
 
-| # | Contract Name | Deploy Hash | Status | Explorer |
+| # | Contract Name | Deploy Hash | Status | Testnet Explorer |
 |----|---------------|-------------|--------|----------|
-| 1 | **AuditTrail** | `27249e78...41fb` | ✅ LIVE | [View](https://testnet.cspr.live/contract/27249e7838f2b14443ebd3b0aa461608675e36e6ef3a954af431b5f2df8041fb) |
-| 2 | **RiskOracle** | `68ef325d...6c55` | ✅ LIVE | [View](https://testnet.cspr.live/contract/68ef325d2b3a0f544467d8624e5042e428cd40258009777ffcdc568c1f426c55) |
-| 3 | **SentinelCredit** | `b6466009...e6d9` | ✅ LIVE | [View](https://testnet.cspr.live/contract/b6466009e65ac07a7ab7a26b3c5f0f600a6dc4c1efeaf96ea105000d24c8e6d9) |
-| 4 | **SentinelRegistry** | `71398513...7562` | ✅ LIVE | [View](https://testnet.cspr.live/contract/71398513bc183652549d46f4ea3d5319a7614cc55ce6c5378302150e46b07562) |
-| 5 | **SentinelAlertLog** | `8f762ab4...7693` | ✅ LIVE | [View](https://testnet.cspr.live/contract/8f762ab42f0da419ace4d99259893165a8483ad376d524b15ba76355cb597693) |
-| 6 | **AgentBehaviorIndex** | `665c1bd2...3171` | ✅ LIVE | [View](https://testnet.cspr.live/contract/665c1bd2937f88403806a1e3cd4fc9de7b931baa6cbc9b87bd05b6b23d823171) |
-| 7 | **RiskPolicyManager** | `14284d5c...d874` | ✅ LIVE | [View](https://testnet.cspr.live/contract/14284d5c3f3acf47dab65df94bbe982cdc787ff38245154521810f7cf819d874) |
-| 8 | **SubscriberVault** | `2fb6b5b6...b009` | ✅ LIVE | [View](https://testnet.cspr.live/contract/2fb6b5b699216d4662701b9d54101bb3740b3a10c62d8f7aaf5f0703a7a1b009) |
+| 1 | **AuditTrail** | `27249e78...41fb` | ✅ LIVE | [testnet.cspr.live](https://testnet.cspr.live/contract/27249e7838f2b14443ebd3b0aa461608675e36e6ef3a954af431b5f2df8041fb) |
+| 2 | **RiskOracle** | `68ef325d...6c55` | ✅ LIVE | [testnet.cspr.live](https://testnet.cspr.live/contract/68ef325d2b3a0f544467d8624e5042e428cd40258009777ffcdc568c1f426c55) |
+| 3 | **SentinelCredit** | `b6466009...e6d9` | ✅ LIVE | [testnet.cspr.live](https://testnet.cspr.live/contract/b6466009e65ac07a7ab7a26b3c5f0f600a6dc4c1efeaf96ea105000d24c8e6d9) |
+| 4 | **SentinelRegistry** | `71398513...7562` | ✅ LIVE | [testnet.cspr.live](https://testnet.cspr.live/contract/71398513bc183652549d46f4ea3d5319a7614cc55ce6c5378302150e46b07562) |
+| 5 | **SentinelAlertLog** | `8f762ab4...7693` | ✅ LIVE | [testnet.cspr.live](https://testnet.cspr.live/contract/8f762ab42f0da419ace4d99259893165a8483ad376d524b15ba76355cb597693) |
+| 6 | **AgentBehaviorIndex** | `665c1bd2...3171` | ✅ LIVE | [testnet.cspr.live](https://testnet.cspr.live/contract/665c1bd2937f88403806a1e3cd4fc9de7b931baa6cbc9b87bd05b6b23d823171) |
+| 7 | **RiskPolicyManager** | `14284d5c...d874` | ✅ LIVE | [testnet.cspr.live](https://testnet.cspr.live/contract/14284d5c3f3acf47dab65df94bbe982cdc787ff38245154521810f7cf819d874) |
+| 8 | **SubscriberVault** | `2fb6b5b6...b009` | ✅ LIVE | [testnet.cspr.live](https://testnet.cspr.live/contract/2fb6b5b699216d4662701b9d54101bb3740b3a10c62d8f7aaf5f0703a7a1b009) |
 
-**Full Deployment Data**: [deploy_hashes.json](deploy_hashes.json)
+**Deployment Hashes**: [deploy_hashes.json](deploy_hashes.json)  
+**All 8 contracts verified live on Casper testnet as of June 22, 2026.**
 
 ---
 
