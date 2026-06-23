@@ -78,8 +78,9 @@ async def broadcast_all(node_url: str) -> dict:
 
         # Reconstruct deploy from JSON and put it
         try:
+            deploy_payload = deploy_json.get("deploy", deploy_json)
             deploy_hash = await client.account_put_deploy(
-                rpc_serializer.from_json(Deploy, deploy_json["deploy"])
+                rpc_serializer.from_json(deploy_payload, Deploy)
             )
             if hasattr(deploy_hash, "hex"):
                 deploy_hash = deploy_hash.hex()
