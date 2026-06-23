@@ -19,9 +19,9 @@ tracer = trace.get_tracer("vaultwatch.casper_client")
 # Optional SDK import — fall back gracefully so tests run without a node
 # ---------------------------------------------------------------------------
 try:
-    from pycspr import NodeClient, NodeConnection, KeyAlgorithm  # type: ignore
-    from pycspr.types import Deploy, ExecutableDeployItem  # type: ignore
-    from pycspr.factory import create_deploy_parameters  # type: ignore
+    from pycspr import NodeRpcClient, NodeRpcConnectionInfo, KeyAlgorithm  # type: ignore
+    from pycspr import create_deploy_parameters, create_standard_payment, get_signature  # type: ignore
+    from pycspr import get_key_pair_from_pem_file, get_account_hash  # type: ignore
 
     _SDK_AVAILABLE = True
 except ImportError:  # pragma: no cover
@@ -73,18 +73,17 @@ class CasperContractClient:
 
     def _init_client(self) -> None:
         try:
-            conn = NodeConnection(
-                host=self.node_url.replace("http://", "").split(":")[0],
-                port_rest=int(self.node_url.split(":")[-1])
-                if ":" in self.node_url
-                else 7777,
-                port_rpc=8888,
-                port_sse=9999,
-            )
-            self._client = NodeClient(conn)
-            logger.info("Casper node client initialised — %s", self.node_url)
+            # Parse the node URL to extract host and port
+            # Expected format: https://rpc.testnet.casperlabs.io/rpc or http://localhost:7777
+            url = self.node_url.replace("https://", "").replace("http://", "").split("/")[0]
+            host = url.split(":")[0]
+            port = int(url.split(":")[-1]) if ":" in url else 7777
+            
+            conn = NodeRpcConnectionInfo(host=host, port=port)
+            self._client = NodeRpcClient(conn)
+            logger.info("Casper node RPC client initialised — %s (host=%s, port=%d)", self.node_url, host, port)
         except Exception as exc:  # pragma: no cover
-            logger.error("Failed to init Casper client: %s", exc)
+            logger.error("Failed to init Casper RPC client: %s", exc)
             self.mock = True
 
     def _load_key(self) -> Any:
@@ -92,11 +91,9 @@ class CasperContractClient:
             return self._account_key
         if not self.signing_key_path:
             raise RuntimeError("No signing key path configured")
-        from pycspr import parse_private_key  # type: ignore
-
-        self._account_key = parse_private_key(
-            self.signing_key_path, KeyAlgorithm.ED25519
-        )
+        
+        # Use get_key_pair_from_pem_file to load the private key
+        self._account_key = get_key_pair_from_pem_file(self.signing_key_path)
         return self._account_key
 
     # ------------------------------------------------------------------
