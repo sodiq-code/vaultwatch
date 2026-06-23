@@ -1,10 +1,10 @@
 {
-  "AuditTrail": "d392f341d975a9391fef1bc8cf4405f601ef93c0b1177fb86dac4a1a4cf94112",
-  "RiskOracle": "5625b73559dd48492a6cc3039d4379e0f6eefacd3a7f74ae8827de8f9e425c6a",
-  "SentinelCredit": "f7abcfcd299023ab2f60894d9d652fa06aad76c164f531a4124fe483a8c5fa6d",
-  "SentinelRegistry": "52e5561311437b8e2b0820408988a146fa5936bbeaec888c260ec126df31381d",
-  "SentinelAlertLog": "112c78d285e369c8b5613a6a04735acaae517066d54b602b76888bf23e7fdc99",
-  "AgentBehaviorIndex": "f34aba3251be8cc0a86b30acf43ed355a41cde8116ee00d5a6080ccdd354dcac",
-  "RiskPolicyManager": "180f1dcbb64cc2447cd3987d13a432475b78b5ea4ca667166fb674d34728499a",
-  "SubscriberVault": "d46f0f34abcc6288166cd2ededef58a007a6b18921ccbba4c6c0a4c94b52a951"
+  "AuditTrail": "FAILED: RPC error: {'code': -32008, 'message': 'Invalid Deploy', 'data': 'the deploy was invalid: insufficient balance'}",
+  "RiskOracle": "FAILED: RPC error: {'code': -32008, 'message': 'Invalid Deploy', 'data': 'the deploy was invalid: insufficient balance'}",
+  "SentinelCredit": "FAILED: RPC error: {'code': -32008, 'message': 'Invalid Deploy', 'data': 'the deploy was invalid: insufficient balance'}",
+  "SentinelRegistry": "FAILED: RPC error: {'code': -32008, 'message': 'Invalid Deploy', 'data': 'the deploy was invalid: insufficient balance'}",
+  "SentinelAlertLog": "FAILED: RPC error: {'code': -32008, 'message': 'Invalid Deploy', 'data': 'the deploy was invalid: insufficient balance'}",
+  "AgentBehaviorIndex": "FAILED: RPC error: {'code': -32008, 'message': 'Invalid Deploy', 'data': 'the deploy was invalid: insufficient balance'}",
+  "RiskPolicyManager": "FAILED: RPC error: {'code': -32008, 'message': 'Invalid Deploy', 'data': 'the deploy was invalid: insufficient balance'}",
+  "SubscriberVault": "FAILED: RPC error: {'code': -32008, 'message': 'Invalid Deploy', 'data': 'the deploy was invalid: insufficient balance'}"
 }
