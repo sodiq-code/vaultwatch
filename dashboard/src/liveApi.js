@@ -12,14 +12,14 @@ const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 
 // Real contract deploy hashes on Casper Testnet (signed & broadcast Jun 23 2026)
 export const CONTRACT_HASHES = {
-  AuditTrail:         '9be661d1ed21ac8d762233108ec57b0a8a9e50580ad7b82066cd5690f69a86c4',
-  RiskOracle:         'c8341d32cb40667a3c61f8b49389104e211ad1ae57833c79a084d5bbf805f541',
-  SentinelCredit:     '2101c5c55305fd5fb23fdf3c24029dc493fa07c5722e006313525eec80a0b8c6',
-  SentinelRegistry:   'bb722bbd2ac8698419e59fd87f86e52d0ac59cae0e7542f2efa7a3cefdeb6acc',
-  SentinelAlertLog:   'e98ca94c5f88474019b7459a3203d0ca3cb0cf2ae594e2c0ee2042f948f0fa50',
-  AgentBehaviorIndex: '6061dfdeb871f932375da817032f2c890eaf85b77f07a77a6d81811871c79928',
-  RiskPolicyManager:  '5b4a65a946f96edd1673d379557356b0e8c1e2ac75efbdd591eaeb436ba61e6e',
-  SubscriberVault:    '340557ddf3509f15aca0e94216aa419f083bdf2b3241ad2773a5feda079fb1f7',
+  AuditTrail:         '82adc6584d762029478cb1abcfcba7f73e5ebbac81263383d56570897806746a',
+  RiskOracle:         '8769112dc526ba2b50848ad3801f983f5770a1d0e549c84f387f48e250ede23b',
+  SentinelCredit:     '6f35b4ab2bad2086715f4987ddd5c269bcb2c363fd5b3a546964d60363203d5a',
+  SentinelRegistry:   '118bbcb70fb67fc2128e8bcbca342a3f1d0b7f0584c9fdac19f3d41620df200f',
+  SentinelAlertLog:   'e2c6d27a29f2c0362654cac67e59aba7b96ba5dfacf2277ced0dab2c67bcc14a',
+  AgentBehaviorIndex: 'f1fc0feb247e5f6d0c7f8a520a37c8cfb41d575abed62b4db06b7a720c1a9cfc',
+  RiskPolicyManager:  'e79cbc22219c65d95d08955c64f5f8f3bf87671d17f002ec51ee9553242df802',
+  SubscriberVault:    '18a9d7ea2e48a6c21ebeb881d927447ce63e367517a7050c7f4252c5284aa7e1',
 }
 
 // Simulated block height (Casper testnet ~1 block per 65s)
