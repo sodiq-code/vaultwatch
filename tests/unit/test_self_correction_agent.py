@@ -115,8 +115,18 @@ async def test_retry_on_low_confidence(agent, anomaly_result):
         nonlocal call_count
         call_count += 1
         if call_count < 2:
-            return {"corrected_score": 80.0, "confidence": 0.3, "reasoning": "", "action": ""}
-        return {"corrected_score": 82.0, "confidence": 0.85, "reasoning": "Retried", "action": "alert"}
+            return {
+                "corrected_score": 80.0,
+                "confidence": 0.3,
+                "reasoning": "",
+                "action": "",
+            }
+        return {
+            "corrected_score": 82.0,
+            "confidence": 0.85,
+            "reasoning": "Retried",
+            "action": "alert",
+        }
 
     with patch.object(agent, "_call_groq", new_callable=AsyncMock) as mock_g:
         mock_g.side_effect = mock_groq

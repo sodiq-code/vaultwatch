@@ -63,7 +63,9 @@ class VaultWatchClient:
         if self._client is None:
             self._client = httpx.AsyncClient(
                 base_url=self.base_url,
-                headers={"Authorization": f"Bearer {self.api_key}"} if self.api_key else {},
+                headers={"Authorization": f"Bearer {self.api_key}"}
+                if self.api_key
+                else {},
                 timeout=self.timeout,
             )
         return self._client
@@ -113,11 +115,14 @@ class VaultWatchClient:
         dict
             ``{"status": "ok", "result": {...}}``
         """
-        return await self._post("/risk/query", {
-            "query": query,
-            "protocol": protocol,
-            "context": context,
-        })
+        return await self._post(
+            "/risk/query",
+            {
+                "query": query,
+                "protocol": protocol,
+                "context": context,
+            },
+        )
 
     async def get_findings(
         self,
@@ -148,14 +153,17 @@ class VaultWatchClient:
 
         Returns risk score (0–100) and detected anomalies.
         """
-        return await self._post("/anomaly/detect", {
-            "protocol": protocol,
-            "tvl": tvl,
-            "volume_24h": volume_24h,
-            "price_change_1h": price_change_1h,
-            "num_transactions": num_transactions,
-            "liquidity_ratio": liquidity_ratio,
-        })
+        return await self._post(
+            "/anomaly/detect",
+            {
+                "protocol": protocol,
+                "tvl": tvl,
+                "volume_24h": volume_24h,
+                "price_change_1h": price_change_1h,
+                "num_transactions": num_transactions,
+                "liquidity_ratio": liquidity_ratio,
+            },
+        )
 
     # ------------------------------------------------------------------
     # RWA Assessment
@@ -171,14 +179,17 @@ class VaultWatchClient:
         credit_rating: str,
     ) -> Dict[str, Any]:
         """Evaluate a real-world asset for on-chain tokenisation."""
-        return await self._post("/rwa/assess", {
-            "asset_id": asset_id,
-            "asset_type": asset_type,
-            "issuer": issuer,
-            "collateral_ratio": collateral_ratio,
-            "maturity_days": maturity_days,
-            "credit_rating": credit_rating,
-        })
+        return await self._post(
+            "/rwa/assess",
+            {
+                "asset_id": asset_id,
+                "asset_type": asset_type,
+                "issuer": issuer,
+                "collateral_ratio": collateral_ratio,
+                "maturity_days": maturity_days,
+                "credit_rating": credit_rating,
+            },
+        )
 
     async def list_rwa_assets(self) -> Dict[str, Any]:
         """List all tracked RWA assets."""
@@ -195,11 +206,14 @@ class VaultWatchClient:
         chain: str = "casper",
     ) -> Dict[str, Any]:
         """Run a deep vulnerability scan on a protocol."""
-        return await self._post("/scanner/scan", {
-            "protocol": protocol,
-            "contract_address": contract_address,
-            "chain": chain,
-        })
+        return await self._post(
+            "/scanner/scan",
+            {
+                "protocol": protocol,
+                "contract_address": contract_address,
+                "chain": chain,
+            },
+        )
 
     # ------------------------------------------------------------------
     # Policy
@@ -217,12 +231,15 @@ class VaultWatchClient:
         alert_threshold: int,
     ) -> Dict[str, Any]:
         """Update a risk policy on-chain."""
-        return await self._post("/policy/update", {
-            "policy_id": policy_id,
-            "max_tvl_drop_pct": max_tvl_drop_pct,
-            "min_liquidity_ratio": min_liquidity_ratio,
-            "alert_threshold": alert_threshold,
-        })
+        return await self._post(
+            "/policy/update",
+            {
+                "policy_id": policy_id,
+                "max_tvl_drop_pct": max_tvl_drop_pct,
+                "min_liquidity_ratio": min_liquidity_ratio,
+                "alert_threshold": alert_threshold,
+            },
+        )
 
     # ------------------------------------------------------------------
     # Audit

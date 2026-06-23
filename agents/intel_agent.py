@@ -48,28 +48,46 @@ class IntelResponse:
 
 
 class IntelAgent:
-    def __init__(self, input_queue: asyncio.Queue = None, casper_client=None, groq_api_key: str = ""):
+    def __init__(
+        self,
+        input_queue: asyncio.Queue = None,
+        casper_client=None,
+        groq_api_key: str = "",
+    ):
         self.input_queue = input_queue or asyncio.Queue()
         self.casper_client = casper_client
         self.alert_count = 0
         self._groq_key = groq_api_key or os.getenv("GROQ_API_KEY", "")
         self._model = "compound-beta"
-        self._client = Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
+        self._client = (
+            Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
+        )
 
     async def _call_groq(self, prompt: str) -> dict:
         if not self._client:
-            return {"summary": "No API key", "risk_factors": [], "findings_count": 0, "confidence": 0.0, "error": "no_key"}
+            return {
+                "summary": "No API key",
+                "risk_factors": [],
+                "findings_count": 0,
+                "confidence": 0.0,
+                "error": "no_key",
+            }
         resp = self._client.chat.completions.create(
             model=self._model,
             messages=[
-                {"role": "system", "content": "You are a DeFi intelligence analyst. Respond only with valid JSON."},
+                {
+                    "role": "system",
+                    "content": "You are a DeFi intelligence analyst. Respond only with valid JSON.",
+                },
                 {"role": "user", "content": prompt},
             ],
             response_format={"type": "json_object"},
         )
         return json.loads(resp.choices[0].message.content)
 
-    async def analyze(self, query: str, protocol: str = None, extra_context: dict = None) -> dict:
+    async def analyze(
+        self, query: str, protocol: str = None, extra_context: dict = None
+    ) -> dict:
         """Analyze a risk query using the Groq Compound model."""
         with tracer.start_as_current_span("intel.analyze") as span:
             span.set_attribute("query_length", len(query))
@@ -88,6 +106,7 @@ class IntelAgent:
                 result.setdefault("findings_count", 0)
                 result.setdefault("confidence", 0.0)
                 import time
+
                 finding = {
                     "query": query,
                     "protocol": protocol,
@@ -99,7 +118,13 @@ class IntelAgent:
                 return result
             except Exception as exc:
                 logger.error("analyze error: %s", exc)
-                return {"summary": "", "risk_factors": [], "findings_count": 0, "confidence": 0.0, "error": str(exc)}
+                return {
+                    "summary": "",
+                    "risk_factors": [],
+                    "findings_count": 0,
+                    "confidence": 0.0,
+                    "error": str(exc),
+                }
 
     async def run(self):
         """Consume confirmed records and make them available via API + push alerts"""
@@ -149,12 +174,13 @@ class IntelAgent:
             else:
                 span.set_attribute("intel.alert_pushed", False)
 
-            logger.info(f"IntelAgent stored finding #{record.finding_id}: {base.severity} {base.risk_type}")
+            logger.info(
+                f"IntelAgent stored finding #{record.finding_id}: {base.severity} {base.risk_type}"
+            )
 
     async def _push_alerts(self, record: OnChainRecord, finding: dict):
         """Push alert to all registered subscribers via webhook"""
         with tracer.start_as_current_span("intel.push_alerts") as span:
-
             # In production: read from SentinelRegistry contract
             # For demo: push to any registered webhook
             {
@@ -192,8 +218,9 @@ class IntelAgent:
         return None
 
     @classmethod
-    async def serve_intel_with_x402(cls, query_type: str, address: str,
-                                     caller_address: str, casper_client=None) -> dict:
+    async def serve_intel_with_x402(
+        cls, query_type: str, address: str, caller_address: str, casper_client=None
+    ) -> dict:
         """x402 gate: verify credit, deduct, serve premium finding"""
         with tracer.start_as_current_span("intel.x402_query") as span:
             span.set_attribute("intel.query_type", query_type)
@@ -207,15 +234,21 @@ class IntelAgent:
                 has_credit = await casper_client.call_contract(
                     contract="sentinel_credit",
                     entry_point="deduct_query",
-                    args={"account_address": caller_address, "is_premium": is_premium}
+                    args={"account_address": caller_address, "is_premium": is_premium},
                 )
                 if not has_credit:
                     span.set_attribute("intel.credit_denied", True)
-                    return {"error": "Insufficient credit. Deposit CSPR to SentinelCredit contract."}
+                    return {
+                        "error": "Insufficient credit. Deposit CSPR to SentinelCredit contract."
+                    }
                 span.set_attribute("intel.credit_deducted", True)
 
             # Serve finding
-            findings = [f for f in _findings_store if f.get("address", "").startswith(address[:10])]
+            findings = [
+                f
+                for f in _findings_store
+                if f.get("address", "").startswith(address[:10])
+            ]
             if not findings:
                 findings = list(reversed(_findings_store))[:3]
 

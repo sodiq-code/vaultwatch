@@ -38,6 +38,7 @@ SEVERITY_LEVELS = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "NONE"]
 @dataclass
 class AnomalyResult:
     """Unified anomaly result — supports both pipeline (event-based) and direct call patterns."""
+
     protocol: str = ""
     risk_score: float = 0.0
     anomalies: list = None
@@ -60,25 +61,41 @@ class AnomalyResult:
 
 
 class AnomalyAgent:
-    def __init__(self, input_queue: asyncio.Queue = None, output_queue: asyncio.Queue = None, groq_api_key: str = ""):
+    def __init__(
+        self,
+        input_queue: asyncio.Queue = None,
+        output_queue: asyncio.Queue = None,
+        groq_api_key: str = "",
+    ):
         self.input_queue = input_queue or asyncio.Queue()
         self.output_queue = output_queue or asyncio.Queue()
         self.decision_count = 0
         self._groq_key = groq_api_key or os.getenv("GROQ_API_KEY", "")
-        self._client = Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
+        self._client = (
+            Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
+        )
 
     async def _call_groq(self, prompt: str) -> dict:
         if not self._client:
-            return {"risk_score": 0, "anomalies": [], "recommendation": "No API key", "error": "no_key"}
+            return {
+                "risk_score": 0,
+                "anomalies": [],
+                "recommendation": "No API key",
+                "error": "no_key",
+            }
         resp = self._client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
-                {"role": "system", "content": "You are a DeFi anomaly detection system. Respond only with valid JSON."},
+                {
+                    "role": "system",
+                    "content": "You are a DeFi anomaly detection system. Respond only with valid JSON.",
+                },
                 {"role": "user", "content": prompt},
             ],
             response_format={"type": "json_object"},
         )
         import json
+
         return json.loads(resp.choices[0].message.content)
 
     async def detect(self, metrics: dict) -> "AnomalyResult":
@@ -153,12 +170,9 @@ class AnomalyAgent:
                             '  "reasoning": "concise 1-2 sentence explanation"\n'
                             "}\n"
                             "Be precise. Calibrate confidence honestly. High confidence only when signals are unambiguous."
-                        )
+                        ),
                     },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
+                    {"role": "user", "content": prompt},
                 ],
                 temperature=0.2,
                 max_tokens=512,

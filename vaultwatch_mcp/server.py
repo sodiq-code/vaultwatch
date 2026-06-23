@@ -31,9 +31,16 @@ async def get_market_state() -> dict:
     with tracer.start_as_current_span("mcp.get_market_state"):
         try:
             import httpx
+
             async with httpx.AsyncClient(timeout=10) as client:
-                resp = await client.get("https://api.coingecko.com/api/v3/simple/price",
-                    params={"ids": "casper-network", "vs_currencies": "usd", "include_24hr_change": "true"})
+                resp = await client.get(
+                    "https://api.coingecko.com/api/v3/simple/price",
+                    params={
+                        "ids": "casper-network",
+                        "vs_currencies": "usd",
+                        "include_24hr_change": "true",
+                    },
+                )
                 data = resp.json()
                 cspr_data = data.get("casper-network", {})
                 return {
@@ -44,13 +51,18 @@ async def get_market_state() -> dict:
                     "source": "CoinGecko",
                 }
         except Exception as e:
-            return {"error": str(e), "cspr_price_usd": None, "timestamp": int(time.time())}
+            return {
+                "error": str(e),
+                "cspr_price_usd": None,
+                "timestamp": int(time.time()),
+            }
 
 
 # ─── Tool 2: detect_anomaly ─────────────────────────────────────────────────
 @mcp.tool()
-async def detect_anomaly(address: str, amount_cspr: float = 0.0,
-                          event_type: str = "token_transfer") -> dict:
+async def detect_anomaly(
+    address: str, amount_cspr: float = 0.0, event_type: str = "token_transfer"
+) -> dict:
     """
     Run anomaly classification on a Casper address or event.
     Uses llama-3.3-70b-versatile for deep risk reasoning.
@@ -60,17 +72,21 @@ async def detect_anomaly(address: str, amount_cspr: float = 0.0,
         span.set_attribute("mcp.amount_cspr", amount_cspr)
 
         from groq import Groq
+
         client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
-            messages=[{
-                "role": "system",
-                "content": "You are VaultWatch AnomalyAgent. Classify DeFi risk. Return JSON: {risk_type, severity, confidence, reasoning}"
-            }, {
-                "role": "user",
-                "content": f"Casper address: {address}\nAmount: {amount_cspr} CSPR\nEvent: {event_type}\nClassify risk."
-            }],
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are VaultWatch AnomalyAgent. Classify DeFi risk. Return JSON: {risk_type, severity, confidence, reasoning}",
+                },
+                {
+                    "role": "user",
+                    "content": f"Casper address: {address}\nAmount: {amount_cspr} CSPR\nEvent: {event_type}\nClassify risk.",
+                },
+            ],
             temperature=0.2,
             max_tokens=256,
             response_format={"type": "json_object"},
@@ -92,23 +108,32 @@ async def get_rwa_risk(asset_type: str = "stablecoin") -> dict:
     """
     with tracer.start_as_current_span("mcp.get_rwa_risk"):
         from groq import Groq
+
         client = Groq(api_key=os.getenv("GROQ_API_KEY"))
         response = client.chat.completions.create(
             model="compound-beta",
-            messages=[{
-                "role": "user",
-                "content": f"Current {asset_type} DeFi risk signals: depeg status, collateral ratios, yield rates. Return as JSON."
-            }],
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"Current {asset_type} DeFi risk signals: depeg status, collateral ratios, yield rates. Return as JSON.",
+                }
+            ],
             max_tokens=512,
         )
         content = response.choices[0].message.content
-        return {"rwa_intelligence": content, "asset_type": asset_type, "timestamp": int(time.time()), "model": "groq/compound"}
+        return {
+            "rwa_intelligence": content,
+            "asset_type": asset_type,
+            "timestamp": int(time.time()),
+            "model": "groq/compound",
+        }
 
 
 # ─── Tool 4: query_findings ──────────────────────────────────────────────────
 @mcp.tool()
-async def query_findings(severity: Optional[str] = None, limit: int = 10,
-                          risk_type: Optional[str] = None) -> dict:
+async def query_findings(
+    severity: Optional[str] = None, limit: int = 10, risk_type: Optional[str] = None
+) -> dict:
     """
     Retrieve latest VaultWatch findings from on-chain audit trail.
     Filter by severity (CRITICAL/HIGH/MEDIUM/LOW) or risk_type.
@@ -129,8 +154,9 @@ async def query_findings(severity: Optional[str] = None, limit: int = 10,
 
 # ─── Tool 5: pay_for_intel ───────────────────────────────────────────────────
 @mcp.tool()
-async def pay_for_intel(caller_address: str, target_address: str,
-                         query_type: str = "standard") -> dict:
+async def pay_for_intel(
+    caller_address: str, target_address: str, query_type: str = "standard"
+) -> dict:
     """
     x402 pay-per-query: verify credit → deduct from SentinelCredit contract → serve premium finding.
     query_type: 'standard' or 'premium' (includes RWA enrichment).
@@ -138,7 +164,9 @@ async def pay_for_intel(caller_address: str, target_address: str,
     with tracer.start_as_current_span("mcp.pay_for_intel") as span:
         span.set_attribute("mcp.caller", caller_address[:20])
         span.set_attribute("mcp.query_type", query_type)
-        result = await IntelAgent.serve_intel_with_x402(query_type, target_address, caller_address)
+        result = await IntelAgent.serve_intel_with_x402(
+            query_type, target_address, caller_address
+        )
         return result
 
 
@@ -162,8 +190,9 @@ async def get_audit_trail(address: str, limit: int = 5) -> dict:
 
 # ─── Tool 7: subscribe_alerts ────────────────────────────────────────────────
 @mcp.tool()
-async def subscribe_alerts(address: str, webhook_url: str,
-                            min_severity: str = "HIGH") -> dict:
+async def subscribe_alerts(
+    address: str, webhook_url: str, min_severity: str = "HIGH"
+) -> dict:
     """
     Register address for VaultWatch push alerts on SentinelRegistry contract.
     Alerts delivered for findings at or above min_severity.
@@ -195,10 +224,22 @@ async def get_agent_trace(finding_id: int) -> dict:
         "finding_id": finding_id,
         "pipeline_trace": {
             "scanner_agent": {"model": "llama-3.1-8b-instant", "status": "completed"},
-            "anomaly_agent": {"model": "llama-3.3-70b-versatile", "confidence": finding.get("confidence"), "status": "completed"},
+            "anomaly_agent": {
+                "model": "llama-3.3-70b-versatile",
+                "confidence": finding.get("confidence"),
+                "status": "completed",
+            },
             "self_correction": {"retries": 0, "passed": True, "status": "completed"},
-            "rwa_agent": {"model": "groq/compound", "enriched": finding.get("enriched"), "status": "completed"},
-            "safety_guard": {"model": "llama-prompt-guard-2-86m", "approved": True, "status": "completed"},
+            "rwa_agent": {
+                "model": "groq/compound",
+                "enriched": finding.get("enriched"),
+                "status": "completed",
+            },
+            "safety_guard": {
+                "model": "llama-prompt-guard-2-86m",
+                "approved": True,
+                "status": "completed",
+            },
             "audit_agent": {"tx": finding.get("audit_trail_tx"), "status": "completed"},
             "intel_agent": {"served": True, "status": "completed"},
         },
@@ -228,7 +269,13 @@ async def get_risk_score(address: str) -> dict:
                 "contract": "RiskOracle.rs",
                 "high_risk": score >= 70,
             }
-        return {"address": address, "score": 0, "risk_type": "none", "confidence": 0, "high_risk": False}
+        return {
+            "address": address,
+            "score": 0,
+            "risk_type": "none",
+            "confidence": 0,
+            "high_risk": False,
+        }
 
 
 # ─── Tool 10: stream_events ──────────────────────────────────────────────────
@@ -240,7 +287,9 @@ async def stream_events(limit: int = 5) -> dict:
     """
     return {
         "status": "streaming",
-        "sidecar_url": os.getenv("CASPER_SIDECAR_URL", "http://127.0.0.1:18888/events/main"),
+        "sidecar_url": os.getenv(
+            "CASPER_SIDECAR_URL", "http://127.0.0.1:18888/events/main"
+        ),
         "recent_events": list(reversed(_findings_store))[:limit],
         "note": "Full SSE stream available at /stream/events endpoint",
         "timestamp": int(time.time()),
@@ -255,7 +304,15 @@ async def get_agent_behavior(agent_name: Optional[str] = None) -> dict:
     Shows: decisions, corrections, trust_score, avg_confidence.
     This is AI accountability on-chain — first of its kind on Casper.
     """
-    agents = ["ScannerAgent", "AnomalyAgent", "SelfCorrectionAgent", "RWAAgent", "SafetyGuard", "AuditAgent", "IntelAgent"]
+    agents = [
+        "ScannerAgent",
+        "AnomalyAgent",
+        "SelfCorrectionAgent",
+        "RWAAgent",
+        "SafetyGuard",
+        "AuditAgent",
+        "IntelAgent",
+    ]
     result = {}
     for agent in agents:
         if agent_name and agent != agent_name:
@@ -273,8 +330,9 @@ async def get_agent_behavior(agent_name: Optional[str] = None) -> dict:
 
 # ─── Tool 12: upgrade_policy ─────────────────────────────────────────────────
 @mcp.tool()
-async def upgrade_policy(min_confidence: int = 75, critical_threshold: int = 80,
-                          high_threshold: int = 60) -> dict:
+async def upgrade_policy(
+    min_confidence: int = 75, critical_threshold: int = 80, high_threshold: int = 60
+) -> dict:
     """
     Hot-swap VaultWatch risk thresholds via RiskPolicyManager contract.
     Agents read updated policy every decision cycle — no restart required.
@@ -315,8 +373,9 @@ async def get_alert_history(address: str, limit: int = 10) -> dict:
 
 # ─── Tool 14: register_subscriber ────────────────────────────────────────────
 @mcp.tool()
-async def register_subscriber(address: str, webhook_url: str,
-                               min_severity: str = "CRITICAL") -> dict:
+async def register_subscriber(
+    address: str, webhook_url: str, min_severity: str = "CRITICAL"
+) -> dict:
     """
     Register address on SentinelRegistry contract for automated alerts.
     """

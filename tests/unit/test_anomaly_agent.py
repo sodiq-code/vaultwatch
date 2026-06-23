@@ -39,7 +39,11 @@ def risky_metrics():
 @pytest.mark.asyncio
 async def test_detect_returns_anomaly_result(agent, safe_metrics):
     with patch.object(agent, "_call_groq", new_callable=AsyncMock) as mock_groq:
-        mock_groq.return_value = {"risk_score": 15, "anomalies": [], "recommendation": "Monitor"}
+        mock_groq.return_value = {
+            "risk_score": 15,
+            "anomalies": [],
+            "recommendation": "Monitor",
+        }
         result = await agent.detect(safe_metrics)
     assert isinstance(result, AnomalyResult)
 
@@ -47,7 +51,11 @@ async def test_detect_returns_anomaly_result(agent, safe_metrics):
 @pytest.mark.asyncio
 async def test_anomaly_result_fields(agent, safe_metrics):
     with patch.object(agent, "_call_groq", new_callable=AsyncMock) as mock_groq:
-        mock_groq.return_value = {"risk_score": 20, "anomalies": [], "recommendation": "All clear"}
+        mock_groq.return_value = {
+            "risk_score": 20,
+            "anomalies": [],
+            "recommendation": "All clear",
+        }
         result = await agent.detect(safe_metrics)
     assert result.protocol == "SafeProto"
     assert 0 <= result.risk_score <= 100
@@ -82,7 +90,11 @@ async def test_groq_error_fallback(agent, safe_metrics):
 async def test_timestamp_is_recent(agent, safe_metrics):
     now = time.time()
     with patch.object(agent, "_call_groq", new_callable=AsyncMock) as mock_groq:
-        mock_groq.return_value = {"risk_score": 10, "anomalies": [], "recommendation": ""}
+        mock_groq.return_value = {
+            "risk_score": 10,
+            "anomalies": [],
+            "recommendation": "",
+        }
         result = await agent.detect(safe_metrics)
     assert result.timestamp >= now - 5
 
@@ -98,7 +110,11 @@ async def test_zero_tvl_metrics(agent):
         "liquidity_ratio": 0.0,
     }
     with patch.object(agent, "_call_groq", new_callable=AsyncMock) as mock_groq:
-        mock_groq.return_value = {"risk_score": 50, "anomalies": ["zero_tvl"], "recommendation": "Investigate"}
+        mock_groq.return_value = {
+            "risk_score": 50,
+            "anomalies": ["zero_tvl"],
+            "recommendation": "Investigate",
+        }
         result = await agent.detect(metrics)
     assert isinstance(result, AnomalyResult)
 
@@ -106,8 +122,13 @@ async def test_zero_tvl_metrics(agent):
 @pytest.mark.asyncio
 async def test_concurrent_detections(agent, safe_metrics, risky_metrics):
     import asyncio
+
     with patch.object(agent, "_call_groq", new_callable=AsyncMock) as mock_groq:
-        mock_groq.return_value = {"risk_score": 30, "anomalies": [], "recommendation": ""}
+        mock_groq.return_value = {
+            "risk_score": 30,
+            "anomalies": [],
+            "recommendation": "",
+        }
         results = await asyncio.gather(
             agent.detect(safe_metrics),
             agent.detect(risky_metrics),

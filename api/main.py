@@ -33,7 +33,9 @@ from casper_client import CasperContractClient
 # ---------------------------------------------------------------------------
 # Logging & Tracing bootstrap
 # ---------------------------------------------------------------------------
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 _span_exporter = InMemorySpanExporter()
@@ -128,6 +130,7 @@ def _get_scanner() -> ScannerAgent:
 # Request / Response models
 # ---------------------------------------------------------------------------
 
+
 class RiskQueryRequest(BaseModel):
     query: str
     protocol: Optional[str] = None
@@ -169,6 +172,7 @@ class PolicyUpdateRequest(BaseModel):
 # Routes — Health
 # ---------------------------------------------------------------------------
 
+
 @app.get("/health", tags=["System"])
 async def health_check() -> Dict[str, Any]:
     """Liveness probe."""
@@ -191,7 +195,9 @@ async def get_spans() -> Dict[str, Any]:
             {
                 "name": s.name,
                 "trace_id": format(s.context.trace_id, "032x"),
-                "duration_ms": (s.end_time - s.start_time) / 1_000_000 if s.end_time else None,
+                "duration_ms": (s.end_time - s.start_time) / 1_000_000
+                if s.end_time
+                else None,
                 "status": s.status.status_code.name,
             }
             for s in spans[-50:]  # last 50
@@ -202,6 +208,7 @@ async def get_spans() -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Routes — Risk Intelligence
 # ---------------------------------------------------------------------------
+
 
 @app.post("/risk/query", tags=["Risk Intelligence"])
 async def risk_query(req: RiskQueryRequest) -> Dict[str, Any]:
@@ -219,7 +226,9 @@ async def risk_query(req: RiskQueryRequest) -> Dict[str, Any]:
         if not safe_result.get("safe", True):
             raise HTTPException(status_code=400, detail="Query failed safety check")
 
-        result = await intel.analyze(req.query, protocol=req.protocol, extra_context=req.context)
+        result = await intel.analyze(
+            req.query, protocol=req.protocol, extra_context=req.context
+        )
         return {"status": "ok", "result": result}
 
 
@@ -238,6 +247,7 @@ async def get_findings(
 # ---------------------------------------------------------------------------
 # Routes — Anomaly Detection
 # ---------------------------------------------------------------------------
+
 
 @app.post("/anomaly/detect", tags=["Anomaly Detection"])
 async def detect_anomaly(req: AnomalyRequest) -> Dict[str, Any]:
@@ -267,6 +277,7 @@ async def detect_anomaly(req: AnomalyRequest) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Routes — RWA Assessment
 # ---------------------------------------------------------------------------
+
 
 @app.post("/rwa/assess", tags=["RWA"])
 async def assess_rwa(req: RWARequest) -> Dict[str, Any]:
@@ -298,6 +309,7 @@ async def list_rwa_assets() -> Dict[str, Any]:
 # Routes — Protocol Scanner
 # ---------------------------------------------------------------------------
 
+
 @app.post("/scanner/scan", tags=["Scanner"])
 async def scan_protocol(req: ScanRequest) -> Dict[str, Any]:
     """Deep scan a DeFi protocol for vulnerabilities and risk vectors."""
@@ -317,6 +329,7 @@ async def scan_protocol(req: ScanRequest) -> Dict[str, Any]:
 # Routes — Policy Management
 # ---------------------------------------------------------------------------
 
+
 @app.get("/policy/list", tags=["Policy"])
 async def list_policies() -> Dict[str, Any]:
     """Return all active risk policies from the RiskPolicyManager contract."""
@@ -326,8 +339,18 @@ async def list_policies() -> Dict[str, Any]:
         # Return mock policies when no contract is deployed
         return {
             "policies": [
-                {"id": "default", "max_tvl_drop_pct": 20.0, "min_liquidity_ratio": 0.1, "alert_threshold": 3},
-                {"id": "strict", "max_tvl_drop_pct": 10.0, "min_liquidity_ratio": 0.2, "alert_threshold": 1},
+                {
+                    "id": "default",
+                    "max_tvl_drop_pct": 20.0,
+                    "min_liquidity_ratio": 0.1,
+                    "alert_threshold": 3,
+                },
+                {
+                    "id": "strict",
+                    "max_tvl_drop_pct": 10.0,
+                    "min_liquidity_ratio": 0.2,
+                    "alert_threshold": 1,
+                },
             ]
         }
     state = client.query_contract_state(contract_hash, ["policies"])
@@ -359,6 +382,7 @@ async def update_policy(req: PolicyUpdateRequest) -> Dict[str, Any]:
 # Routes — Audit Log
 # ---------------------------------------------------------------------------
 
+
 @app.get("/audit/log", tags=["Audit"])
 async def get_audit_log(limit: int = Query(50, ge=1, le=500)) -> Dict[str, Any]:
     """Fetch the latest audit entries from the on-chain AuditTrail contract."""
@@ -383,6 +407,7 @@ async def write_audit_entry(
 # Routes — Block info
 # ---------------------------------------------------------------------------
 
+
 @app.get("/chain/block", tags=["Chain"])
 async def get_block_height() -> Dict[str, Any]:
     """Return the current Casper block height."""
@@ -396,4 +421,5 @@ async def get_block_height() -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":  # pragma: no cover
     import uvicorn
+
     uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=True)

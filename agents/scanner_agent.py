@@ -28,13 +28,15 @@ groq_client = Groq(api_key=os.getenv("GROQ_API_KEY", "mock-key-for-testing"))
 
 @dataclass
 class RawEvent:
-    event_type: str        # token_transfer | staking | whale_movement | deploy | contract_call
+    event_type: (
+        str  # token_transfer | staking | whale_movement | deploy | contract_call
+    )
     address: str
     amount_motes: int
     block_height: int
     timestamp: int
     raw_data: dict
-    source: str            # cspr_cloud | sidecar_sse
+    source: str  # cspr_cloud | sidecar_sse
 
 
 class ScannerAgent:
@@ -43,24 +45,37 @@ class ScannerAgent:
         self.last_block = 0
         self.scan_count = 0
         self._groq_key = groq_api_key or os.getenv("GROQ_API_KEY", "")
-        self._client = Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
+        self._client = (
+            Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
+        )
 
     async def _call_groq(self, prompt: str) -> dict:
         """Call Groq for protocol scan analysis."""
         if not self._client:
-            return {"risk_level": "UNKNOWN", "vulnerabilities": [], "summary": "No API key", "error": "no_key"}
+            return {
+                "risk_level": "UNKNOWN",
+                "vulnerabilities": [],
+                "summary": "No API key",
+                "error": "no_key",
+            }
         resp = self._client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
-                {"role": "system", "content": "You are a DeFi security analyst. Respond only with valid JSON."},
+                {
+                    "role": "system",
+                    "content": "You are a DeFi security analyst. Respond only with valid JSON.",
+                },
                 {"role": "user", "content": prompt},
             ],
             response_format={"type": "json_object"},
         )
         import json
+
         return json.loads(resp.choices[0].message.content)
 
-    async def scan(self, protocol: str, contract_address: str = None, chain: str = "casper") -> dict:
+    async def scan(
+        self, protocol: str, contract_address: str = None, chain: str = "casper"
+    ) -> dict:
         """Scan a protocol for vulnerabilities and return risk assessment."""
         with tracer.start_as_current_span("scanner.scan") as span:
             span.set_attribute("protocol", protocol)
@@ -78,7 +93,12 @@ class ScannerAgent:
                 return result
             except Exception as exc:
                 logger.error("scan error: %s", exc)
-                return {"risk_level": "UNKNOWN", "vulnerabilities": [], "summary": "", "error": str(exc)}
+                return {
+                    "risk_level": "UNKNOWN",
+                    "vulnerabilities": [],
+                    "summary": "",
+                    "error": str(exc),
+                }
 
     async def run(self):
         """Main scan loop — runs forever, pushes events to queue"""
@@ -96,7 +116,9 @@ class ScannerAgent:
                         await self.queue.put(event)
 
                     self.scan_count += 1
-                    logger.info(f"Scan #{self.scan_count}: {len(events)} events from block {self.last_block}")
+                    logger.info(
+                        f"Scan #{self.scan_count}: {len(events)} events from block {self.last_block}"
+                    )
 
                 except Exception as e:
                     span.record_exception(e)
@@ -118,7 +140,11 @@ class ScannerAgent:
             try:
                 resp = await client.get(
                     f"{CSPR_CLOUD_URL}/transfers",
-                    params={"fields": "deploy_hash,from_purse,to_purse,amount,timestamp,block_height", "page": 1, "page_size": 100},
+                    params={
+                        "fields": "deploy_hash,from_purse,to_purse,amount,timestamp,block_height",
+                        "page": 1,
+                        "page_size": 100,
+                    },
                     headers=headers,
                 )
                 if resp.status_code == 200:
@@ -126,16 +152,22 @@ class ScannerAgent:
                     for transfer in data.get("data", []):
                         amount = int(transfer.get("amount", 0))
                         # Flag whale movements: > 100,000 CSPR (100B motes)
-                        event_type = "whale_movement" if amount > 100_000_000_000_000 else "token_transfer"
-                        events.append(RawEvent(
-                            event_type=event_type,
-                            address=transfer.get("from_purse", ""),
-                            amount_motes=amount,
-                            block_height=int(transfer.get("block_height", 0)),
-                            timestamp=int(time.time()),
-                            raw_data=transfer,
-                            source="cspr_cloud",
-                        ))
+                        event_type = (
+                            "whale_movement"
+                            if amount > 100_000_000_000_000
+                            else "token_transfer"
+                        )
+                        events.append(
+                            RawEvent(
+                                event_type=event_type,
+                                address=transfer.get("from_purse", ""),
+                                amount_motes=amount,
+                                block_height=int(transfer.get("block_height", 0)),
+                                timestamp=int(time.time()),
+                                raw_data=transfer,
+                                source="cspr_cloud",
+                            )
+                        )
             except Exception as e:
                 logger.warning(f"CSPR.cloud transfer fetch failed: {e}")
 
@@ -143,21 +175,27 @@ class ScannerAgent:
             try:
                 resp = await client.get(
                     f"{CSPR_CLOUD_URL}/deploys",
-                    params={"fields": "deploy_hash,caller_public_key,block_height,timestamp", "page": 1, "page_size": 50},
+                    params={
+                        "fields": "deploy_hash,caller_public_key,block_height,timestamp",
+                        "page": 1,
+                        "page_size": 50,
+                    },
                     headers=headers,
                 )
                 if resp.status_code == 200:
                     data = resp.json()
                     for deploy in data.get("data", []):
-                        events.append(RawEvent(
-                            event_type="contract_call",
-                            address=deploy.get("caller_public_key", ""),
-                            amount_motes=0,
-                            block_height=int(deploy.get("block_height", 0)),
-                            timestamp=int(time.time()),
-                            raw_data=deploy,
-                            source="cspr_cloud",
-                        ))
+                        events.append(
+                            RawEvent(
+                                event_type="contract_call",
+                                address=deploy.get("caller_public_key", ""),
+                                amount_motes=0,
+                                block_height=int(deploy.get("block_height", 0)),
+                                timestamp=int(time.time()),
+                                raw_data=deploy,
+                                source="cspr_cloud",
+                            )
+                        )
             except Exception as e:
                 logger.warning(f"CSPR.cloud deploy fetch failed: {e}")
 
@@ -177,7 +215,9 @@ class ScannerAgent:
             summary = [
                 {
                     "type": e.event_type,
-                    "address": e.address[:20] + "..." if len(e.address) > 20 else e.address,
+                    "address": e.address[:20] + "..."
+                    if len(e.address) > 20
+                    else e.address,
                     "amount_cspr": e.amount_motes / 1_000_000_000,
                     "block": e.block_height,
                 }
@@ -187,19 +227,19 @@ class ScannerAgent:
             try:
                 response = groq_client.chat.completions.create(
                     model="llama-3.1-8b-instant",
-                    messages=[{
-                        "role": "system",
-                        "content": (
-                            "You are a Casper blockchain event filter for VaultWatch DeFi risk system. "
-                            "Given a list of events, return a JSON array of indices (0-based) that are "
-                            "potentially suspicious or worth risk analysis. Focus on: large transfers (>10k CSPR), "
-                            "whale movements, rapid sequential deploys from same address, unusual staking changes. "
-                            "Return only a JSON array of integers, e.g. [0, 2, 5]. Return [] if nothing suspicious."
-                        )
-                    }, {
-                        "role": "user",
-                        "content": json.dumps(summary)
-                    }],
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": (
+                                "You are a Casper blockchain event filter for VaultWatch DeFi risk system. "
+                                "Given a list of events, return a JSON array of indices (0-based) that are "
+                                "potentially suspicious or worth risk analysis. Focus on: large transfers (>10k CSPR), "
+                                "whale movements, rapid sequential deploys from same address, unusual staking changes. "
+                                "Return only a JSON array of integers, e.g. [0, 2, 5]. Return [] if nothing suspicious."
+                            ),
+                        },
+                        {"role": "user", "content": json.dumps(summary)},
+                    ],
                     temperature=0.1,
                     max_tokens=256,
                 )

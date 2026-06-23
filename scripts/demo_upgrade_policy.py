@@ -22,25 +22,51 @@ from agents.audit_agent import AuditAgent
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("demo_upgrade_policy")
 
-RISK_POLICY_MANAGER_HASH = os.getenv("RISK_POLICY_MANAGER_HASH", "hash-mock-policy-manager")
+RISK_POLICY_MANAGER_HASH = os.getenv(
+    "RISK_POLICY_MANAGER_HASH", "hash-mock-policy-manager"
+)
 
 POLICY_UPGRADES = [
     {
         "policy_id": "default",
-        "old": {"max_tvl_drop_pct": 20.0, "min_liquidity_ratio": 0.10, "alert_threshold": 3},
-        "new": {"max_tvl_drop_pct": 15.0, "min_liquidity_ratio": 0.12, "alert_threshold": 2},
+        "old": {
+            "max_tvl_drop_pct": 20.0,
+            "min_liquidity_ratio": 0.10,
+            "alert_threshold": 3,
+        },
+        "new": {
+            "max_tvl_drop_pct": 15.0,
+            "min_liquidity_ratio": 0.12,
+            "alert_threshold": 2,
+        },
         "reason": "Tighten defaults after market volatility event",
     },
     {
         "policy_id": "strict",
-        "old": {"max_tvl_drop_pct": 10.0, "min_liquidity_ratio": 0.20, "alert_threshold": 1},
-        "new": {"max_tvl_drop_pct": 8.0, "min_liquidity_ratio": 0.25, "alert_threshold": 1},
+        "old": {
+            "max_tvl_drop_pct": 10.0,
+            "min_liquidity_ratio": 0.20,
+            "alert_threshold": 1,
+        },
+        "new": {
+            "max_tvl_drop_pct": 8.0,
+            "min_liquidity_ratio": 0.25,
+            "alert_threshold": 1,
+        },
         "reason": "Enforce stricter protocol protection",
     },
     {
         "policy_id": "permissive",
-        "old": {"max_tvl_drop_pct": 30.0, "min_liquidity_ratio": 0.05, "alert_threshold": 5},
-        "new": {"max_tvl_drop_pct": 25.0, "min_liquidity_ratio": 0.07, "alert_threshold": 4},
+        "old": {
+            "max_tvl_drop_pct": 30.0,
+            "min_liquidity_ratio": 0.05,
+            "alert_threshold": 5,
+        },
+        "new": {
+            "max_tvl_drop_pct": 25.0,
+            "min_liquidity_ratio": 0.07,
+            "alert_threshold": 4,
+        },
         "reason": "Apply new regulatory guidance",
     },
 ]
@@ -80,7 +106,9 @@ async def run_demo() -> None:
             args={
                 "policy_id": policy_id,
                 "max_tvl_drop_pct": int(upgrade["new"]["max_tvl_drop_pct"] * 100),
-                "min_liquidity_ratio": int(upgrade["new"]["min_liquidity_ratio"] * 10_000),
+                "min_liquidity_ratio": int(
+                    upgrade["new"]["min_liquidity_ratio"] * 10_000
+                ),
                 "alert_threshold": upgrade["new"]["alert_threshold"],
             },
         )

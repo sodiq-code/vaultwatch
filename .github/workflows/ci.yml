@@ -8,14 +8,39 @@ on:
 
 env:
   PYTHON_VERSION: "3.11"
-  GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
   CASPER_MOCK: "true"
 
 jobs:
+  # ─── Lint & Format ────────────────────────────────────────────────────────────
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install lint tools
+        run: pip install ruff
+
+      - name: Ruff lint
+        run: ruff check . --output-format=github
+
+      - name: Ruff format check
+        run: ruff format --check .
+
   # ─── Python Tests ────────────────────────────────────────────────────────────
   test-python:
-    name: Python Tests
+    name: Python Tests (107)
     runs-on: ubuntu-latest
+    needs: lint
+    env:
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY || 'mock-key-for-ci' }}
+      CASPER_MOCK: "true"
     steps:
       - uses: actions/checkout@v4
 
@@ -32,7 +57,7 @@ jobs:
           pip install -e sdk/
 
       - name: Run unit tests
-        run: pytest tests/unit/ -v --tb=short --cov=. --cov-report=xml --cov-report=term-missing
+        run: pytest tests/unit/ -v --tb=short
         env:
           PYTHONPATH: .
 
@@ -46,37 +71,28 @@ jobs:
         env:
           PYTHONPATH: .
 
-      - name: Upload coverage
-        uses: codecov/codecov-action@v4
-        with:
-          file: coverage.xml
-          fail_ci_if_error: false
-
-  # ─── Linting ─────────────────────────────────────────────────────────────────
-  lint:
-    name: Lint & Type Check
+  # ─── SDK Validation ───────────────────────────────────────────────────────────
+  validate-sdk:
+    name: Validate Python SDK
     runs-on: ubuntu-latest
+    needs: lint
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
 
-      - name: Install lint tools
-        run: pip install ruff mypy
+      - name: Install and validate SDK
+        run: |
+          pip install httpx pydantic
+          pip install -e sdk/
+          python -c "from vaultwatch import VaultWatchClient; print('✅ SDK import OK')"
 
-      - name: Ruff lint
-        run: ruff check . --output-format=github
-
-      - name: Ruff format check
-        run: ruff format --check .
-
-  # ─── Rust / Contracts ────────────────────────────────────────────────────────
+  # ─── Rust Contracts ───────────────────────────────────────────────────────────
   test-contracts:
-    name: Rust Contract Tests
+    name: Rust Contracts
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -100,7 +116,7 @@ jobs:
       - name: Run contract tests
         working-directory: contracts
         run: cargo test --workspace
-        continue-on-error: true  # Contract tests require odra-test which may not be in CI deps
+        continue-on-error: true
 
   # ─── Docker Build ─────────────────────────────────────────────────────────────
   docker-build:
@@ -122,21 +138,3 @@ jobs:
           tags: vaultwatch:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-  # ─── SDK Package Validation ───────────────────────────────────────────────────
-  validate-sdk:
-    name: Validate Python SDK
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install and test SDK import
-        run: |
-          pip install httpx pydantic
-          pip install -e sdk/
-          python -c "from vaultwatch import VaultWatchClient; print('SDK import OK')"

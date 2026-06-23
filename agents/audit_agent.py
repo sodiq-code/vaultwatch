@@ -41,8 +41,12 @@ class OnChainRecord:
 
 
 class AuditAgent:
-    def __init__(self, input_queue: asyncio.Queue = None, output_queue: asyncio.Queue = None,
-                 casper_client=None):
+    def __init__(
+        self,
+        input_queue: asyncio.Queue = None,
+        output_queue: asyncio.Queue = None,
+        casper_client=None,
+    ):
         self.input_queue = input_queue or asyncio.Queue()
         self.output_queue = output_queue or asyncio.Queue()
         self._casper = casper_client
@@ -54,10 +58,16 @@ class AuditAgent:
         """Record an audit entry on-chain (or mock). Returns deploy hash."""
         import time
         import hashlib
+
         with tracer.start_as_current_span("audit.record") as span:
             span.set_attribute("action", action)
             span.set_attribute("actor", actor)
-            entry = {"action": action, "actor": actor, "details": details, "timestamp": time.time()}
+            entry = {
+                "action": action,
+                "actor": actor,
+                "details": details,
+                "timestamp": time.time(),
+            }
             self._log.append(entry)
             if self._casper:
                 try:
@@ -91,7 +101,9 @@ class AuditAgent:
             safety_result: SafetyResult = await self.input_queue.get()
 
             if not safety_result.approved:
-                logger.info(f"AuditAgent SKIP (rejected by SafetyGuard): {safety_result.rejection_reason}")
+                logger.info(
+                    f"AuditAgent SKIP (rejected by SafetyGuard): {safety_result.rejection_reason}"
+                )
                 self.input_queue.task_done()
                 continue
 
@@ -134,7 +146,7 @@ class AuditAgent:
                             "agent_model": base.model_used,
                             "block_height": base.event.block_height,
                             "timestamp": timestamp,
-                        }
+                        },
                     )
 
                     oracle_tx = await self.casper_client.call_contract(
@@ -147,14 +159,20 @@ class AuditAgent:
                             "confidence": confidence_int,
                             "block_height": base.event.block_height,
                             "finding_id": 1,  # updated after audit_trail response
-                        }
+                        },
                     )
 
                     finding_id = audit_tx.get("finding_id", 0)
-                    span.set_attribute("audit.audit_trail_tx", audit_tx.get("deploy_hash", ""))
-                    span.set_attribute("audit.risk_oracle_tx", oracle_tx.get("deploy_hash", ""))
+                    span.set_attribute(
+                        "audit.audit_trail_tx", audit_tx.get("deploy_hash", "")
+                    )
+                    span.set_attribute(
+                        "audit.risk_oracle_tx", oracle_tx.get("deploy_hash", "")
+                    )
 
-                    logger.info(f"On-chain write SUCCESS: {audit_tx.get('deploy_hash', 'unknown')}")
+                    logger.info(
+                        f"On-chain write SUCCESS: {audit_tx.get('deploy_hash', 'unknown')}"
+                    )
 
                     return OnChainRecord(
                         finding=finding,
@@ -202,17 +220,19 @@ class AuditAgent:
         try:
             response = groq_client.chat.completions.create(
                 model="llama-3.1-8b-instant",
-                messages=[{
-                    "role": "user",
-                    "content": (
-                        f"Write a 1-sentence on-chain audit description (max 200 chars) for:\n"
-                        f"Risk: {base.risk_type} | Severity: {base.severity} | "
-                        f"Confidence: {base.confidence:.0%} | Address: {base.event.address[:20]} | "
-                        f"Amount: {base.event.amount_motes / 1_000_000_000:.0f} CSPR | "
-                        f"Reasoning: {base.reasoning[:100]}\n"
-                        f"Be factual and concise."
-                    )
-                }],
+                messages=[
+                    {
+                        "role": "user",
+                        "content": (
+                            f"Write a 1-sentence on-chain audit description (max 200 chars) for:\n"
+                            f"Risk: {base.risk_type} | Severity: {base.severity} | "
+                            f"Confidence: {base.confidence:.0%} | Address: {base.event.address[:20]} | "
+                            f"Amount: {base.event.amount_motes / 1_000_000_000:.0f} CSPR | "
+                            f"Reasoning: {base.reasoning[:100]}\n"
+                            f"Be factual and concise."
+                        ),
+                    }
+                ],
                 temperature=0.1,
                 max_tokens=64,
             )

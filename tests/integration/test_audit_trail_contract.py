@@ -14,7 +14,12 @@ def mock_client():
     client.call_contract.return_value = "deploy-hash-audit-001"
     client.query_contract_state.return_value = [
         {"id": 1, "action": "risk_alert", "actor": "pipeline", "details": "score=85"},
-        {"id": 2, "action": "policy_update", "actor": "admin", "details": "threshold=3"},
+        {
+            "id": 2,
+            "action": "policy_update",
+            "actor": "admin",
+            "details": "threshold=3",
+        },
     ]
     client.get_block_height.return_value = 42000
     return client
@@ -58,7 +63,9 @@ async def test_get_log_queries_contract(audit_agent, mock_client):
 @pytest.mark.asyncio
 async def test_multiple_records(audit_agent, mock_client):
     mock_client.call_contract.side_effect = [
-        "hash-001", "hash-002", "hash-003",
+        "hash-001",
+        "hash-002",
+        "hash-003",
     ]
     hashes = []
     for i in range(3):

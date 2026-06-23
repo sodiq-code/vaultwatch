@@ -81,6 +81,7 @@ async def test_prompt_injection_blocked(guard):
 @pytest.mark.asyncio
 async def test_concurrent_checks(guard):
     import asyncio
+
     with patch.object(guard, "_call_groq", new_callable=AsyncMock) as mock_groq:
         mock_groq.return_value = {"safe": True, "reason": "ok"}
         results = await asyncio.gather(*[guard.check(q) for q in SAFE_QUERIES])

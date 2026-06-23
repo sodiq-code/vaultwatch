@@ -50,7 +50,11 @@ async def test_assess_returns_dict(agent, treasury_asset):
 @pytest.mark.asyncio
 async def test_treasury_approved(agent, treasury_asset):
     with patch.object(agent, "_call_groq", new_callable=AsyncMock) as mock_groq:
-        mock_groq.return_value = {"verdict": "APPROVED", "risk_score": 10.0, "notes": ""}
+        mock_groq.return_value = {
+            "verdict": "APPROVED",
+            "risk_score": 10.0,
+            "notes": "",
+        }
         result = await agent.assess(treasury_asset)
     assert result.get("verdict") == "APPROVED"
 
@@ -58,7 +62,11 @@ async def test_treasury_approved(agent, treasury_asset):
 @pytest.mark.asyncio
 async def test_junk_bond_rejected(agent, junk_asset):
     with patch.object(agent, "_call_groq", new_callable=AsyncMock) as mock_groq:
-        mock_groq.return_value = {"verdict": "REJECTED", "risk_score": 91.0, "notes": "Sub-investment grade"}
+        mock_groq.return_value = {
+            "verdict": "REJECTED",
+            "risk_score": 91.0,
+            "notes": "Sub-investment grade",
+        }
         result = await agent.assess(junk_asset)
     assert result.get("verdict") == "REJECTED"
 
@@ -89,7 +97,11 @@ async def test_real_estate_asset(agent):
         "credit_rating": "BBB",
     }
     with patch.object(agent, "_call_groq", new_callable=AsyncMock) as mock_groq:
-        mock_groq.return_value = {"verdict": "APPROVED", "risk_score": 35.0, "notes": "Moderate RE exposure"}
+        mock_groq.return_value = {
+            "verdict": "APPROVED",
+            "risk_score": 35.0,
+            "notes": "Moderate RE exposure",
+        }
         result = await agent.assess(asset)
     assert "verdict" in result
 
@@ -105,7 +117,11 @@ async def test_undercollateralised_rejected(agent):
         "credit_rating": "B",
     }
     with patch.object(agent, "_call_groq", new_callable=AsyncMock) as mock_groq:
-        mock_groq.return_value = {"verdict": "REJECTED", "risk_score": 85.0, "notes": "Undercollateralised"}
+        mock_groq.return_value = {
+            "verdict": "REJECTED",
+            "risk_score": 85.0,
+            "notes": "Undercollateralised",
+        }
         result = await agent.assess(asset)
     assert result.get("verdict") == "REJECTED"
 
@@ -113,8 +129,13 @@ async def test_undercollateralised_rejected(agent):
 @pytest.mark.asyncio
 async def test_concurrent_assessments(agent, treasury_asset, junk_asset):
     import asyncio
+
     with patch.object(agent, "_call_groq", new_callable=AsyncMock) as mock_groq:
-        mock_groq.return_value = {"verdict": "APPROVED", "risk_score": 20.0, "notes": ""}
+        mock_groq.return_value = {
+            "verdict": "APPROVED",
+            "risk_score": 20.0,
+            "notes": "",
+        }
         results = await asyncio.gather(
             agent.assess(treasury_asset),
             agent.assess(junk_asset),

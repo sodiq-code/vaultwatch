@@ -47,11 +47,14 @@ async def test_demo_scenario_1_risk_query(agents):
     safety = agents["safety"]
     intel = agents["intel"]
 
-    query = "What is the current risk level for the Casper native CSPR staking protocol?"
+    query = (
+        "What is the current risk level for the Casper native CSPR staking protocol?"
+    )
 
-    with patch.object(safety, "_call_groq", new_callable=AsyncMock) as mock_safe, \
-         patch.object(intel, "_call_groq", new_callable=AsyncMock) as mock_intel:
-
+    with (
+        patch.object(safety, "_call_groq", new_callable=AsyncMock) as mock_safe,
+        patch.object(intel, "_call_groq", new_callable=AsyncMock) as mock_intel,
+    ):
         mock_safe.return_value = {"safe": True, "reason": "Legitimate risk query"}
         mock_intel.return_value = {
             "summary": "CSPR staking protocol has LOW risk. Native staking is secured by Casper's PoS mechanism.",
@@ -86,9 +89,10 @@ async def test_demo_scenario_2_anomaly_detection(agents):
         "liquidity_ratio": 0.04,
     }
 
-    with patch.object(anomaly, "_call_groq", new_callable=AsyncMock) as mock_a, \
-         patch.object(correction, "_call_groq", new_callable=AsyncMock) as mock_c:
-
+    with (
+        patch.object(anomaly, "_call_groq", new_callable=AsyncMock) as mock_a,
+        patch.object(correction, "_call_groq", new_callable=AsyncMock) as mock_c,
+    ):
         mock_a.return_value = {
             "risk_score": 82,
             "anomalies": ["volume_exceeds_tvl", "low_liquidity", "price_decline"],
@@ -114,7 +118,9 @@ async def test_demo_scenario_2_anomaly_detection(agents):
         )
         assert isinstance(deploy_hash, str)
 
-    print(f"\n[DEMO 2] Anomaly: score={result.risk_score}, action={corrected.get('action')}, audit_hash={deploy_hash[:16]}...")
+    print(
+        f"\n[DEMO 2] Anomaly: score={result.risk_score}, action={corrected.get('action')}, audit_hash={deploy_hash[:16]}..."
+    )
 
 
 @pytest.mark.asyncio
@@ -140,7 +146,9 @@ async def test_demo_scenario_3_rwa_assessment(agents):
         result = await rwa.assess(asset)
 
     assert result["verdict"] == "APPROVED"
-    print(f"\n[DEMO 3] RWA assessment: {result['verdict']} (score={result.get('risk_score')})")
+    print(
+        f"\n[DEMO 3] RWA assessment: {result['verdict']} (score={result.get('risk_score')})"
+    )
 
 
 @pytest.mark.asyncio
@@ -177,27 +185,44 @@ async def test_demo_scenario_5_full_pipeline_mock(agents, casper):
     # 2. Scan
     scanner = agents["scanner"]
     with patch.object(scanner, "_call_groq", new_callable=AsyncMock) as m:
-        m.return_value = {"risk_level": "LOW", "vulnerabilities": [], "summary": "Clean"}
+        m.return_value = {
+            "risk_level": "LOW",
+            "vulnerabilities": [],
+            "summary": "Clean",
+        }
         scan = await scanner.scan("CasperDex")
 
     # 3. Anomaly
     anomaly = agents["anomaly"]
     with patch.object(anomaly, "_call_groq", new_callable=AsyncMock) as m:
         m.return_value = {"risk_score": 22, "anomalies": [], "recommendation": "OK"}
-        anom = await anomaly.detect({
-            "protocol": "CasperDex", "tvl": 2e6, "volume_24h": 100_000,
-            "price_change_1h": 0.5, "num_transactions": 80, "liquidity_ratio": 0.6,
-        })
+        anom = await anomaly.detect(
+            {
+                "protocol": "CasperDex",
+                "tvl": 2e6,
+                "volume_24h": 100_000,
+                "price_change_1h": 0.5,
+                "num_transactions": 80,
+                "liquidity_ratio": 0.6,
+            }
+        )
 
     # 4. Intel
     intel = agents["intel"]
     with patch.object(intel, "_call_groq", new_callable=AsyncMock) as m:
-        m.return_value = {"summary": "Low risk", "risk_factors": [], "findings_count": 0, "confidence": 0.9}
+        m.return_value = {
+            "summary": "Low risk",
+            "risk_factors": [],
+            "findings_count": 0,
+            "confidence": 0.9,
+        }
         intel_result = await intel.analyze("CasperDex risk?", protocol="CasperDex")
 
     # 5. Audit
     audit = agents["audit"]
-    h = await audit.record(action="demo_complete", actor="test_suite", details="all_stages_passed")
+    h = await audit.record(
+        action="demo_complete", actor="test_suite", details="all_stages_passed"
+    )
 
     assert safe["safe"] is True
     assert scan["risk_level"] == "LOW"

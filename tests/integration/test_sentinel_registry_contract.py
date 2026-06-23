@@ -14,7 +14,9 @@ def mock_client():
     # Registry state mock
     _registry: dict = {}
 
-    def mock_call_contract(contract_hash, entry_point, args, payment_amount=5_000_000_000):
+    def mock_call_contract(
+        contract_hash, entry_point, args, payment_amount=5_000_000_000
+    ):
         if entry_point == "register_sentinel":
             _registry[args["sentinel_id"]] = {
                 "operator": args["operator"],
@@ -56,7 +58,9 @@ def test_query_registered_sentinel(mock_client):
         entry_point="register_sentinel",
         args={"sentinel_id": "sentinel-002", "operator": "account-xyz", "stake": 2000},
     )
-    state = mock_client.query_contract_state("hash-registry", ["sentinels", "sentinel-002"])
+    state = mock_client.query_contract_state(
+        "hash-registry", ["sentinels", "sentinel-002"]
+    )
     assert state is not None
     assert state["operator"] == "account-xyz"
     assert state["active"] is True
@@ -73,7 +77,9 @@ def test_deactivate_sentinel(mock_client):
         entry_point="deactivate_sentinel",
         args={"sentinel_id": "sentinel-003"},
     )
-    state = mock_client.query_contract_state("hash-registry", ["sentinels", "sentinel-003"])
+    state = mock_client.query_contract_state(
+        "hash-registry", ["sentinels", "sentinel-003"]
+    )
     assert state["active"] is False
 
 
@@ -82,7 +88,11 @@ def test_register_multiple_sentinels(mock_client):
         h = mock_client.call_contract(
             contract_hash="hash-registry",
             entry_point="register_sentinel",
-            args={"sentinel_id": f"bulk-{i:03d}", "operator": "account-bulk", "stake": 100 * i},
+            args={
+                "sentinel_id": f"bulk-{i:03d}",
+                "operator": "account-bulk",
+                "stake": 100 * i,
+            },
         )
         assert isinstance(h, str)
     assert mock_client.call_contract.call_count == 5
@@ -98,7 +108,9 @@ def test_unknown_entry_point(mock_client):
 
 
 def test_query_nonexistent_sentinel(mock_client):
-    state = mock_client.query_contract_state("hash-registry", ["sentinels", "no-such-sentinel"])
+    state = mock_client.query_contract_state(
+        "hash-registry", ["sentinels", "no-such-sentinel"]
+    )
     assert state is None
 
 

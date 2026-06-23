@@ -30,7 +30,9 @@ def agent_no_casper():
 
 @pytest.mark.asyncio
 async def test_record_returns_deploy_hash(agent):
-    result = await agent.record(action="test_action", actor="tester", details="unit test")
+    result = await agent.record(
+        action="test_action", actor="tester", details="unit test"
+    )
     assert isinstance(result, str)
     assert len(result) > 0
 
@@ -55,7 +57,9 @@ async def test_get_log_no_casper(agent_no_casper):
 
 @pytest.mark.asyncio
 async def test_record_action_stored(agent):
-    deploy_hash = await agent.record(action="policy_update", actor="admin", details="threshold=5")
+    deploy_hash = await agent.record(
+        action="policy_update", actor="admin", details="threshold=5"
+    )
     assert isinstance(deploy_hash, str)
     # Verify casper call was made
     if hasattr(agent, "_casper") and agent._casper:
@@ -66,7 +70,9 @@ async def test_record_action_stored(agent):
 async def test_audit_multiple_records(agent):
     hashes = []
     for i in range(5):
-        h = await agent.record(action=f"action_{i}", actor="system", details=f"detail_{i}")
+        h = await agent.record(
+            action=f"action_{i}", actor="system", details=f"detail_{i}"
+        )
         hashes.append(h)
     assert len(hashes) == 5
     assert all(isinstance(h, str) for h in hashes)

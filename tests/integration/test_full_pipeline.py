@@ -36,10 +36,18 @@ async def test_pipeline_queues_created(pipeline):
 
 @pytest.mark.asyncio
 async def test_scanner_worker_processes_event(pipeline):
-    event = {"type": "DeployProcessed", "deploy_hash": "abc123", "contract_package_hash": "test_proto"}
+    event = {
+        "type": "DeployProcessed",
+        "deploy_hash": "abc123",
+        "contract_package_hash": "test_proto",
+    }
 
     with patch.object(pipeline.scanner, "scan", new_callable=AsyncMock) as mock_scan:
-        mock_scan.return_value = {"risk_level": "LOW", "vulnerabilities": [], "summary": "ok"}
+        mock_scan.return_value = {
+            "risk_level": "LOW",
+            "vulnerabilities": [],
+            "summary": "ok",
+        }
         pipeline._running = True
         await pipeline.scanner_q.put(event)
         # Run worker as task, cancel after item is processed
@@ -60,9 +68,12 @@ async def test_scanner_worker_processes_event(pipeline):
 async def test_anomaly_worker_processes_event(pipeline):
     event = {"type": "DeployProcessed", "deploy_hash": "xyz789", "amount": "50000"}
 
-    with patch.object(pipeline.anomaly, "detect", new_callable=AsyncMock) as mock_detect:
+    with patch.object(
+        pipeline.anomaly, "detect", new_callable=AsyncMock
+    ) as mock_detect:
         from agents.anomaly_agent import AnomalyResult
         import time
+
         mock_detect.return_value = AnomalyResult(
             protocol="test_proto",
             risk_score=25.0,
@@ -121,8 +132,12 @@ async def test_high_risk_triggers_correction(pipeline):
         timestamp=time.time(),
     )
 
-    with patch.object(pipeline.anomaly, "detect", new_callable=AsyncMock) as mock_detect:
-        with patch.object(pipeline.audit, "record", new_callable=AsyncMock) as mock_record:
+    with patch.object(
+        pipeline.anomaly, "detect", new_callable=AsyncMock
+    ) as mock_detect:
+        with patch.object(
+            pipeline.audit, "record", new_callable=AsyncMock
+        ) as mock_record:
             mock_detect.return_value = high_risk_result
             mock_record.return_value = "hash"
             pipeline._running = True

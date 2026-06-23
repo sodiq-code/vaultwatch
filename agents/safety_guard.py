@@ -24,7 +24,7 @@ groq_client = Groq(api_key=os.getenv("GROQ_API_KEY", "mock-key-for-testing"))
 class SafetyResult:
     finding: EnrichedFinding
     approved: bool
-    safety_score: float    # 0.0 = safe, 1.0 = definitely malicious
+    safety_score: float  # 0.0 = safe, 1.0 = definitely malicious
     rejection_reason: str
     model_used: str
 
@@ -36,7 +36,9 @@ class SafetyGuard:
         self.policy_reader = policy_reader
         self.rejection_threshold = 0.80
         self._groq_key = groq_api_key or os.getenv("GROQ_API_KEY", "")
-        self._client = Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
+        self._client = (
+            Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
+        )
 
     async def _call_groq(self, prompt: str) -> dict:
         if not self._client:
@@ -44,7 +46,10 @@ class SafetyGuard:
         resp = self._client.chat.completions.create(
             model="llama-prompt-guard-2-86m",
             messages=[
-                {"role": "system", "content": "You are a content safety classifier for DeFi queries. Respond only with valid JSON."},
+                {
+                    "role": "system",
+                    "content": "You are a content safety classifier for DeFi queries. Respond only with valid JSON.",
+                },
                 {"role": "user", "content": prompt},
             ],
             response_format={"type": "json_object"},
@@ -77,7 +82,9 @@ class SafetyGuard:
         if self.policy_reader:
             try:
                 policy = await self.policy_reader()
-                self.rejection_threshold = policy.get("safety_rejection_threshold", 80) / 100
+                self.rejection_threshold = (
+                    policy.get("safety_rejection_threshold", 80) / 100
+                )
             except Exception:
                 pass
 
@@ -97,10 +104,7 @@ class SafetyGuard:
             try:
                 response = groq_client.chat.completions.create(
                     model="llama-prompt-guard-2-86m",
-                    messages=[{
-                        "role": "user",
-                        "content": content_to_check
-                    }],
+                    messages=[{"role": "user", "content": content_to_check}],
                     temperature=0.0,
                     max_tokens=64,
                 )
@@ -109,7 +113,11 @@ class SafetyGuard:
                 output = response.choices[0].message.content.lower()
 
                 # Parse safety signal
-                if "injection" in output or "jailbreak" in output or "malicious" in output:
+                if (
+                    "injection" in output
+                    or "jailbreak" in output
+                    or "malicious" in output
+                ):
                     safety_score = 0.95
                 elif "safe" in output or "benign" in output:
                     safety_score = 0.05
@@ -127,7 +135,9 @@ class SafetyGuard:
                     rejection_reason = f"Safety score {safety_score:.2f} exceeds threshold {self.rejection_threshold:.2f}"
                     logger.warning(f"SafetyGuard REJECTED: {rejection_reason}")
                 else:
-                    logger.info(f"SafetyGuard APPROVED: safety_score={safety_score:.2f}")
+                    logger.info(
+                        f"SafetyGuard APPROVED: safety_score={safety_score:.2f}"
+                    )
 
                 return SafetyResult(
                     finding=finding,

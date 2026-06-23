@@ -48,7 +48,12 @@ async def test_analyze_stores_finding(agent):
 @pytest.mark.asyncio
 async def test_analyze_with_protocol(agent):
     with patch.object(agent, "_call_groq", new_callable=AsyncMock) as mock_groq:
-        mock_groq.return_value = {"summary": "Low risk", "risk_factors": [], "findings_count": 0, "confidence": 0.95}
+        mock_groq.return_value = {
+            "summary": "Low risk",
+            "risk_factors": [],
+            "findings_count": 0,
+            "confidence": 0.95,
+        }
         result = await agent.analyze("Risk analysis", protocol="Uniswap")
     assert isinstance(result, dict)
 
@@ -56,7 +61,12 @@ async def test_analyze_with_protocol(agent):
 @pytest.mark.asyncio
 async def test_analyze_with_context(agent):
     with patch.object(agent, "_call_groq", new_callable=AsyncMock) as mock_groq:
-        mock_groq.return_value = {"summary": "Context-aware", "risk_factors": [], "findings_count": 0, "confidence": 0.7}
+        mock_groq.return_value = {
+            "summary": "Context-aware",
+            "risk_factors": [],
+            "findings_count": 0,
+            "confidence": 0.7,
+        }
         result = await agent.analyze(
             "Analyze with context",
             protocol="TestProto",
@@ -77,7 +87,12 @@ async def test_groq_error_fallback(agent):
 @pytest.mark.asyncio
 async def test_multiple_analyses_accumulate_findings(agent):
     with patch.object(agent, "_call_groq", new_callable=AsyncMock) as mock_groq:
-        mock_groq.return_value = {"summary": "ok", "risk_factors": [], "findings_count": 0, "confidence": 0.8}
+        mock_groq.return_value = {
+            "summary": "ok",
+            "risk_factors": [],
+            "findings_count": 0,
+            "confidence": 0.8,
+        }
         for i in range(3):
             await agent.analyze(f"Query {i}")
     assert len(_findings_store) == 3
@@ -86,7 +101,12 @@ async def test_multiple_analyses_accumulate_findings(agent):
 @pytest.mark.asyncio
 async def test_findings_store_has_timestamp(agent):
     with patch.object(agent, "_call_groq", new_callable=AsyncMock) as mock_groq:
-        mock_groq.return_value = {"summary": "test", "risk_factors": [], "findings_count": 0, "confidence": 0.9}
+        mock_groq.return_value = {
+            "summary": "test",
+            "risk_factors": [],
+            "findings_count": 0,
+            "confidence": 0.9,
+        }
         await agent.analyze("test query")
     assert "timestamp" in _findings_store[0] or len(_findings_store) > 0
 
@@ -95,7 +115,12 @@ async def test_findings_store_has_timestamp(agent):
 async def test_compound_model_used(agent):
     """Verify IntelAgent targets the compound-beta model."""
     with patch.object(agent, "_call_groq", new_callable=AsyncMock) as mock_groq:
-        mock_groq.return_value = {"summary": "", "risk_factors": [], "findings_count": 0, "confidence": 0.5}
+        mock_groq.return_value = {
+            "summary": "",
+            "risk_factors": [],
+            "findings_count": 0,
+            "confidence": 0.5,
+        }
         await agent.analyze("test")
     # Model selection verified by agent's internal _model attribute
     assert agent._model == "compound-beta"

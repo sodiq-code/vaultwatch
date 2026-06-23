@@ -41,7 +41,11 @@ async def test_scan_high_risk(agent):
 @pytest.mark.asyncio
 async def test_scan_with_contract_address(agent):
     with patch.object(agent, "_call_groq", new_callable=AsyncMock) as mock_groq:
-        mock_groq.return_value = {"risk_level": "MEDIUM", "vulnerabilities": [], "summary": ""}
+        mock_groq.return_value = {
+            "risk_level": "MEDIUM",
+            "vulnerabilities": [],
+            "summary": "",
+        }
         result = await agent.scan(
             protocol="TestProtocol",
             contract_address="hash-abc123",
@@ -79,7 +83,11 @@ async def test_scan_result_has_summary(agent):
 @pytest.mark.asyncio
 async def test_scan_casper_chain_tag(agent):
     with patch.object(agent, "_call_groq", new_callable=AsyncMock) as mock_groq:
-        mock_groq.return_value = {"risk_level": "LOW", "vulnerabilities": [], "summary": ""}
+        mock_groq.return_value = {
+            "risk_level": "LOW",
+            "vulnerabilities": [],
+            "summary": "",
+        }
         result = await agent.scan(protocol="P", chain="casper")
     # Chain should be referenced somewhere in the scan call
     assert isinstance(result, dict)
@@ -88,7 +96,11 @@ async def test_scan_casper_chain_tag(agent):
 @pytest.mark.asyncio
 async def test_multiple_scans(agent):
     with patch.object(agent, "_call_groq", new_callable=AsyncMock) as mock_groq:
-        mock_groq.return_value = {"risk_level": "LOW", "vulnerabilities": [], "summary": "ok"}
+        mock_groq.return_value = {
+            "risk_level": "LOW",
+            "vulnerabilities": [],
+            "summary": "ok",
+        }
         results = await asyncio.gather(
             agent.scan(protocol="A"),
             agent.scan(protocol="B"),

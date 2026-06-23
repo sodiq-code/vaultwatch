@@ -25,7 +25,7 @@ RECONNECT_DELAY = 5  # seconds between reconnects
 
 @dataclass
 class SidecarEvent:
-    event_type: str      # BlockAdded | TransactionProcessed | Fault | Step
+    event_type: str  # BlockAdded | TransactionProcessed | Fault | Step
     block_hash: Optional[str]
     block_height: Optional[int]
     timestamp: int
@@ -34,7 +34,12 @@ class SidecarEvent:
 
 
 class SidecarClient:
-    def __init__(self, event_handler: Callable = None, queue: Optional[asyncio.Queue] = None, url: str = ""):
+    def __init__(
+        self,
+        event_handler: Callable = None,
+        queue: Optional[asyncio.Queue] = None,
+        url: str = "",
+    ):
         """
         event_handler: async callable that receives SidecarEvent
         queue: optional asyncio.Queue — if provided, events are pushed here
@@ -58,6 +63,7 @@ class SidecarClient:
     async def stream(self):
         """Yield decoded event dicts. Auto-reconnects on error."""
         import json as _json
+
         async for raw in self._raw_stream():
             try:
                 event = _json.loads(raw)
@@ -90,7 +96,9 @@ class SidecarClient:
                                     pass  # event type hint — handled in data parsing
 
                 except httpx.ConnectError:
-                    logger.warning(f"SidecarClient: connection refused at {SIDECAR_SSE_URL}. Is Sidecar running?")
+                    logger.warning(
+                        f"SidecarClient: connection refused at {SIDECAR_SSE_URL}. Is Sidecar running?"
+                    )
                     span.set_attribute("sidecar.connect_error", True)
                 except httpx.RemoteProtocolError as e:
                     logger.warning(f"SidecarClient: protocol error: {e}")
@@ -101,7 +109,9 @@ class SidecarClient:
 
                 if self.running:
                     self.reconnect_count += 1
-                    logger.info(f"SidecarClient reconnecting in {RECONNECT_DELAY}s (attempt #{self.reconnect_count})")
+                    logger.info(
+                        f"SidecarClient reconnecting in {RECONNECT_DELAY}s (attempt #{self.reconnect_count})"
+                    )
                     await asyncio.sleep(RECONNECT_DELAY)
 
     async def _handle_line(self, data_str: str):
@@ -129,6 +139,7 @@ class SidecarClient:
                 if self.queue:
                     # Convert to scanner-compatible event if it's a transaction
                     from agents.scanner_agent import RawEvent
+
                     if event_type in ["TransactionProcessed", "DeployProcessed"]:
                         raw_evt = RawEvent(
                             event_type="contract_call",

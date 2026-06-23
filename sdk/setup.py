@@ -8,7 +8,9 @@ setup(
     name="vaultwatch",
     version="4.0.0",
     description="DeFi Risk Intelligence on Casper — Python SDK",
-    long_description=open("../README.md", encoding="utf-8").read() if __import__("os").path.exists("../README.md") else "",
+    long_description=open("../README.md", encoding="utf-8").read()
+    if __import__("os").path.exists("../README.md")
+    else "",
     long_description_content_type="text/markdown",
     author="VaultWatch",
     author_email="dev@vaultwatch.io",

@@ -22,6 +22,7 @@ try:
     from pycspr import NodeClient, NodeConnection, KeyAlgorithm  # type: ignore
     from pycspr.types import Deploy, ExecutableDeployItem  # type: ignore
     from pycspr.factory import create_deploy_parameters  # type: ignore
+
     _SDK_AVAILABLE = True
 except ImportError:  # pragma: no cover
     _SDK_AVAILABLE = False
@@ -51,9 +52,13 @@ class CasperContractClient:
         signing_key_path: str = "",
         mock: bool = False,
     ) -> None:
-        self.node_url = node_url or os.getenv("CASPER_NODE_URL", "http://localhost:7777")
+        self.node_url = node_url or os.getenv(
+            "CASPER_NODE_URL", "http://localhost:7777"
+        )
         self.chain_name = chain_name or os.getenv("CASPER_CHAIN_NAME", "casper-test")
-        self.signing_key_path = signing_key_path or os.getenv("CASPER_SIGNING_KEY_PATH", "")
+        self.signing_key_path = signing_key_path or os.getenv(
+            "CASPER_SIGNING_KEY_PATH", ""
+        )
         self.mock = mock or not _SDK_AVAILABLE
 
         self._client: Optional[Any] = None
@@ -68,10 +73,14 @@ class CasperContractClient:
 
     def _init_client(self) -> None:
         try:
-            conn = NodeConnection(host=self.node_url.replace("http://", "").split(":")[0],
-                                  port_rest=int(self.node_url.split(":")[-1]) if ":" in self.node_url else 7777,
-                                  port_rpc=8888,
-                                  port_sse=9999)
+            conn = NodeConnection(
+                host=self.node_url.replace("http://", "").split(":")[0],
+                port_rest=int(self.node_url.split(":")[-1])
+                if ":" in self.node_url
+                else 7777,
+                port_rpc=8888,
+                port_sse=9999,
+            )
             self._client = NodeClient(conn)
             logger.info("Casper node client initialised — %s", self.node_url)
         except Exception as exc:  # pragma: no cover
@@ -84,7 +93,10 @@ class CasperContractClient:
         if not self.signing_key_path:
             raise RuntimeError("No signing key path configured")
         from pycspr import parse_private_key  # type: ignore
-        self._account_key = parse_private_key(self.signing_key_path, KeyAlgorithm.ED25519)
+
+        self._account_key = parse_private_key(
+            self.signing_key_path, KeyAlgorithm.ED25519
+        )
         return self._account_key
 
     # ------------------------------------------------------------------
@@ -124,7 +136,10 @@ class CasperContractClient:
 
             if self.mock:
                 import hashlib
-                mock_hash = hashlib.sha256(f"{wasm_path}{time.time()}".encode()).hexdigest()
+
+                mock_hash = hashlib.sha256(
+                    f"{wasm_path}{time.time()}".encode()
+                ).hexdigest()
                 logger.info("[MOCK] deploy_contract -> %s", mock_hash)
                 span.set_attribute("mock", True)
                 span.set_attribute("deploy_hash", mock_hash)
@@ -165,8 +180,16 @@ class CasperContractClient:
 
             if self.mock:
                 import hashlib
-                mock_hash = hashlib.sha256(f"{contract_hash}{entry_point}{time.time()}".encode()).hexdigest()
-                logger.info("[MOCK] call_contract(%s::%s) -> %s", contract_hash, entry_point, mock_hash)
+
+                mock_hash = hashlib.sha256(
+                    f"{contract_hash}{entry_point}{time.time()}".encode()
+                ).hexdigest()
+                logger.info(
+                    "[MOCK] call_contract(%s::%s) -> %s",
+                    contract_hash,
+                    entry_point,
+                    mock_hash,
+                )
                 span.set_attribute("mock", True)
                 span.set_attribute("deploy_hash", mock_hash)
                 return mock_hash

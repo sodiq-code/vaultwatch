@@ -1,4 +1,5 @@
 """VaultWatch Agent Pipeline"""
+
 from .scanner_agent import ScannerAgent, RawEvent
 from .anomaly_agent import AnomalyAgent, AnomalyResult
 from .self_correction_agent import SelfCorrectionAgent, CorrectionResult
@@ -8,11 +9,18 @@ from .audit_agent import AuditAgent, OnChainRecord
 from .intel_agent import IntelAgent, IntelResponse
 
 __all__ = [
-    "ScannerAgent", "RawEvent",
-    "AnomalyAgent", "AnomalyResult",
-    "SelfCorrectionAgent", "CorrectionResult",
-    "RWAAgent", "EnrichedFinding",
-    "SafetyGuard", "SafetyResult",
-    "AuditAgent", "OnChainRecord",
-    "IntelAgent", "IntelResponse",
+    "ScannerAgent",
+    "RawEvent",
+    "AnomalyAgent",
+    "AnomalyResult",
+    "SelfCorrectionAgent",
+    "CorrectionResult",
+    "RWAAgent",
+    "EnrichedFinding",
+    "SafetyGuard",
+    "SafetyResult",
+    "AuditAgent",
+    "OnChainRecord",
+    "IntelAgent",
+    "IntelResponse",
 ]

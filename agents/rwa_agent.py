@@ -34,25 +34,41 @@ class EnrichedFinding:
 
 
 class RWAAgent:
-    def __init__(self, input_queue: asyncio.Queue = None, output_queue: asyncio.Queue = None, groq_api_key: str = ""):
+    def __init__(
+        self,
+        input_queue: asyncio.Queue = None,
+        output_queue: asyncio.Queue = None,
+        groq_api_key: str = "",
+    ):
         self.input_queue = input_queue or asyncio.Queue()
         self.output_queue = output_queue or asyncio.Queue()
         self._groq_key = groq_api_key or os.getenv("GROQ_API_KEY", "")
-        self._client = Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
+        self._client = (
+            Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
+        )
         self._assets: list = []
 
     async def _call_groq(self, prompt: str) -> dict:
         if not self._client:
-            return {"verdict": "REVIEW", "risk_score": 50.0, "notes": "No API key", "error": "no_key"}
+            return {
+                "verdict": "REVIEW",
+                "risk_score": 50.0,
+                "notes": "No API key",
+                "error": "no_key",
+            }
         resp = self._client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[
-                {"role": "system", "content": "You are a real-world asset risk analyst. Respond only with valid JSON."},
+                {
+                    "role": "system",
+                    "content": "You are a real-world asset risk analyst. Respond only with valid JSON.",
+                },
                 {"role": "user", "content": prompt},
             ],
             response_format={"type": "json_object"},
         )
         import json
+
         return json.loads(resp.choices[0].message.content)
 
     async def assess(self, asset_data: dict) -> dict:
@@ -66,11 +82,21 @@ class RWAAgent:
             try:
                 result = await self._call_groq(prompt)
                 result.setdefault("verdict", "REVIEW")
-                self._assets.append({"asset_id": asset_data.get("asset_id"), "asset_type": asset_data.get("asset_type")})
+                self._assets.append(
+                    {
+                        "asset_id": asset_data.get("asset_id"),
+                        "asset_type": asset_data.get("asset_type"),
+                    }
+                )
                 return result
             except Exception as exc:
                 logger.error("assess error: %s", exc)
-                return {"verdict": "REVIEW", "risk_score": 50.0, "notes": "", "error": str(exc)}
+                return {
+                    "verdict": "REVIEW",
+                    "risk_score": 50.0,
+                    "notes": "",
+                    "error": str(exc),
+                }
 
     async def list_assets(self) -> list:
         """Return all tracked RWA assets."""
@@ -86,16 +112,18 @@ class RWAAgent:
             except Exception as e:
                 logger.error(f"RWAAgent error: {e}")
                 # On failure, pass through with minimal enrichment
-                await self.output_queue.put(EnrichedFinding(
-                    base=result,
-                    rwa_context="RWA enrichment unavailable",
-                    collateral_signals=[],
-                    yield_data="",
-                    depeg_alerts=[],
-                    enriched=False,
-                    rwa_sources_count=0,
-                    enrichment_model="groq/compound",
-                ))
+                await self.output_queue.put(
+                    EnrichedFinding(
+                        base=result,
+                        rwa_context="RWA enrichment unavailable",
+                        collateral_signals=[],
+                        yield_data="",
+                        depeg_alerts=[],
+                        enriched=False,
+                        rwa_sources_count=0,
+                        enrichment_model="groq/compound",
+                    )
+                )
             finally:
                 self.input_queue.task_done()
 
@@ -121,12 +149,9 @@ class RWAAgent:
                             "Return JSON: "
                             '{"rwa_context": str, "collateral_signals": [str], "yield_data": str, '
                             '"depeg_alerts": [str], "sources_found": int}'
-                        )
+                        ),
                     },
-                    {
-                        "role": "user",
-                        "content": query
-                    }
+                    {"role": "user", "content": query},
                 ],
                 temperature=0.3,
                 max_tokens=1024,

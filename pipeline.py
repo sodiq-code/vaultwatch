@@ -118,7 +118,11 @@ class VaultWatchPipeline:
                         if event_type in ("Deploy", "DeployProcessed"):
                             await _put_nowait(self.scanner_q, event, "scanner_q")
                             await _put_nowait(self.anomaly_q, event, "anomaly_q")
-                            await _put_nowait(self.audit_q, {"action": "deploy_event", "data": event}, "audit_q")
+                            await _put_nowait(
+                                self.audit_q,
+                                {"action": "deploy_event", "data": event},
+                                "audit_q",
+                            )
 
                         # Block events go to intel
                         elif event_type in ("Block", "BlockAdded"):
@@ -155,10 +159,16 @@ class VaultWatchPipeline:
                 with tracer.start_as_current_span("pipeline.scanner"):
                     protocol = _extract_protocol(event)
                     result = await self.scanner.scan(protocol=protocol, chain="casper")
-                    logger.debug("Scanner result for %s: %s", protocol, result.get("risk_level"))
+                    logger.debug(
+                        "Scanner result for %s: %s", protocol, result.get("risk_level")
+                    )
                     # High-risk scans get forwarded to intel
                     if result.get("risk_level") in ("HIGH", "CRITICAL"):
-                        await _put_nowait(self.intel_q, {"type": "scanner_alert", "scan": result}, "intel_q")
+                        await _put_nowait(
+                            self.intel_q,
+                            {"type": "scanner_alert", "scan": result},
+                            "intel_q",
+                        )
             except Exception as exc:
                 logger.error("Scanner worker error: %s", exc)
             finally:
@@ -196,7 +206,9 @@ class VaultWatchPipeline:
         logger.info("Self-correction worker started")
         while self._running:
             try:
-                anomaly_result = await asyncio.wait_for(self.correction_q.get(), timeout=1.0)
+                anomaly_result = await asyncio.wait_for(
+                    self.correction_q.get(), timeout=1.0
+                )
             except asyncio.TimeoutError:
                 continue
             except asyncio.CancelledError:
@@ -246,7 +258,10 @@ class VaultWatchPipeline:
                 with tracer.start_as_current_span("pipeline.intel"):
                     query = _event_to_query(event)
                     result = await self.intel.analyze(query)
-                    logger.debug("Intel analysis complete — findings: %d", result.get("findings_count", 0))
+                    logger.debug(
+                        "Intel analysis complete — findings: %d",
+                        result.get("findings_count", 0),
+                    )
             except Exception as exc:
                 logger.error("Intel worker error: %s", exc)
             finally:
@@ -309,6 +324,7 @@ class VaultWatchPipeline:
 # ---------------------------------------------------------------------------
 # Event extraction helpers
 # ---------------------------------------------------------------------------
+
 
 def _extract_protocol(event: Dict[str, Any]) -> str:
     return (

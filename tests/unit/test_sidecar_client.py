@@ -42,7 +42,7 @@ async def test_stream_yields_events(client):
 async def test_stream_handles_invalid_json(client):
     """stream() should skip invalid JSON lines."""
     raw_lines = [
-        b'INVALID_JSON',
+        b"INVALID_JSON",
         b'{"type": "BlockAdded"}',
     ]
 
@@ -63,6 +63,7 @@ async def test_stream_handles_invalid_json(client):
 @pytest.mark.asyncio
 async def test_stream_empty(client):
     """stream() with no events should yield nothing."""
+
     async def mock_raw_stream():
         return
         yield  # make it an async generator
@@ -78,6 +79,7 @@ async def test_stream_empty(client):
 @pytest.mark.asyncio
 async def test_stream_reconnects_on_error(client):
     """stream() propagates errors; pipeline handles reconnect."""
+
     async def failing_raw_stream():
         raise ConnectionError("SSE server down")
         yield  # make it a generator

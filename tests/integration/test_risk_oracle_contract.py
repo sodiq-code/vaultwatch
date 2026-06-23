@@ -85,7 +85,9 @@ async def test_anomaly_to_oracle_flow(mock_client, anomaly_agent):
 async def test_oracle_batch_update(mock_client):
     """Simulate updating multiple protocols in the oracle."""
     protocols = ["Aave", "Compound", "Uniswap", "Curve", "MakerDAO"]
-    mock_client.call_contract.side_effect = [f"hash-{i:03d}" for i in range(len(protocols))]
+    mock_client.call_contract.side_effect = [
+        f"hash-{i:03d}" for i in range(len(protocols))
+    ]
 
     hashes = []
     for proto in protocols:
@@ -102,6 +104,8 @@ async def test_oracle_batch_update(mock_client):
 
 def test_oracle_contract_hash_format():
     """Contract hash should follow Casper naming convention."""
-    contract_hash = "hash-a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"
+    contract_hash = (
+        "hash-a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"
+    )
     assert contract_hash.startswith("hash-")
     assert len(contract_hash) > 10

@@ -87,7 +87,9 @@ async def run_demo() -> None:
         print(f"\n[{i}/{len(RWA_ASSETS)}] {asset['description']}")
         print(f"  ID: {asset['asset_id']}")
         print(f"  Type: {asset['asset_type']} | Issuer: {asset['issuer']}")
-        print(f"  Collateral: {asset['collateral_ratio']:.2f}x | Rating: {asset['credit_rating']}")
+        print(
+            f"  Collateral: {asset['collateral_ratio']:.2f}x | Rating: {asset['credit_rating']}"
+        )
         print(f"  Maturity: {asset['maturity_days']}d")
         print("-" * 50)
 
@@ -111,18 +113,20 @@ async def run_demo() -> None:
             details=f"asset_id={asset['asset_id']} verdict={verdict} score={risk_score}",
         )
 
-        results_summary.append({
-            "asset": asset["description"],
-            "verdict": verdict,
-            "risk_score": risk_score,
-        })
+        results_summary.append(
+            {
+                "asset": asset["description"],
+                "verdict": verdict,
+                "risk_score": risk_score,
+            }
+        )
 
     # Summary table
     print("\n" + "=" * 70)
     print("  ASSESSMENT SUMMARY")
     print("=" * 70)
     print(f"  {'Asset':<40} {'Verdict':<12} {'Score'}")
-    print(f"  {'-'*40} {'-'*12} {'-'*5}")
+    print(f"  {'-' * 40} {'-' * 12} {'-' * 5}")
     for r in results_summary:
         icon = "✓" if r["verdict"] == "APPROVED" else "✗"
         print(f"  [{icon}] {r['asset']:<38} {r['verdict']:<12} {r['risk_score']}")

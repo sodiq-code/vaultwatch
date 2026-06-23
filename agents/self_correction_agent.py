@@ -28,31 +28,48 @@ class CorrectionResult:
     original: AnomalyResult
     final_result: AnomalyResult
     retry_count: int
-    passed: bool           # True = forward to RWAAgent. False = SKIP
+    passed: bool  # True = forward to RWAAgent. False = SKIP
     skip_reason: Optional[str] = None
 
 
 class SelfCorrectionAgent:
-    def __init__(self, input_queue: asyncio.Queue = None, output_queue: asyncio.Queue = None,
-                 policy_reader=None, groq_api_key: str = ""):
+    def __init__(
+        self,
+        input_queue: asyncio.Queue = None,
+        output_queue: asyncio.Queue = None,
+        policy_reader=None,
+        groq_api_key: str = "",
+    ):
         self.input_queue = input_queue or asyncio.Queue()
         self.output_queue = output_queue or asyncio.Queue()
         self.policy_reader = policy_reader
         self._groq_key = groq_api_key or os.getenv("GROQ_API_KEY", "")
-        self._client = Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
+        self._client = (
+            Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
+        )
 
     async def _call_groq(self, prompt: str) -> dict:
         if not self._client:
-            return {"corrected_score": 0.0, "confidence": 0.5, "reasoning": "no_key", "action": "none", "error": "no_key"}
+            return {
+                "corrected_score": 0.0,
+                "confidence": 0.5,
+                "reasoning": "no_key",
+                "action": "none",
+                "error": "no_key",
+            }
         resp = self._client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[
-                {"role": "system", "content": "You are a DeFi risk validator. Respond only with valid JSON."},
+                {
+                    "role": "system",
+                    "content": "You are a DeFi risk validator. Respond only with valid JSON.",
+                },
                 {"role": "user", "content": prompt},
             ],
             response_format={"type": "json_object"},
         )
         import json
+
         return json.loads(resp.choices[0].message.content)
 
     async def correct(self, anomaly_result: "AnomalyResult") -> dict:
@@ -70,12 +87,19 @@ class SelfCorrectionAgent:
                 result = await self._call_groq(prompt)
                 # Clamp score
                 if "corrected_score" in result:
-                    result["corrected_score"] = min(100.0, max(0.0, float(result["corrected_score"])))
+                    result["corrected_score"] = min(
+                        100.0, max(0.0, float(result["corrected_score"]))
+                    )
                 result.setdefault("protocol", anomaly_result.protocol)
                 return result
             except Exception as exc:
                 logger.error("correct error: %s", exc)
-                return {"corrected_score": anomaly_result.risk_score, "confidence": 0.0, "error": str(exc), "action": "none"}
+                return {
+                    "corrected_score": anomaly_result.risk_score,
+                    "confidence": 0.0,
+                    "error": str(exc),
+                    "action": "none",
+                }
 
     async def run(self):
         logger.info("SelfCorrectionAgent started")
@@ -122,11 +146,15 @@ class SelfCorrectionAgent:
             # Low confidence — enter retry loop
             current = result
             for attempt in range(max_retries):
-                logger.info(f"SelfCorrection retry {attempt + 1}/{max_retries} — confidence {current.confidence:.2f} < {threshold}")
+                logger.info(
+                    f"SelfCorrection retry {attempt + 1}/{max_retries} — confidence {current.confidence:.2f} < {threshold}"
+                )
                 current = await self._retry_with_context(current, attempt + 1)
                 if current.confidence >= threshold:
                     span.set_attribute("correction.retry_count", attempt + 1)
-                    span.set_attribute("correction.final_confidence", current.confidence)
+                    span.set_attribute(
+                        "correction.final_confidence", current.confidence
+                    )
                     span.set_attribute("correction.result", "PASSED_AFTER_RETRY")
                     return CorrectionResult(
                         original=result,
@@ -139,7 +167,9 @@ class SelfCorrectionAgent:
             span.set_attribute("correction.retry_count", max_retries)
             span.set_attribute("correction.final_confidence", current.confidence)
             span.set_attribute("correction.result", "SKIPPED")
-            logger.info(f"SelfCorrection SKIP: confidence {current.confidence:.2f} after {max_retries} retries")
+            logger.info(
+                f"SelfCorrection SKIP: confidence {current.confidence:.2f} after {max_retries} retries"
+            )
 
             return CorrectionResult(
                 original=result,
@@ -149,7 +179,9 @@ class SelfCorrectionAgent:
                 skip_reason=f"Confidence {current.confidence:.2f} below threshold {threshold} after {max_retries} retries",
             )
 
-    async def _retry_with_context(self, result: AnomalyResult, attempt: int) -> AnomalyResult:
+    async def _retry_with_context(
+        self, result: AnomalyResult, attempt: int
+    ) -> AnomalyResult:
         """Re-query with additional context to improve confidence"""
         with tracer.start_as_current_span("selfcorrection.retry") as span:
             span.set_attribute("correction.attempt", attempt)
@@ -165,7 +197,7 @@ class SelfCorrectionAgent:
                             "If evidence is genuinely insufficient, set confidence to 0.3 and risk_type to 'benign'. "
                             "Respond with valid JSON only:\n"
                             '{"risk_type": str, "severity": str, "confidence": float, "reasoning": str}'
-                        )
+                        ),
                     },
                     {
                         "role": "user",
@@ -181,8 +213,8 @@ class SelfCorrectionAgent:
                             f"Amount: {result.event.amount_motes / 1_000_000_000:.2f} CSPR\n"
                             f"Block: {result.event.block_height}\n\n"
                             "Re-classify with improved confidence. Be decisive."
-                        )
-                    }
+                        ),
+                    },
                 ],
                 temperature=0.1,
                 max_tokens=512,
@@ -195,6 +227,7 @@ class SelfCorrectionAgent:
             try:
                 parsed = json.loads(content)
                 from .anomaly_agent import AnomalyResult
+
                 return AnomalyResult(
                     event=result.event,
                     risk_type=parsed.get("risk_type", result.risk_type),
