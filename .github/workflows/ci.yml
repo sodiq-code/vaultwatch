@@ -53,7 +53,12 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install -r requirements.txt
+          # Install stable packages first, then pre-release otel instrumentation
+          pip install groq fastapi "uvicorn[standard]" pydantic httpx aiohttp
+          pip install opentelemetry-api opentelemetry-sdk
+          pip install --pre opentelemetry-instrumentation-fastapi
+          pip install fastmcp pycspr
+          pip install pytest pytest-asyncio pytest-cov python-dotenv
           pip install -e sdk/
 
       - name: Run unit tests

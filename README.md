@@ -2,7 +2,7 @@
 
 **AI-Powered DeFi Risk Intelligence Agent on Casper**
 
-VaultWatch is a production-grade DeFi risk monitoring and intelligence platform built natively on the Casper blockchain. Six Groq-powered AI agents continuously monitor on-chain activity, classify anomalies in real time, and write verified findings to eight Odra smart contracts on testnet — all instrumented end-to-end with OpenTelemetry and served via a 15-tool FastMCP server callable from Claude Desktop.
+VaultWatch is a production-grade DeFi risk monitoring and intelligence platform built natively on the Casper blockchain. Six Groq-powered AI agents continuously monitor on-chain activity, classify anomalies in real time, and write verified findings to eight Odra smart contracts — all instrumented end-to-end with OpenTelemetry and served via a 15-tool FastMCP server callable from Claude Desktop.
 
 **Casper Agentic Buildathon 2026** · **Deadline: July 1, 2026**
 
@@ -11,7 +11,7 @@ VaultWatch is a production-grade DeFi risk monitoring and intelligence platform 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![Casper Testnet](https://img.shields.io/badge/casper-testnet%20live-orange.svg)](https://testnet.cspr.live/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-success.svg)](LICENSE)
-[![Contracts](https://img.shields.io/badge/contracts-8%2F8%20deployed-success.svg)](deploy_hashes.json)
+[![Contracts](https://img.shields.io/badge/contracts-8%2F8%20compiled-blue.svg)](contracts/wasm/)
 
 ---
 
@@ -21,8 +21,8 @@ VaultWatch is a production-grade DeFi risk monitoring and intelligence platform 
 |---|---|
 | **Hackathon** | [Casper Agentic Buildathon 2026](https://dorahacks.io/hackathon/casper-agentic-buildathon/detail) |
 | **Repository** | https://github.com/sodiq-code/vaultwatch |
-| **Network** | Casper Testnet — all 8 contracts live (June 22, 2026) |
-| **Status** | ✅ Code complete · ✅ Contracts deployed · ⏳ Demo video (June 28) |
+| **Network** | Casper Testnet (casper-test) |
+| **Status** | ✅ Code complete · ✅ 8 contracts compiled to WASM · ⏳ Demo video |
 
 ---
 
@@ -90,7 +90,7 @@ VaultWatch is a production-grade DeFi risk monitoring and intelligence platform 
 | Feature | Description |
 |---------|-------------|
 | **AgentBehaviorIndex (on-chain)** | Every AI agent's decisions are scored on-chain — confidence averages, correction rates, false positive history. Live trust score for the AI system itself. No other Casper submission has this. |
-| **RiskPolicyManager (hot-swap)** | Risk thresholds upgradable without contract redeployment. `npm run demo:upgrade-policy` changes policy live on testnet and agents adapt instantly. |
+| **RiskPolicyManager (hot-swap)** | Risk thresholds upgradable without contract redeployment. `npm run demo:upgrade-policy` updates policy and agents adapt instantly — no redeployment. |
 | **Self-Correction Loop** | Low-confidence findings trigger a re-query with expanded context (max 2 retries). If still below threshold → SKIP. Nothing garbage reaches the chain. |
 | **Groq Compound + Casper SSE** | Two live data streams in one pipeline — real-time on-chain events + live web intelligence via Groq Compound. |
 | **x402 Pay-per-Query** | SubscriberVault contract holds prepaid CSPR balance. Each MCP query deducts from balance. Real subscription model, on-chain. |
@@ -99,22 +99,22 @@ VaultWatch is a production-grade DeFi risk monitoring and intelligence platform 
 
 ---
 
-## 🔗 Live Deployment — All 8 Contracts on Casper Testnet
+## 🔗 Smart Contracts — Casper Testnet
 
-**Deployed June 22, 2026 · Verified on-chain**
+**8 contracts written in Rust (Odra 2.8.0), compiled to WASM**
 
-| # | Contract | Deploy Hash | Testnet Explorer |
-|----|----------|-------------|-----------------|
-| 1 | **AuditTrail** | `27249e7838f2b144...df8041fb` | [testnet.cspr.live](https://testnet.cspr.live/deploy/27249e7838f2b14443ebd3b0aa461608675e36e6ef3a954af431b5f2df8041fb) |
-| 2 | **RiskOracle** | `68ef325d2b3a0f54...1f426c55` | [testnet.cspr.live](https://testnet.cspr.live/deploy/68ef325d2b3a0f544467d8624e5042e428cd40258009777ffcdc568c1f426c55) |
-| 3 | **SentinelCredit** | `b6466009e65ac07a...24c8e6d9` | [testnet.cspr.live](https://testnet.cspr.live/deploy/b6466009e65ac07a7ab7a26b3c5f0f600a6dc4c1efeaf96ea105000d24c8e6d9) |
-| 4 | **SentinelRegistry** | `71398513bc183652...e46b07562` | [testnet.cspr.live](https://testnet.cspr.live/deploy/71398513bc183652549d46f4ea3d5319a7614cc55ce6c5378302150e46b07562) |
-| 5 | **SentinelAlertLog** | `8f762ab42f0da419...cb597693` | [testnet.cspr.live](https://testnet.cspr.live/deploy/8f762ab42f0da419ace4d99259893165a8483ad376d524b15ba76355cb597693) |
-| 6 | **AgentBehaviorIndex** | `665c1bd2937f8840...3d823171` | [testnet.cspr.live](https://testnet.cspr.live/deploy/665c1bd2937f88403806a1e3cd4fc9de7b931baa6cbc9b87bd05b6b23d823171) |
-| 7 | **RiskPolicyManager** | `14284d5c3f3acf47...f819d874` | [testnet.cspr.live](https://testnet.cspr.live/deploy/14284d5c3f3acf47dab65df94bbe982cdc787ff38245154521810f7cf819d874) |
-| 8 | **SubscriberVault** | `2fb6b5b699216d46...a7a1b009` | [testnet.cspr.live](https://testnet.cspr.live/deploy/2fb6b5b699216d4662701b9d54101bb3740b3a10c62d8f7aaf5f0703a7a1b009) |
+| # | Contract | Purpose | WASM Artifact |
+|----|----------|---------|---------------|
+| 1 | **AuditTrail** | Immutable on-chain audit log for all agent actions | [AuditTrail.wasm](contracts/wasm/AuditTrail.wasm) |
+| 2 | **RiskOracle** | Stores and retrieves DeFi risk scores on-chain | [RiskOracle.wasm](contracts/wasm/RiskOracle.wasm) |
+| 3 | **SentinelCredit** | Credit scoring for DeFi protocols | [SentinelCredit.wasm](contracts/wasm/SentinelCredit.wasm) |
+| 4 | **SentinelRegistry** | Registry for monitored protocols and agents | [SentinelRegistry.wasm](contracts/wasm/SentinelRegistry.wasm) |
+| 5 | **SentinelAlertLog** | On-chain alert storage and retrieval | [SentinelAlertLog.wasm](contracts/wasm/SentinelAlertLog.wasm) |
+| 6 | **AgentBehaviorIndex** | Tracks AI agent behavior patterns on-chain | [AgentBehaviorIndex.wasm](contracts/wasm/AgentBehaviorIndex.wasm) |
+| 7 | **RiskPolicyManager** | Governance for risk thresholds and policies | [RiskPolicyManager.wasm](contracts/wasm/RiskPolicyManager.wasm) |
+| 8 | **SubscriberVault** | Holds prepaid CSPR for x402 pay-per-query billing | [SubscriberVault.wasm](contracts/wasm/SubscriberVault.wasm) |
 
-Full hashes: [`deploy_hashes.json`](deploy_hashes.json)
+WASM artifacts: [`contracts/wasm/`](contracts/wasm/) · Contract source: [`contracts/src/`](contracts/src/)
 
 ---
 
@@ -280,7 +280,7 @@ tools = [
 
 ## 📦 Smart Contracts
 
-All 8 contracts written in Rust with the [Odra framework](https://odra.dev), compiled to WASM, deployed to Casper testnet.
+All 8 contracts written in Rust with the [Odra framework](https://odra.dev), compiled to WASM, ready for Casper testnet deployment.
 
 | Contract | Role | Key Innovation |
 |----------|------|----------------|
@@ -450,7 +450,7 @@ vaultwatch/
 │
 ├── pipeline.py                   # Main agent pipeline orchestrator
 ├── casper_client.py              # Casper Python SDK wrapper
-├── deploy_hashes.json            # All 8 live contract deploy hashes
+├── deploy_hashes.json            # Contract deploy hash references
 ├── docker-compose.yml
 ├── Dockerfile
 ├── requirements.txt
