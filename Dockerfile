@@ -14,7 +14,10 @@ WORKDIR /app
 
 # Copy requirements first (Docker cache layer)
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install in two passes: stable packages, then pre-release otel instrumentation
+RUN pip install --no-cache-dir groq fastapi "uvicorn[standard]" pydantic httpx aiohttp \
+    opentelemetry-api opentelemetry-sdk fastmcp pycspr python-dotenv && \
+    pip install --no-cache-dir --pre opentelemetry-instrumentation-fastapi
 
 # Copy project
 COPY . .
