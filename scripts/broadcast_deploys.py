@@ -1,34 +1,35 @@
 #!/usr/bin/env python3
 """
 VaultWatch — Deploy Broadcaster
-Broadcasts pre-signed deploy JSON files to Casper testnet.
-Run this from a machine with network access to rpc.testnet.casperlabs.io.
+Broadcasts pre-signed deploy JSON files to Casper testnet via cspr.cloud.
 
 Usage:
-    python scripts/broadcast_deploys.py [--node-url https://rpc.testnet.casperlabs.io]
+    python scripts/broadcast_deploys.py
 """
 
 from __future__ import annotations
 
-import asyncio
 import json
 import sys
 import time
 import logging
-import argparse
+import os
 from pathlib import Path
+
+import requests
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("broadcast_deploys")
 
-from pycspr import NodeRpcClient, NodeRpcConnectionInfo
 from pycspr import serializer as rpc_serializer
 from pycspr.types.node.rpc.complex import Deploy
 
 DEPLOYS_DIR = Path(__file__).parent.parent / "deploys"
-NODE_URL = "https://rpc.testnet.casperlabs.io/rpc"
+NODE_URL = "https://node.testnet.cspr.cloud/rpc"
+API_KEY  = "019ef63a-5ffc-7657-8627-d7436d9f0e8c"
+HEADERS  = {"Content-Type": "application/json", "Authorization": API_KEY}
 
 CONTRACT_ORDER = [
     "AuditTrail",
@@ -42,58 +43,64 @@ CONTRACT_ORDER = [
 ]
 
 
-def make_client(node_url: str) -> NodeRpcClient:
-    url = node_url.replace("https://", "").replace("http://", "").split("/")[0]
-    host = url.split(":")[0]
-    port = int(url.split(":")[-1]) if ":" in url else 443
-    conn = NodeRpcConnectionInfo(host=host, port=port)
-    return NodeRpcClient(conn)
+def rpc_call(method: str, params: dict) -> dict:
+    payload = {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}
+    resp = requests.post(NODE_URL, json=payload, headers=HEADERS, timeout=30)
+    resp.raise_for_status()
+    data = resp.json()
+    if "error" in data:
+        raise RuntimeError(f"RPC error: {data['error']}")
+    return data.get("result", {})
 
 
-async def wait_for_deploy(client: NodeRpcClient, deploy_hash: str, timeout: int = 120) -> bool:
+def wait_for_deploy(deploy_hash: str, timeout: int = 120) -> bool:
     deadline = time.time() + timeout
     while time.time() < deadline:
         try:
-            result = await client.get_deploy(deploy_hash)
+            result = rpc_call("info_get_deploy", {"deploy_hash": deploy_hash})
             if result.get("execution_results"):
                 return True
         except Exception:
             pass
-        await asyncio.sleep(5)
+        time.sleep(5)
     return False
 
 
-async def broadcast_all(node_url: str) -> dict:
-    client = make_client(node_url)
+def broadcast_all() -> dict:
     results = {}
 
     for name in CONTRACT_ORDER:
         deploy_path = DEPLOYS_DIR / f"{name}_deploy.json"
         if not deploy_path.exists():
-            logger.warning("Deploy file not found: %s — run export_signed_deploys.py first", deploy_path)
+            logger.warning("Deploy file not found: %s", deploy_path)
             continue
 
         logger.info("Broadcasting %s...", name)
         deploy_json = json.loads(deploy_path.read_text())
 
-        # Reconstruct deploy from JSON and put it
+        # deploy JSON is flat — no nested 'deploy' key
+        raw = deploy_json.get("deploy", deploy_json)
+
         try:
-            deploy_payload = deploy_json.get("deploy", deploy_json)
-            deploy_hash = await client.account_put_deploy(
-                rpc_serializer.from_json(deploy_payload, Deploy)
-            )
+            # Reconstruct pycspr Deploy object then re-serialize for RPC
+            deploy_obj = rpc_serializer.from_json(Deploy, raw)
+            deploy_dict = rpc_serializer.to_json(deploy_obj)
+
+            result = rpc_call("account_put_deploy", {"deploy": deploy_dict})
+            deploy_hash = result.get("deploy_hash", "")
             if hasattr(deploy_hash, "hex"):
                 deploy_hash = deploy_hash.hex()
             deploy_hash = str(deploy_hash)
+
             logger.info("%s broadcast — hash: %s", name, deploy_hash)
             results[name] = deploy_hash
 
-            logger.info("Waiting for %s to be included...", name)
-            ok = await wait_for_deploy(client, deploy_hash, timeout=120)
+            logger.info("Waiting for %s to be included (up to 120s)...", name)
+            ok = wait_for_deploy(deploy_hash, timeout=120)
             if ok:
                 logger.info("%s CONFIRMED on-chain!", name)
             else:
-                logger.warning("%s not yet confirmed after 120s — hash saved, check explorer", name)
+                logger.warning("%s not confirmed after 120s — hash saved, check explorer", name)
 
         except Exception as exc:
             logger.error("Failed to broadcast %s: %s", name, exc)
@@ -101,25 +108,21 @@ async def broadcast_all(node_url: str) -> dict:
 
     # Save results
     out = Path(__file__).parent.parent / "deploy_hashes_live.json"
-    out.write_text(json.dumps(results, indent=2))
-    logger.info("Results saved to %s", out)
+    # Only overwrite with successful hashes
+    good = {k: v for k, v in results.items() if not str(v).startswith("FAILED")}
+    if good:
+        out.write_text(json.dumps(good, indent=2))
+        logger.info("Results saved to %s", out)
 
     print("\n" + "=" * 60)
     print("BROADCAST SUMMARY")
     print("=" * 60)
     for name, h in results.items():
-        status = "OK" if not str(h).startswith("FAILED") else "FAIL"
-        print(f"  [{status}] {name:<25} {h[:32]}...")
+        status = "OK  " if not str(h).startswith("FAILED") else "FAIL"
+        print(f"  [{status}] {name:<25} {str(h)[:56]}")
     print("=" * 60)
     return results
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--node-url", default=NODE_URL, help="Casper node RPC URL")
-    args = parser.parse_args()
-    asyncio.run(broadcast_all(args.node_url))
-
-
 if __name__ == "__main__":
-    main()
+    broadcast_all()
