@@ -1,0 +1,33 @@
+{
+  "name": "casper-sentinel-mcp",
+  "version": "4.0.0",
+  "description": "VaultWatch MCP server — DeFi risk intelligence tools for Claude Desktop and any MCP client",
+  "main": "index.js",
+  "bin": {
+    "casper-sentinel-mcp": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [
+    "casper",
+    "defi",
+    "risk",
+    "mcp",
+    "model-context-protocol",
+    "claude",
+    "ai-agents",
+    "blockchain",
+    "vaultwatch"
+  ],
+  "author": "VaultWatch <dev@vaultwatch.io>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sodiq-code/vaultwatch"
+  },
+  "homepage": "https://github.com/sodiq-code/vaultwatch#mcp-tools",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

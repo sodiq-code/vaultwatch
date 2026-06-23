@@ -1,15 +1,17 @@
 """
-VaultWatch Python SDK — PyPI package setup.
+casper-sentinel — VaultWatch Python SDK
+pip install casper-sentinel
 """
 
 from setuptools import setup, find_packages
+import os
 
 setup(
-    name="vaultwatch",
+    name="casper-sentinel",
     version="4.0.0",
     description="DeFi Risk Intelligence on Casper — Python SDK",
-    long_description=open("../README.md", encoding="utf-8").read()
-    if __import__("os").path.exists("../README.md")
+    long_description=open(os.path.join(os.path.dirname(__file__), "..", "README.md"), encoding="utf-8").read()
+    if os.path.exists(os.path.join(os.path.dirname(__file__), "..", "README.md"))
     else "",
     long_description_content_type="text/markdown",
     author="VaultWatch",
@@ -37,8 +39,12 @@ setup(
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Topic :: Software Development :: Libraries :: Python Modules",
-        "Topic :: Internet :: WWW/HTTP",
     ],
-    keywords="casper defi risk intelligence blockchain sdk vaultwatch",
+    keywords="casper defi risk intelligence blockchain sdk vaultwatch sentinel",
+    project_urls={
+        "Source": "https://github.com/sodiq-code/vaultwatch",
+        "Dashboard": "https://dashboard-rho-amber-89.vercel.app",
+    },
 )
