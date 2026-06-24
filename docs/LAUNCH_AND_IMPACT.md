@@ -10,9 +10,9 @@
 
 VaultWatch is a production-grade, AI-native DeFi risk intelligence platform built natively on the Casper blockchain. Six Groq-powered agents continuously monitor on-chain activity, classify anomalies, score agent behavior, and write cryptographically verifiable findings to eight Odra smart contracts — exposing all results through a live dashboard, a published Python SDK, and a 15-tool MCP server callable from any Claude Desktop instance.
 
-The platform is fully deployed, not a prototype. Eight contracts are live on `casper-test`. Two packages are published to public registries. A CI pipeline runs 130 tests on every commit. A Vercel-hosted dashboard provides real-time risk intelligence to any user with a browser.
+Eight contracts are live on `casper-test`. Two packages are published to public registries. A CI pipeline runs 130 tests on every commit. A Vercel-hosted dashboard provides real-time risk intelligence to any user with a browser.
 
-The long-term trajectory is direct: VaultWatch becomes the canonical on-chain risk infrastructure layer for every protocol, vault, and institution operating on Casper — and, over time, a cross-chain risk standard powered by the Casper AI Toolkit.
+The long-term trajectory: VaultWatch becomes the canonical on-chain risk infrastructure layer for every protocol, vault, and institution operating on Casper — and, over time, a cross-chain risk standard powered by the Casper AI Toolkit.
 
 ---
 
@@ -26,7 +26,7 @@ DeFi protocols operating on Casper today have no shared, on-chain risk intellige
 - **No RWA risk coverage.** As Casper targets regulated real-world asset tokenization, no tool exists to assess RWA collateral risk on-chain.
 - **No pay-per-query primitive.** Subscriptions to risk data are handled via Web2 billing; no on-chain escrow or x402 micropayment flow exists for risk intelligence queries.
 
-VaultWatch closes all five gaps in a single, composable stack.
+All five gaps are addressed in a single, composable stack.
 
 ---
 
@@ -77,7 +77,7 @@ Real-time risk intelligence powered by Groq `llama-3.3-70b-versatile`, live CSPR
 All Phase 1 milestones are already delivered:
 
 - [x] 8 Odra smart contracts deployed to Casper testnet
-- [x] 6-agent AI pipeline (ScannerAgent, AnomalyAgent, SelfCorrectionAgent, RWAAgent, SafetyGuard, AuditAgent, IntelAgent)
+- [x] 6-agent AI pipeline (ScannerAgent, AnomalyAgent, SelfCorrectionAgent, RWAAgent, SafetyGuard, AuditAgent)
 - [x] Python SDK published to PyPI (`casper-sentinel 4.0.0`)
 - [x] MCP server published to npm (`casper-sentinel-mcp`) — 15 tools callable from Claude Desktop
 - [x] Live React dashboard deployed to Vercel with real-time Groq AI + on-chain data
@@ -148,7 +148,7 @@ The `RWAAgent` (currently in the AI pipeline) becomes a fully-featured on-chain 
 Every RWA assessment is written to the Casper `AuditTrail` contract — providing regulators with a timestamped, tamper-proof record of risk surveillance activity.
 
 #### 3.2 Casper Accelerate Grant Application
-Apply to the $25M Casper Accelerate Grant Program for continued development funding. Grant proposal targets:
+Q3 2026 grant application to the $25M Casper Accelerate Grant Program. Proposed scope:
 - Full-time protocol partnership team
 - Enterprise API tier (SLA-backed, dedicated endpoints)
 - Cross-chain risk data bridge (Casper ↔ Ethereum RWA markets)
@@ -159,7 +159,7 @@ As Casper's Agent Infrastructure initiative reaches production (target: 2026/202
 - Protocol-native spending limits for AI agent accounts
 - Session-key-bounded risk query permissions
 
-This positions VaultWatch as the first risk intelligence service natively consumable by autonomous AI agents operating on Casper — not just by human users via a dashboard.
+When Casper's agent infrastructure reaches mainnet, VaultWatch is the first risk intelligence service natively consumable by autonomous AI agents on Casper — with on-chain escrow, per-query credit deduction, and scoped session keys already deployed on testnet.
 
 ---
 
@@ -189,7 +189,7 @@ VaultWatch's contribution to Casper ecosystem growth operates across four distin
 
 Every DeFi protocol on Casper currently operates without a shared risk standard. VaultWatch installs that standard directly into the chain via publicly readable smart contracts. `RiskOracle` is queryable by any Casper dApp — it is not a closed API. Any protocol that reads `RiskOracle` inherits VaultWatch's risk scoring without integration overhead.
 
-This means **VaultWatch's value to the ecosystem compounds with each new Casper protocol**. As more protocols launch and TVL grows, the shared risk baseline becomes more informative, and the cost of individual risk monitoring falls across the entire ecosystem.
+As more protocols launch and TVL grows, the shared risk baseline becomes more informative and the cost of individual risk monitoring falls across the entire ecosystem — network effects built into the contract architecture.
 
 ### 4.2 AI Agent Economy Enablement
 
@@ -205,7 +205,7 @@ When Casper's agent infrastructure reaches mainnet, VaultWatch is the only deplo
 
 The Casper Manifest identifies regulated real-world asset tokenization as a primary institutional market. Institutions tokenizing assets on Casper need assurance that risk surveillance exists. VaultWatch's `RWAAgent` and `RiskPolicyManager` provide that assurance in a form that regulators can verify: a timestamped, on-chain audit trail of every risk assessment performed.
 
-This is not peripheral. Without credible on-chain risk infrastructure, institutional adoption of Casper for RWA tokenization faces a fundamental trust gap. VaultWatch closes that gap.
+Without credible on-chain risk infrastructure, institutional adoption of Casper for RWA tokenization faces a verifiable trust deficit. VaultWatch's `RWAAgent` and `AuditTrail` contract directly address that requirement.
 
 The global DeFi security market is valued at $4.8 billion in 2025, projected to reach $22.6 billion by 2034 at 18.7% CAGR (Dataintelo, 2025). On-chain risk scoring specifically was valued at $1.21 billion in 2024 (MarketIntelo, 2024). Casper is currently underpenetrated in both markets. VaultWatch is positioned to become Casper's primary contributor to that segment.
 
@@ -223,7 +223,7 @@ VaultWatch produces three categories of reusable ecosystem artifacts:
 
 **CI/CD template** — the GitHub Actions pipeline (lint → unit → integration → contract → Docker) is usable as a starting template for any Casper project.
 
-Every developer who forks, studies, or adapts VaultWatch's codebase contributes to Casper ecosystem density. This is compounding, not linear.
+Every developer who forks, studies, or adapts VaultWatch's codebase contributes to Casper ecosystem density — each adoption amplifies the baseline rather than duplicating effort.
 
 ---
 
@@ -265,7 +265,7 @@ Every pillar of the Casper Manifest roadmap maps directly to an existing or plan
 | **Native Token Registry** | Planned (2026/2027) | `RiskOracle` becomes a queryable risk layer for all registered tokens |
 | **Quantum Safety** | Planned (2027) | VaultWatch's pluggable key system is forward-compatible with ML-DSA-44 |
 
-VaultWatch is not built adjacent to the Casper roadmap — it is built to make the Casper roadmap more useful to every developer, protocol, and institution that depends on it.
+Each VaultWatch capability is sequenced directly against a confirmed Casper protocol initiative — not adjacent to the roadmap, but load-bearing within it.
 
 ---
 
@@ -283,11 +283,11 @@ VaultWatch is not built adjacent to the Casper roadmap — it is built to make t
 
 ## 8. Summary
 
-VaultWatch is the only deployed, end-to-end, AI-native DeFi risk intelligence platform on the Casper blockchain. It is live, tested, and publicly verifiable today.
+VaultWatch is the only deployed, end-to-end, AI-native DeFi risk intelligence platform on the Casper blockchain — live, tested, and publicly verifiable on the Casper testnet explorer.
 
-The long-term trajectory closes the risk infrastructure gap that currently limits DeFi growth on Casper, enables the AI agent economy the Casper Manifest is building toward, and provides the RWA risk surveillance layer that institutional adoption requires.
+The long-term roadmap addresses the risk infrastructure gap that limits DeFi growth on Casper, enables the AI agent economy the Casper Manifest is building toward, and delivers the RWA risk surveillance layer that institutional adoption requires.
 
-Every milestone in this plan is either already delivered or directly sequenced off a confirmed Casper protocol initiative. The foundation is not a pitch — it is already on-chain.
+Every milestone is either already delivered or sequenced directly off a confirmed Casper protocol initiative.
 
 ---
 
