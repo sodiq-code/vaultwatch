@@ -14,25 +14,10 @@ VaultWatch is a production-grade DeFi risk monitoring and intelligence platform 
 
 ---
 
-## 🎬 Demo Video
-
-**Watch the 3:10 demo on YouTube:**  
-▶️ **[VaultWatch: AI-Powered DeFi Risk Intelligence on Casper](https://youtu.be/kbPUBWRKxlQ)**
-
-The video showcases:
-- Risk Intelligence Module (natural language query → 6 concurrent AI agents)
-- Agent Pipeline Findings (real-time protocol monitoring)
-- RWA Assessment (real-world asset evaluation)
-- Live Agent Feed (streaming agent events)
-- Chain Status (live testnet data + deployed contracts)
-
----
-
 ## Submission Details
 
 | | |
 |---|---|
-| **YouTube Demo** | https://youtu.be/kbPUBWRKxlQ |
 | **Live Dashboard** | https://dashboard-rho-amber-89.vercel.app |
 | **Python SDK (PyPI)** | https://pypi.org/project/casper-sentinel/4.0.0/ |
 | **MCP Package (npm)** | https://www.npmjs.com/package/casper-sentinel-mcp |

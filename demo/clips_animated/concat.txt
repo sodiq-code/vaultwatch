@@ -1,7 +1,0 @@
-file '/home/user/vaultwatch/demo/clips_animated/s1_title.mp4'
-file '/home/user/vaultwatch/demo/clips_animated/s2_risk.mp4'
-file '/home/user/vaultwatch/demo/clips_animated/s3_pipeline.mp4'
-file '/home/user/vaultwatch/demo/clips_animated/s4_rwa.mp4'
-file '/home/user/vaultwatch/demo/clips_animated/s5_livefeed.mp4'
-file '/home/user/vaultwatch/demo/clips_animated/s6_chain.mp4'
-file '/home/user/vaultwatch/demo/clips_animated/s7_outro.mp4'

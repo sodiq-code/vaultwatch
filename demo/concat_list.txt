@@ -1,8 +1,0 @@
-file '/home/user/vaultwatch/demo/seg_00.mp4'
-file '/home/user/vaultwatch/demo/seg_01.mp4'
-file '/home/user/vaultwatch/demo/seg_02.mp4'
-file '/home/user/vaultwatch/demo/seg_03.mp4'
-file '/home/user/vaultwatch/demo/seg_04.mp4'
-file '/home/user/vaultwatch/demo/seg_05.mp4'
-file '/home/user/vaultwatch/demo/seg_06.mp4'
-file '/home/user/vaultwatch/demo/seg_07.mp4'
