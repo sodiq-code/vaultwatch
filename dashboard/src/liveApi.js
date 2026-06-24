@@ -14,7 +14,7 @@ const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 // cspr.cloud public testnet API — no key needed for basic queries
 const CSPR_CLOUD_BASE = 'https://event-store-api-clarity-testnet.make.services'
 
-// Real contract deploy hashes on Casper Testnet (signed & broadcast Jun 23 2026)
+// Real contract deploy hashes on Casper Testnet (signed & broadcast Jun 24 2026)
 export const CONTRACT_HASHES = {
   AuditTrail:         'f06e33573efbe1c8db658b4ab37db4c0ef7996ba02bfd8378049ada251e8e102',
   RiskOracle:         'fb877bae9a273ce74886a68d772841f9089503d802d106bb93bd018f7ef5e98a',

@@ -2,24 +2,24 @@
 
 **Repository**: https://github.com/sodiq-code/vaultwatch  
 **Network**: Casper Testnet (`casper-test`)  
-**Deployer**: `0202c223a43185563f404720fbb7028305cd79d6046ffdf7b746cfa42294c43db1d0`
+**Deployer**: `0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116`
 
 ---
 
 ## 1. Smart Contracts on Casper Testnet
 
-All 8 Odra contracts were compiled to WASM and deployed to `casper-test` on June 23, 2026.
+All 8 Odra contracts were compiled to WASM and deployed to `casper-test` on June 24, 2026.
 
 | Contract | Deploy Hash | Testnet Link |
 |----------|-------------|--------------|
-| AuditTrail | `9be661d1ed21ac8d762233108ec57b0a8a9e50580ad7b82066cd5690f69a86c4` | [testnet.cspr.live](https://testnet.cspr.live/deploy/9be661d1ed21ac8d762233108ec57b0a8a9e50580ad7b82066cd5690f69a86c4) |
-| RiskOracle | `c8341d32cb40667a3c61f8b49389104e211ad1ae57833c79a084d5bbf805f541` | [testnet.cspr.live](https://testnet.cspr.live/deploy/c8341d32cb40667a3c61f8b49389104e211ad1ae57833c79a084d5bbf805f541) |
-| SentinelCredit | `2101c5c55305fd5fb23fdf3c24029dc493fa07c5722e006313525eec80a0b8c6` | [testnet.cspr.live](https://testnet.cspr.live/deploy/2101c5c55305fd5fb23fdf3c24029dc493fa07c5722e006313525eec80a0b8c6) |
-| SentinelRegistry | `bb722bbd2ac8698419e59fd87f86e52d0ac59cae0e7542f2efa7a3cefdeb6acc` | [testnet.cspr.live](https://testnet.cspr.live/deploy/bb722bbd2ac8698419e59fd87f86e52d0ac59cae0e7542f2efa7a3cefdeb6acc) |
-| SentinelAlertLog | `e98ca94c5f88474019b7459a3203d0ca3cb0cf2ae594e2c0ee2042f948f0fa50` | [testnet.cspr.live](https://testnet.cspr.live/deploy/e98ca94c5f88474019b7459a3203d0ca3cb0cf2ae594e2c0ee2042f948f0fa50) |
-| AgentBehaviorIndex | `6061dfdeb871f932375da817032f2c890eaf85b77f07a77a6d81811871c79928` | [testnet.cspr.live](https://testnet.cspr.live/deploy/6061dfdeb871f932375da817032f2c890eaf85b77f07a77a6d81811871c79928) |
-| RiskPolicyManager | `5b4a65a946f96edd1673d379557356b0e8c1e2ac75efbdd591eaeb436ba61e6e` | [testnet.cspr.live](https://testnet.cspr.live/deploy/5b4a65a946f96edd1673d379557356b0e8c1e2ac75efbdd591eaeb436ba61e6e) |
-| SubscriberVault | `340557ddf3509f15aca0e94216aa419f083bdf2b3241ad2773a5feda079fb1f7` | [testnet.cspr.live](https://testnet.cspr.live/deploy/340557ddf3509f15aca0e94216aa419f083bdf2b3241ad2773a5feda079fb1f7) |
+| AuditTrail | `f06e33573efbe1c8db658b4ab37db4c0ef7996ba02bfd8378049ada251e8e102` | [testnet.cspr.live](https://testnet.cspr.live/deploy/f06e33573efbe1c8db658b4ab37db4c0ef7996ba02bfd8378049ada251e8e102) |
+| SentinelRegistry | `d9c8c5eff41f81e659c907255c48813ad56303634dbb4d8fb1e2b0df4ae48622` | [testnet.cspr.live](https://testnet.cspr.live/deploy/d9c8c5eff41f81e659c907255c48813ad56303634dbb4d8fb1e2b0df4ae48622) |
+| RiskOracle | `fb877bae9a273ce74886a68d772841f9089503d802d106bb93bd018f7ef5e98a` | [testnet.cspr.live](https://testnet.cspr.live/deploy/fb877bae9a273ce74886a68d772841f9089503d802d106bb93bd018f7ef5e98a) |
+| SentinelCredit | `01cfe8d1e596859aa81954a6bf4792961c3c7587e6df2e4ce7d98bc802c7a403` | [testnet.cspr.live](https://testnet.cspr.live/deploy/01cfe8d1e596859aa81954a6bf4792961c3c7587e6df2e4ce7d98bc802c7a403) |
+| AgentBehaviorIndex | `162a4f5ff991b7eceb8aa38ff3c2a2beb27dc2007a8c499602d372563cdc63a9` | [testnet.cspr.live](https://testnet.cspr.live/deploy/162a4f5ff991b7eceb8aa38ff3c2a2beb27dc2007a8c499602d372563cdc63a9) |
+| SentinelAlertLog | `45dbc90b56dc40e419d9da7b6a972fc6027ea0125065d6a1ddfa0c9394eb42c7` | [testnet.cspr.live](https://testnet.cspr.live/deploy/45dbc90b56dc40e419d9da7b6a972fc6027ea0125065d6a1ddfa0c9394eb42c7) |
+| RiskPolicyManager | `048dcfe5ca296101eb7aa11694165b321f7a42c2c8d560aeddd628f4c08c8b1a` | [testnet.cspr.live](https://testnet.cspr.live/deploy/048dcfe5ca296101eb7aa11694165b321f7a42c2c8d560aeddd628f4c08c8b1a) |
+| SubscriberVault | `786b611f007e410aa2d8d8ed47b267ea6e9bb3c7d343003c3dad3ba0d3fd35f0` | [testnet.cspr.live](https://testnet.cspr.live/deploy/786b611f007e410aa2d8d8ed47b267ea6e9bb3c7d343003c3dad3ba0d3fd35f0) |
 
 ---
 

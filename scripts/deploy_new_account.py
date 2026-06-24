@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
-VaultWatch — Deploy with New Funded Account
-Account: 0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116
-Balance: 5000 CSPR on testnet
+VaultWatch — Contract Deployer Script
+Deploys all 8 Odra/WASM contracts to Casper Testnet (casper-test).
+
+Deployer Account: 0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116
 
 Usage:
     # Option A: Provide secret key as hex (32 bytes = 64 hex chars)
@@ -11,8 +12,10 @@ Usage:
     # Option B: Provide path to secret_key.pem file
     python scripts/deploy_new_account.py --key-path /path/to/secret_key.pem
 
-    # Option C: Drop your secret_key.pem in the repo root and run:
+    # Option C: Place secret_key.pem in the repo root and run:
     python scripts/deploy_new_account.py
+
+Output is saved to deploy_hashes_live.json in the repo root.
 """
 
 from __future__ import annotations

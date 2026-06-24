@@ -24,8 +24,7 @@ VaultWatch is a production-grade DeFi risk monitoring and intelligence platform 
 | **Python SDK (PyPI)** | https://pypi.org/project/casper-sentinel/4.0.0/ |
 | **MCP Package (npm)** | https://www.npmjs.com/package/casper-sentinel-mcp |
 | **Network** | Casper Testnet (`casper-test`) |
-| **Deployer Account** | [`0202c223a4318556…b1d0`](https://testnet.cspr.live/account/0202c223a43185563f404720fbb7028305cd79d6046ffdf7b746cfa42294c43db1d0) |
-| **Total Deploys** | 32 deploys from this account on casper-test |
+| **Deployer Account** | [`0202c27a6d17a12a…ea2116`](https://testnet.cspr.live/account/0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116) |
 
 ---
 
@@ -33,30 +32,30 @@ VaultWatch is a production-grade DeFi risk monitoring and intelligence platform 
 
 Everything below is independently verifiable on the Casper testnet explorer.
 
-### Deployer Account — 32 On-Chain Transactions
+### Deployer Account
 
 All contract deployments came from this funded testnet account:
 
 ```
-0202c223a43185563f404720fbb7028305cd79d6046ffdf7b746cfa42294c43db1d0
+0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116
 ```
 
-🔗 **[View account on testnet.cspr.live →](https://testnet.cspr.live/account/0202c223a43185563f404720fbb7028305cd79d6046ffdf7b746cfa42294c43db1d0)**
+🔗 **[View account on testnet.cspr.live →](https://testnet.cspr.live/account/0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116)**
 
 ### 8 Deployed Odra Contracts
 
-8 Rust/WASM contracts compiled with Odra 2.8.0 and deployed on June 23, 2026:
+8 Rust/WASM contracts compiled with Odra 2.8.0 and deployed on June 24, 2026:
 
 | Contract | Deploy Hash | Explorer Link |
 |----------|-------------|---------------|
-| **AuditTrail** | `82adc658…6746a` | [→ testnet.cspr.live](https://testnet.cspr.live/deploy/82adc6584d762029478cb1abcfcba7f73e5ebbac81263383d56570897806746a) |
-| **RiskOracle** | `8769112d…de23b` | [→ testnet.cspr.live](https://testnet.cspr.live/deploy/8769112dc526ba2b50848ad3801f983f5770a1d0e549c84f387f48e250ede23b) |
-| **SentinelCredit** | `6f35b4ab…3d5a` | [→ testnet.cspr.live](https://testnet.cspr.live/deploy/6f35b4ab2bad2086715f4987ddd5c269bcb2c363fd5b3a546964d60363203d5a) |
-| **SentinelRegistry** | `118bbcb7…200f` | [→ testnet.cspr.live](https://testnet.cspr.live/deploy/118bbcb70fb67fc2128e8bcbca342a3f1d0b7f0584c9fdac19f3d41620df200f) |
-| **SentinelAlertLog** | `e2c6d27a…c14a` | [→ testnet.cspr.live](https://testnet.cspr.live/deploy/e2c6d27a29f2c0362654cac67e59aba7b96ba5dfacf2277ced0dab2c67bcc14a) |
-| **AgentBehaviorIndex** | `f1fc0feb…9cfc` | [→ testnet.cspr.live](https://testnet.cspr.live/deploy/f1fc0feb247e5f6d0c7f8a520a37c8cfb41d575abed62b4db06b7a720c1a9cfc) |
-| **RiskPolicyManager** | `e79cbc22…f802` | [→ testnet.cspr.live](https://testnet.cspr.live/deploy/e79cbc22219c65d95d08955c64f5f8f3bf87671d17f002ec51ee9553242df802) |
-| **SubscriberVault** | `18a9d7ea…aa7e1` | [→ testnet.cspr.live](https://testnet.cspr.live/deploy/18a9d7ea2e48a6c21ebeb881d927447ce63e367517a7050c7f4252c5284aa7e1) |
+| **AuditTrail** | `f06e3357…8e102` | [→ testnet.cspr.live](https://testnet.cspr.live/deploy/f06e33573efbe1c8db658b4ab37db4c0ef7996ba02bfd8378049ada251e8e102) |
+| **SentinelRegistry** | `d9c8c5ef…48622` | [→ testnet.cspr.live](https://testnet.cspr.live/deploy/d9c8c5eff41f81e659c907255c48813ad56303634dbb4d8fb1e2b0df4ae48622) |
+| **RiskOracle** | `fb877bae…e98a` | [→ testnet.cspr.live](https://testnet.cspr.live/deploy/fb877bae9a273ce74886a68d772841f9089503d802d106bb93bd018f7ef5e98a) |
+| **SentinelCredit** | `01cfe8d1…a403` | [→ testnet.cspr.live](https://testnet.cspr.live/deploy/01cfe8d1e596859aa81954a6bf4792961c3c7587e6df2e4ce7d98bc802c7a403) |
+| **AgentBehaviorIndex** | `162a4f5f…c63a9` | [→ testnet.cspr.live](https://testnet.cspr.live/deploy/162a4f5ff991b7eceb8aa38ff3c2a2beb27dc2007a8c499602d372563cdc63a9) |
+| **SentinelAlertLog** | `45dbc90b…b42c7` | [→ testnet.cspr.live](https://testnet.cspr.live/deploy/45dbc90b56dc40e419d9da7b6a972fc6027ea0125065d6a1ddfa0c9394eb42c7) |
+| **RiskPolicyManager** | `048dcfe5…b1a` | [→ testnet.cspr.live](https://testnet.cspr.live/deploy/048dcfe5ca296101eb7aa11694165b321f7a42c2c8d560aeddd628f4c08c8b1a) |
+| **SubscriberVault** | `786b611f…d35f0` | [→ testnet.cspr.live](https://testnet.cspr.live/deploy/786b611f007e410aa2d8d8ed47b267ea6e9bb3c7d343003c3dad3ba0d3fd35f0) |
 
 WASM artifacts: [`contracts/wasm/`](contracts/wasm/) · Contract source: [`contracts/src/`](contracts/src/)
 
@@ -160,19 +159,19 @@ npm install -g casper-sentinel-mcp
 
 **8 contracts written in Rust (Odra 2.8.0), compiled to WASM, deployed to `casper-test`**
 
-Deployer: `0202c223a43185563f404720fbb7028305cd79d6046ffdf7b746cfa42294c43db1d0`
-Deployment date: **June 23, 2026**
+Deployer: `0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116`  
+Deployment date: **June 24, 2026**
 
 | Contract | Deploy Hash | Role | Explorer |
 |----------|-------------|------|---------|
-| **AuditTrail** | `82adc658…6746a` | Immutable on-chain log of every agent action | [View →](https://testnet.cspr.live/deploy/82adc6584d762029478cb1abcfcba7f73e5ebbac81263383d56570897806746a) |
-| **RiskOracle** | `8769112d…de23b` | Risk scores queryable by any Casper dApp | [View →](https://testnet.cspr.live/deploy/8769112dc526ba2b50848ad3801f983f5770a1d0e549c84f387f48e250ede23b) |
-| **SentinelCredit** | `6f35b4ab…3d5a` | x402 credit ledger for pay-per-query billing | [View →](https://testnet.cspr.live/deploy/6f35b4ab2bad2086715f4987ddd5c269bcb2c363fd5b3a546964d60363203d5a) |
-| **SentinelRegistry** | `118bbcb7…200f` | Subscriber registry for push alerts | [View →](https://testnet.cspr.live/deploy/118bbcb70fb67fc2128e8bcbca342a3f1d0b7f0584c9fdac19f3d41620df200f) |
-| **SentinelAlertLog** | `e2c6d27a…c14a` | Timestamped alert history per address | [View →](https://testnet.cspr.live/deploy/e2c6d27a29f2c0362654cac67e59aba7b96ba5dfacf2277ced0dab2c67bcc14a) |
-| **AgentBehaviorIndex** | `f1fc0feb…9cfc` | AI agent performance + confidence on-chain | [View →](https://testnet.cspr.live/deploy/f1fc0feb247e5f6d0c7f8a520a37c8cfb41d575abed62b4db06b7a720c1a9cfc) |
-| **RiskPolicyManager** | `e79cbc22…f802` | Hot-swappable risk thresholds | [View →](https://testnet.cspr.live/deploy/e79cbc22219c65d95d08955c64f5f8f3bf87671d17f002ec51ee9553242df802) |
-| **SubscriberVault** | `18a9d7ea…aa7e1` | Escrowed prepay balance for subscribers | [View →](https://testnet.cspr.live/deploy/18a9d7ea2e48a6c21ebeb881d927447ce63e367517a7050c7f4252c5284aa7e1) |
+| **AuditTrail** | `f06e3357…8e102` | Immutable on-chain log of every agent action | [View →](https://testnet.cspr.live/deploy/f06e33573efbe1c8db658b4ab37db4c0ef7996ba02bfd8378049ada251e8e102) |
+| **SentinelRegistry** | `d9c8c5ef…48622` | Subscriber registry for push alerts | [View →](https://testnet.cspr.live/deploy/d9c8c5eff41f81e659c907255c48813ad56303634dbb4d8fb1e2b0df4ae48622) |
+| **RiskOracle** | `fb877bae…e98a` | Risk scores queryable by any Casper dApp | [View →](https://testnet.cspr.live/deploy/fb877bae9a273ce74886a68d772841f9089503d802d106bb93bd018f7ef5e98a) |
+| **SentinelCredit** | `01cfe8d1…a403` | x402 credit ledger for pay-per-query billing | [View →](https://testnet.cspr.live/deploy/01cfe8d1e596859aa81954a6bf4792961c3c7587e6df2e4ce7d98bc802c7a403) |
+| **AgentBehaviorIndex** | `162a4f5f…c63a9` | AI agent performance + confidence on-chain | [View →](https://testnet.cspr.live/deploy/162a4f5ff991b7eceb8aa38ff3c2a2beb27dc2007a8c499602d372563cdc63a9) |
+| **SentinelAlertLog** | `45dbc90b…b42c7` | Timestamped alert history per address | [View →](https://testnet.cspr.live/deploy/45dbc90b56dc40e419d9da7b6a972fc6027ea0125065d6a1ddfa0c9394eb42c7) |
+| **RiskPolicyManager** | `048dcfe5…c8b1a` | Hot-swappable risk thresholds | [View →](https://testnet.cspr.live/deploy/048dcfe5ca296101eb7aa11694165b321f7a42c2c8d560aeddd628f4c08c8b1a) |
+| **SubscriberVault** | `786b611f…d35f0` | Escrowed prepay balance for subscribers | [View →](https://testnet.cspr.live/deploy/786b611f007e410aa2d8d8ed47b267ea6e9bb3c7d343003c3dad3ba0d3fd35f0) |
 
 ---
 
@@ -645,7 +644,7 @@ OTEL_EXPORTER_OTLP_ENDPOINT=http://your-grafana-agent:4317 python pipeline.py
 | Live Dashboard | https://dashboard-rho-amber-89.vercel.app |
 | Python SDK (PyPI) | https://pypi.org/project/casper-sentinel/4.0.0/ |
 | MCP Package (npm) | https://www.npmjs.com/package/casper-sentinel-mcp |
-| Deployer Account | https://testnet.cspr.live/account/0202c223a43185563f404720fbb7028305cd79d6046ffdf7b746cfa42294c43db1d0 |
+| Deployer Account | https://testnet.cspr.live/account/0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116 |
 | Casper Testnet Explorer | https://testnet.cspr.live/ |
 | Casper Developer Docs | https://docs.casper.network/ |
 | Odra Framework | https://odra.dev/ |
