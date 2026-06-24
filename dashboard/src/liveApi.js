@@ -16,14 +16,14 @@ const CSPR_CLOUD_BASE = 'https://event-store-api-clarity-testnet.make.services'
 
 // Real contract deploy hashes on Casper Testnet (signed & broadcast Jun 23 2026)
 export const CONTRACT_HASHES = {
-  AuditTrail:         '82adc6584d762029478cb1abcfcba7f73e5ebbac81263383d56570897806746a',
-  RiskOracle:         '8769112dc526ba2b50848ad3801f983f5770a1d0e549c84f387f48e250ede23b',
-  SentinelCredit:     '6f35b4ab2bad2086715f4987ddd5c269bcb2c363fd5b3a546964d60363203d5a',
-  SentinelRegistry:   '118bbcb70fb67fc2128e8bcbca342a3f1d0b7f0584c9fdac19f3d41620df200f',
-  SentinelAlertLog:   'e2c6d27a29f2c0362654cac67e59aba7b96ba5dfacf2277ced0dab2c67bcc14a',
-  AgentBehaviorIndex: 'f1fc0feb247e5f6d0c7f8a520a37c8cfb41d575abed62b4db06b7a720c1a9cfc',
-  RiskPolicyManager:  'e79cbc22219c65d95d08955c64f5f8f3bf87671d17f002ec51ee9553242df802',
-  SubscriberVault:    '18a9d7ea2e48a6c21ebeb881d927447ce63e367517a7050c7f4252c5284aa7e1',
+  AuditTrail:         'f06e33573efbe1c8db658b4ab37db4c0ef7996ba02bfd8378049ada251e8e102',
+  RiskOracle:         'fb877bae9a273ce74886a68d772841f9089503d802d106bb93bd018f7ef5e98a',
+  SentinelCredit:     '01cfe8d1e596859aa81954a6bf4792961c3c7587e6df2e4ce7d98bc802c7a403',
+  SentinelRegistry:   'd9c8c5eff41f81e659c907255c48813ad56303634dbb4d8fb1e2b0df4ae48622',
+  SentinelAlertLog:   '45dbc90b56dc40e419d9da7b6a972fc6027ea0125065d6a1ddfa0c9394eb42c7',
+  AgentBehaviorIndex: '162a4f5ff991b7eceb8aa38ff3c2a2beb27dc2007a8c499602d372563cdc63a9',
+  RiskPolicyManager:  '048dcfe5ca296101eb7aa11694165b321f7a42c2c8d560aeddd628f4c08c8b1a',
+  SubscriberVault:    '786b611f007e410aa2d8d8ed47b267ea6e9bb3c7d343003c3dad3ba0d3fd35f0',
 }
 
 export const DEPLOYER_ACCOUNT = '0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116'
