@@ -2,17 +2,17 @@
   "approvals": [
     {
       "signature": "02E74118d9De41B3D11EbA8625082E5c586B8B2D4dF71a06AB352a7B6bE76A6E4FCfD26d8aB6c6F1b5509330F9A6A5D0f5381A2cE8F8185BdF3f44AC4DCAa68F02",
-      "signer": "0202c223A43185563f404720fbB7028305cD79D6046fFDf7b746cFA42294C43DB1d0"
+      "signer": "0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116"
     }
   ],
-  "hash": "d46F0f34ABcc6288166CD2EDeDEF58A007a6b18921ccbba4C6C0a4c94b52a951",
+  "hash": "786b611f007e410aa2d8d8ed47b267ea6e9bb3c7d343003c3dad3ba0d3fd35f0",
   "header": {
-    "account": "0202c223A43185563f404720fbB7028305cD79D6046fFDf7b746cFA42294C43DB1d0",
+    "account": "0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116",
     "body_hash": "91cb53FbB6dD33eBA74795c474Ee6C1c3f4e39578b3E76D603c7528018944B84",
     "chain_name": "casper-test",
     "dependencies": [],
     "gas_price": 1,
-    "timestamp": "2026-06-23T21:50:53.955Z",
+    "timestamp": "2026-06-24T08:00:00.000Z",
     "ttl": "5m"
   },
   "payment": {

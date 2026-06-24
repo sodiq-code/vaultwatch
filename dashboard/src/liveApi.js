@@ -28,7 +28,7 @@ export const CONTRACT_HASHES = {
 
 export const DEPLOYER_ACCOUNT = '0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116'
 
-// Seed block height — synced to real testnet height Jun 23 2026
+// Seed block height — synced to real testnet height Jun 24 2026
 let _blockHeight = 8_279_455
 let _blockTimestamp = Date.now()
 let _cspr_price = null

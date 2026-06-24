@@ -224,7 +224,7 @@ export default function ChainStatus({ api }) {
       <div style={CARD}>
         <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>Deployer Account · Casper Testnet</h2>
         <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 12 }}>
-          All 8 Odra contracts were deployed from this account on June 23, 2026.
+          All 8 Odra contracts were deployed from this account on June 24, 2026.
         </p>
         <div style={{ background: 'var(--surface2)', borderRadius: 8, padding: '12px 14px', fontSize: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -259,7 +259,7 @@ export default function ChainStatus({ api }) {
             </div>
             <div style={{ padding: '8px 10px', background: 'var(--surface)', borderRadius: 6 }}>
               <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3 }}>DEPLOY DATE</div>
-              <div style={{ fontSize: 12, fontWeight: 600 }}>Jun 23, 2026</div>
+              <div style={{ fontSize: 12, fontWeight: 600 }}>Jun 24, 2026</div>
             </div>
           </div>
         </div>
