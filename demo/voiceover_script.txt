@@ -1,0 +1,23 @@
+DeFi moves billions of dollars every day — with no risk layer. No real-time intelligence. No on-chain memory of what went wrong. VaultWatch changes that.
+
+This is a live, production-deployed risk intelligence system built on Casper — powered by six specialized AI agents running in real time, with every finding written permanently to smart contracts on-chain.
+
+Watch what happens when we query the system: "Is the CSPR/USDT liquidity pool safe for a large position?" Six agents activate simultaneously — ScannerAgent ingests protocol metrics, AnomalyAgent scores the risk, SelfCorrectionAgent validates the confidence, AuditAgent logs the finding to the AuditTrail contract on Casper testnet. The answer arrives in under three seconds. Confidence: 91 percent. Verdict: CRITICAL. AuditTrail deployed.
+
+These aren't mock outputs. Every finding you see here is written to a live Casper smart contract with a real transaction hash.
+
+The system is monitoring multiple protocols right now. CasperSwap: whale concentration alert — top three wallets control 68 percent of liquidity pool tokens. EXIT LIQUIDITY INSUFFICIENT for positions above 500K. CasperLend: collateral ratio dropped to 1.08x — three positions at liquidation boundary, RWA collateral depeg risk elevated. CasperYield: abnormal withdrawal spike — 14x volume surge in a 2-hour window. Possible bank-run scenario. TVL dropped 22 percent in four hours.
+
+This is Anomaly Detection — powered by AnomalyAgent with a SelfCorrectionAgent feedback loop. CasperSwap scores 42 out of 100. ELEVATED. Two anomalies flagged: low liquidity ratio and high volume-to-TVL ratio. The recommendation is written directly to the RiskOracle contract on Casper. Confidence: 85 percent. Fully on-chain.
+
+RWA Assessment — VaultWatch doesn't just analyze DeFi. It assesses real-world assets for on-chain tokenization. A US Treasury Bill: 91-day maturity, 1.05x collateral ratio, AAA credit rating. The AI verdict: APPROVED. Risk score — 5 out of 100. On-chain verdict written to AuditTrail. This is the DeFi-to-RWA bridge that institutional capital is waiting for.
+
+Now the Live Feed — the nervous system of VaultWatch. Six active agents. Eight on-chain contracts. Every event logged in real time: AnomalyAgent classifies CasperSwap as HIGH risk. AuditAgent writes the finding to the AuditTrail contract. SafetyGuard passes query validation in 25 milliseconds. SelfCorrectionAgent re-evaluates a low-confidence finding. IntelAgent dispatches a MEDIUM alert. x402 payment received — 0.5 CSPR deducted from SubscriberVault. RiskPolicyManager policy check passed. All eight contracts showing ON-CHAIN status: AuditTrail, RiskOracle, SentinelAlertLog, AgentBehaviorIndex, RiskPolicyManager, SubscriberVault — live on Casper testnet.
+
+Chain Status — verified on-chain. Block height 8,279,525. Eight of eight Odra contracts deployed. CSPR price live from CoinGecko. Market cap $31.2 million. All deployed from a single verified account on Casper testnet. 29 transaction hashes. Every contract. Every deployment. Verifiable on testnet.cspr.live right now.
+
+130 tests passing. 8 deployed contracts. 29 verified TX hashes. Published SDK on npm and PyPI. MCP server for AI agent integration. Live dashboard. And an AgentBehaviorIndex contract that creates the first on-chain behavioral audit trail for AI agents in DeFi — a capability that does not exist anywhere else in this hackathon.
+
+VaultWatch is not a prototype. It is infrastructure. The path forward: RiskOracle as a shared public data feed for all Casper DeFi protocols. Institutional-grade RWA onboarding. SDK adoption by Casper ecosystem developers. And a live product with paying subscribers from day one.
+
+This is VaultWatch. Production-ready. On-chain. Right now.

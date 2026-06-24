@@ -1,0 +1,8 @@
+file '/home/user/vaultwatch/demo/clips_v2/01_title.mp4'
+file '/home/user/vaultwatch/demo/clips_v2/02_risk.mp4'
+file '/home/user/vaultwatch/demo/clips_v2/03_findings.mp4'
+file '/home/user/vaultwatch/demo/clips_v2/04_anomaly.mp4'
+file '/home/user/vaultwatch/demo/clips_v2/05_livefeed.mp4'
+file '/home/user/vaultwatch/demo/clips_v2/06_testnet.mp4'
+file '/home/user/vaultwatch/demo/clips_v2/07_terminal.mp4'
+file '/home/user/vaultwatch/demo/clips_v2/08_outro_ext.mp4'
