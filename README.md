@@ -28,7 +28,7 @@ VaultWatch is a production-grade DeFi risk monitoring and intelligence platform 
 
 ## Verifiable Proof
 
-Everything below is independently verifiable on the Casper testnet explorer.
+All deployments below are independently verifiable on the Casper testnet explorer.
 
 ### Deployer Account
 
@@ -38,7 +38,7 @@ All contract deployments came from this funded testnet account:
 0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116
 ```
 
-🔗 **[View account on testnet.cspr.live →](https://testnet.cspr.live/account/0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116)**
+**[View account on testnet.cspr.live →](https://testnet.cspr.live/account/0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116)**
 
 ### 8 Deployed Odra Contracts
 
@@ -65,11 +65,11 @@ The dashboard is live and uses real data:
 - **cspr.cloud** — live block height, era ID, block metadata from testnet
 - **Casper Explorer** — every contract link points to a unique deploy page
 
-🔗 **[https://dashboard-rho-amber-89.vercel.app](https://dashboard-rho-amber-89.vercel.app)**
+**[https://dashboard-rho-amber-89.vercel.app](https://dashboard-rho-amber-89.vercel.app)**
 
 ### PyPI Package — `casper-sentinel` v4.0.0
 
-🔗 **[https://pypi.org/project/casper-sentinel/4.0.0/](https://pypi.org/project/casper-sentinel/4.0.0/)**
+**[https://pypi.org/project/casper-sentinel/4.0.0/](https://pypi.org/project/casper-sentinel/4.0.0/)**
 
 ```bash
 pip install casper-sentinel
@@ -77,7 +77,7 @@ pip install casper-sentinel
 
 ### npm Package — `casper-sentinel-mcp` v4.0.0
 
-🔗 **[https://www.npmjs.com/package/casper-sentinel-mcp](https://www.npmjs.com/package/casper-sentinel-mcp)**
+**[https://www.npmjs.com/package/casper-sentinel-mcp](https://www.npmjs.com/package/casper-sentinel-mcp)**
 
 ```bash
 npm install -g casper-sentinel-mcp
@@ -233,18 +233,18 @@ The deployed dashboard at **https://dashboard-rho-amber-89.vercel.app** includes
 
 | Tab | Feature | Data Source |
 |-----|---------|-------------|
-| **Risk Intelligence** | Real Groq AI analysis via llama-3.3-70b-versatile | Groq API (live) |
-| **Anomaly Detection** | Protocol metrics → AI risk scoring | Groq API (live) |
-| **RWA Assessment** | Real-world asset scoring via Groq Compound | Groq API (live) |
+| **Risk Intelligence** | Groq AI analysis via llama-3.3-70b-versatile | Groq API |
+| **Anomaly Detection** | Protocol metrics → AI risk scoring | Groq API |
+| **RWA Assessment** | Real-world asset scoring via Groq Compound | Groq API |
 | **Audit Log** | On-chain audit trail with explorer links | Casper testnet |
 | **Live Feed** | Real-time agent event stream, findings ticker | Simulated pipeline output |
 | **Chain Status** | Block height, era ID, CSPR price sparkline, contract table | cspr.cloud + CoinGecko |
 
 **Live data integrations:**
-- 🟢 **CoinGecko** — CSPR/USD price, 24h change, market cap, 24h volume, 7-day price chart
-- 🟢 **cspr.cloud** — Live block height, era ID, block hash, proposer, deploy count
-- 🟢 **Groq API** — llama-3.3-70b-versatile for all AI analysis queries
-- 🟢 **testnet.cspr.live** — Every contract hash links to a unique, real deploy page
+- **CoinGecko** — CSPR/USD price, 24h change, market cap, 24h volume, 7-day price chart
+- **cspr.cloud** — Live block height, era ID, block hash, proposer, deploy count
+- **Groq API** — llama-3.3-70b-versatile for all AI analysis queries
+- **testnet.cspr.live** — Every contract hash links to a unique deploy page on the Casper explorer
 
 ---
 
@@ -469,7 +469,7 @@ npm run demo:rwa
 npm run demo:upgrade-policy
 ```
 
-`demo:upgrade-policy` is the flagship demonstration: a risk threshold change propagates to testnet, agents immediately reclassify at the new threshold, and a new on-chain finding is written — no restart, no redeployment.
+`demo:upgrade-policy` exercises the hot-swap architecture end-to-end: a risk threshold change propagates to testnet, agents reclassify at the new threshold, and a new on-chain finding is written — no restart, no redeployment.
 
 ---
 
@@ -680,4 +680,4 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ---
 
-**Built by [Sodiq Jimoh](https://github.com/sodiq-code) for the Casper Agentic Buildathon 2026**
+**Author: [Sodiq Jimoh](https://github.com/sodiq-code) · Network: Casper Testnet (`casper-test`) · License: MIT**

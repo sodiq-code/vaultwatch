@@ -1,4 +1,4 @@
-# VaultWatch Architecture — Elite v4
+# VaultWatch Architecture
 
 ## Overview
 
@@ -88,7 +88,7 @@ The `SubscriberVault` contract enables pay-per-query billing. Callers deposit CS
 - All agents exposed as HTTP endpoints
 - Routes: `/risk/query`, `/anomaly/detect`, `/rwa/assess`, `/scanner/scan`, `/policy/update`, `/audit/log`, `/chain/block`
 
-### FastMCP Server (`mcp/server.py`)
+### FastMCP Server (`vaultwatch_mcp/server.py`)
 15 tools exposed for AI agent integration:
 1. `query_risk` — IntelAgent queries
 2. `detect_anomaly` — AnomalyAgent
