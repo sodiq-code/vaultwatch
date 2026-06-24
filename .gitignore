@@ -24,3 +24,4 @@ tx_hashes/
 .coverage
 htmlcov/
 secret_key.pem
+dashboard/.env.local
