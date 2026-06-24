@@ -14,10 +14,19 @@ VaultWatch is a production-grade DeFi risk monitoring and intelligence platform 
 
 ---
 
+## Demo Video
+
+[![VaultWatch Demo](https://img.youtube.com/vi/Jmg_MFSxwdE/maxresdefault.jpg)](https://youtu.be/Jmg_MFSxwdE)
+
+**[▶ Watch on YouTube — VaultWatch: AI-Powered DeFi Risk Intelligence on Casper Blockchain](https://youtu.be/Jmg_MFSxwdE)**
+
+---
+
 ## Submission Details
 
 | | |
 |---|---|
+| **Demo Video** | https://youtu.be/Jmg_MFSxwdE |
 | **Live Dashboard** | https://dashboard-rho-amber-89.vercel.app |
 | **Python SDK (PyPI)** | https://pypi.org/project/casper-sentinel/4.0.0/ |
 | **MCP Package (npm)** | https://www.npmjs.com/package/casper-sentinel-mcp |
@@ -655,6 +664,7 @@ VaultWatch is designed as permanent Casper infrastructure. Four deployment phase
 | Resource | URL |
 |----------|-----|
 | Repository | https://github.com/sodiq-code/vaultwatch |
+| Demo Video | https://youtu.be/Jmg_MFSxwdE |
 | Live Dashboard | https://dashboard-rho-amber-89.vercel.app |
 | Python SDK (PyPI) | https://pypi.org/project/casper-sentinel/4.0.0/ |
 | MCP Package (npm) | https://www.npmjs.com/package/casper-sentinel-mcp |
