@@ -165,10 +165,10 @@ def main():
         print(f"Loading key from {key_path}...")
         key = parse_private_key(key_path, KeyAlgorithm.SECP256K1)
     else:
-        print(f"\nERROR: No private key found.")
-        print(f"  Option A: export CASPER_SECRET_KEY_HEX=<64-hex-char private key>")
+        print("\nERROR: No private key found.")
+        print("  Option A: export CASPER_SECRET_KEY_HEX=<64-hex-char private key>")
         print(f"  Option B: place secret_key.pem at {key_path}")
-        print(f"\nYour account has 5000 CSPR ready to deploy!")
+        print("\nYour account has 5000 CSPR ready to deploy!")
         sys.exit(1)
 
     pub_hex = key.to_public_key().account_key.hex()
@@ -176,7 +176,7 @@ def main():
 
     # Verify it matches expected account
     if pub_hex.lower() != NEW_ACCOUNT_PUBKEY[2:].lower():  # strip leading '02' algo prefix
-        print(f"WARNING: Key doesn't match expected account. Proceeding anyway.")
+        print("WARNING: Key doesn't match expected account. Proceeding anyway.")
 
     # Check node
     try:
@@ -196,7 +196,7 @@ def main():
             h = build_and_send(key, contract)
             results[name] = h
             print(f"  ✅ Hash: {h}")
-            print(f"  Waiting for inclusion...")
+            print("  Waiting for inclusion...")
             ok = wait_for_deploy(h, timeout=180)
             if ok:
                 print(f"  ✅ {name} confirmed on-chain!")

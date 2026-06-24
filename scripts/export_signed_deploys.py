@@ -23,14 +23,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from pycspr.factory import create_deploy, create_deploy_parameters, parse_private_key  # noqa: E402
+from pycspr.types.crypto import KeyAlgorithm  # noqa: E402
+from pycspr.types.cl import CLV_U512, CLV_String, CLV_Bool  # noqa: E402
+from pycspr.types.node.rpc.complex import DeployArgument, DeployOfModuleBytes  # noqa: E402
+from pycspr import serializer  # noqa: E402
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("export_deploys")
-
-from pycspr.factory import create_deploy, create_deploy_parameters, parse_private_key
-from pycspr.types.crypto import KeyAlgorithm
-from pycspr.types.cl import CLV_U512, CLV_String, CLV_Bool
-from pycspr.types.node.rpc.complex import DeployArgument, DeployOfModuleBytes
-from pycspr import serializer
 
 KEY_PATH = Path(__file__).parent.parent / "secret_key.pem"
 WASM_DIR = Path(__file__).parent.parent / "contracts" / "wasm"

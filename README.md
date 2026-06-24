@@ -18,8 +18,6 @@ VaultWatch is a production-grade DeFi risk monitoring and intelligence platform 
 
 | | |
 |---|---|
-| **Hackathon** | [Casper Agentic Buildathon 2026](https://dorahacks.io/hackathon/casper-agentic-buildathon/detail) |
-| **Repository** | https://github.com/sodiq-code/vaultwatch |
 | **Live Dashboard** | https://dashboard-rho-amber-89.vercel.app |
 | **Python SDK (PyPI)** | https://pypi.org/project/casper-sentinel/4.0.0/ |
 | **MCP Package (npm)** | https://www.npmjs.com/package/casper-sentinel-mcp |

@@ -13,18 +13,17 @@ import json
 import sys
 import time
 import logging
-import os
 from pathlib import Path
 
 import requests
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from pycspr import serializer as rpc_serializer  # noqa: E402
+from pycspr.types.node.rpc.complex import Deploy  # noqa: E402
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("broadcast_deploys")
-
-from pycspr import serializer as rpc_serializer
-from pycspr.types.node.rpc.complex import Deploy
 
 DEPLOYS_DIR = Path(__file__).parent.parent / "deploys"
 NODE_URL = "https://node.testnet.cspr.cloud/rpc"

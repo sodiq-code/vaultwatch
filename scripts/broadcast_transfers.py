@@ -5,7 +5,10 @@ Transfers tiny amounts to self (1 mote each), labelled by contract interaction p
 Each produces a valid on-chain TX hash proving network activity.
 """
 from __future__ import annotations
-import json, sys, time, logging
+import json
+import sys
+import time
+import logging
 from pathlib import Path
 
 import requests

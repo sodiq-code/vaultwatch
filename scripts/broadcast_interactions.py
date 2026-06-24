@@ -5,14 +5,17 @@ Submits 17 calls across all 8 deployed contracts via cspr.cloud RPC.
 Outputs proof/interaction_hashes.json
 """
 from __future__ import annotations
-import json, sys, time, logging
+import json
+import sys
+import time
+import logging
 from pathlib import Path
 
 import requests
 import pycspr
 from pycspr.factory import parse_private_key, create_deploy_parameters, create_deploy
 from pycspr.types.crypto import KeyAlgorithm
-from pycspr.types.cl import CLV_U512, CLV_String, CLV_U64, CLV_U32, CLV_Bool
+from pycspr.types.cl import CLV_U512, CLV_String, CLV_U64, CLV_U32
 from pycspr.types.node.rpc.complex import (
     DeployArgument, DeployOfModuleBytes, DeployOfStoredContractByHash,
 )
