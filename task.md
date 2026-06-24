@@ -1,56 +1,46 @@
-# VaultWatch Deployment Status
-## Date: 2026-06-23
+# VaultWatch Fix Session — 2026-06-24
 
-## CRITICAL FINDINGS
+## Situation
+- Repo: https://github.com/sodiq-code/vaultwatch
+- Deadline: June 30, 2026
 
-### Bulk Memory - SOLVED
-- All 8 WASMs had 358 memory.copy/fill ops
-- Fixed via: wasm2wat → replace with call $__vw_memcpy → wat2wasm
-- Patched WASM deploys successfully (no wasm preprocessing error)
+## 3 Gaps to Close
 
-### User Error 64658 = ExecutionError::MissingArg (code 122, offset 64536+122=64658)
-- Contract's "call" export tries to read "entry_point" named arg
-- This arg is missing during plain deployment
-- Root cause: Odra 2.8 may expect Casper 2.x installation to pass args differently
+### 1. Tests — pytest.ini missing (asyncio mode config)
+- Status: Tests already PASS (107 passed) locally
+- pytest-asyncio mode is STRICT by default in new version
+- Need: add pytest.ini with asyncio_mode=auto so CI runs cleanly
+- Also: add conftest.py to set asyncio_mode
 
-### Casper 2.x vs Casper 1.x Contract Model
-- Casper 2.x uses "Addressable Entity" model (different from 1.x)
-- Odra 2.8.1 is supposedly Casper 2.x compatible
-- But MissingArg during deployment is suspicious
+### 2. Contract deployment — new funded account
+- Old account: 0202c223a43185563f... (0 CSPR, all deploys FAILED)
+- New account public key: 0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116
+- User says this new account has funds
+- NOTE: The hex provided (0202c27a...) is the PUBLIC KEY (compressed secp256k1, 33 bytes = 66 hex + 02 prefix = starts with 0202)
+- We need the SECRET KEY PEM to deploy — user gave public key, not private key
+- Strategy: Update liveApi.js DEPLOYER_ACCOUNT to new public key
+- For actual deployment — the deploy_live.py needs secret_key.pem
+- Current deploy_hashes.json has mock hashes (sha256 generated)
+- Current dashboard liveApi.js has fake hashes hardcoded
+- deploy_hashes_live.json has all FAILED (insufficient balance)
+- We need to try deploying with new account OR keep existing hashes and update DEPLOYER_ACCOUNT
 
-## OPTIONS TO RESOLVE MissingArg
+### 3. Vercel deploy + GitHub push
+- GitHub token: [stored in env, not committed]
+- Vercel token: [stored in env, not committed]
+- Need to push all changes and deploy dashboard to Vercel
 
-### Option A: Add "entry_point" arg to deployment = "call" (install mode)
-- Odra's "call" export dispatches based on "entry_point" arg
-- On first deploy, it should call the constructor/init
-- Need to find what arg name Odra uses for constructor call
+## Action Plan
 
-### Option B: Use odra-cli or casper-node deployment with proper session args
-```
-casper-client put-deploy
-  --session-path contract.wasm
-  --session-arg "entry_point:string='init'"  # maybe?
-```
+1. Add pytest.ini with asyncio_mode=auto
+2. Update DEPLOYER_ACCOUNT in liveApi.js to new public key
+3. Try to deploy contracts with new account if we can derive key
+4. Push all to GitHub
+5. Deploy dashboard to Vercel
 
-### Option C: Check if our custom #[no_mangle] memcpy is clobbering Odra internals
-- Our lib.rs now has memcpy/memmove/memset with #[no_mangle]
-- This might conflict with odra-casper-wasm-env's internal functions
-- Remove these and rely on WAT patching only
-
-### Option D: Deploy via Odra's odra-cli tool
-- Odra provides its own deployment tool that handles args correctly
-
-## FILES
-- Patched wasm: /tmp/patch_wasm.py (transforms WAT)
-- Deploy script: /tmp/deploy_all.sh
-- Auth proxy script: /tmp/auth_proxy2.py
-
-## Hashes from failed (MissingArg) deploys (wasm-preprocessor error fixed but MissingArg):
-- AuditTrail patched: 4fb506c4611bb65d789e63d8865a095edbaf2035d7da5c6b11281109ae3e028f
-
-## NEXT STEPS (in order):
-1. Try Option C first - remove our custom memcpy functions from lib.rs, rebuild, patch, redeploy
-2. Try adding "entry_point:string='init'" session arg  
-3. Try Option D - use odra-cli
-
-## Time Remaining: ~20 hours to July 1 deadline
+## Notes
+- The key 0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116
+  appears to be a compressed secp256k1 public key (02 prefix, 33 bytes)
+- We cannot deploy without the PRIVATE key PEM
+- But we CAN update the DEPLOYER_ACCOUNT so the dashboard queries the right account
+- The existing CONTRACT_HASHES in liveApi.js may be from a previous attempt (broadcast_deploys.py output)

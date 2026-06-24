@@ -26,7 +26,7 @@ export const CONTRACT_HASHES = {
   SubscriberVault:    '18a9d7ea2e48a6c21ebeb881d927447ce63e367517a7050c7f4252c5284aa7e1',
 }
 
-export const DEPLOYER_ACCOUNT = '0202c223a43185563f404720fbb7028305cd79d6046ffdf7b746cfa42294c43db1d0'
+export const DEPLOYER_ACCOUNT = '0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116'
 
 // Seed block height — synced to real testnet height Jun 23 2026
 let _blockHeight = 8_279_455
