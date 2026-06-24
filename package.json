@@ -1,7 +1,7 @@
 {
   "name": "vaultwatch",
   "version": "4.0.0",
-  "description": "VaultWatch — DeFi Risk Intelligence on Casper",
+  "description": "VaultWatch \u2014 DeFi Risk Intelligence on Casper",
   "private": false,
   "scripts": {
     "record:demo": "python scripts/record_demo.py",
@@ -20,7 +20,8 @@
     "test:demo": "pytest tests/demo/ -v -s",
     "test:coverage": "pytest tests/ --cov=. --cov-report=html --cov-report=term-missing",
     "lint": "ruff check . && mypy . --ignore-missing-imports",
-    "format": "ruff format ."
+    "format": "ruff format .",
+    "demo:dispute": "python scripts/demo_dispute.py"
   },
   "keywords": [
     "casper",

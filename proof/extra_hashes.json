@@ -1,0 +1,68 @@
+[
+  {
+    "label": "AuditTrail::add_entry[self_correction_skip]",
+    "deploy_hash": null,
+    "error": "RPC error: {'code': -32008, 'message': 'Invalid Deploy', 'data': 'the deploy was invalid: The deploy had an invalid approval'}",
+    "status": "failed"
+  },
+  {
+    "label": "RiskOracle::update_score[CasperSwap]",
+    "deploy_hash": null,
+    "error": "RPC error: {'code': -32008, 'message': 'Invalid Deploy', 'data': 'the deploy was invalid: The deploy had an invalid approval'}",
+    "status": "failed"
+  },
+  {
+    "label": "SentinelAlertLog::log_alert[MEDIUM]",
+    "deploy_hash": null,
+    "error": "RPC error: {'code': -32008, 'message': 'Invalid Deploy', 'data': 'the deploy was invalid: The deploy had an invalid approval'}",
+    "status": "failed"
+  },
+  {
+    "label": "AgentBehaviorIndex::record_action[classify]",
+    "deploy_hash": "da61b7b38388e683c37f8040514a1b2a77b59209f9aa64c661094503e85169db",
+    "link": "https://testnet.cspr.live/deploy/da61b7b38388e683c37f8040514a1b2a77b59209f9aa64c661094503e85169db",
+    "status": "submitted"
+  },
+  {
+    "label": "AgentBehaviorIndex::record_action[skip]",
+    "deploy_hash": "36811baffde99c09663c64ccf08a0ceb3d86581c3cae57a82dfdb7d40655a568",
+    "link": "https://testnet.cspr.live/deploy/36811baffde99c09663c64ccf08a0ceb3d86581c3cae57a82dfdb7d40655a568",
+    "status": "submitted"
+  },
+  {
+    "label": "RiskPolicyManager::set_threshold[min_confidence]",
+    "deploy_hash": "77b1f5e6acf89dbdec06a4d98cd0052b5a4c55761ded7f9960604550d401eb8a",
+    "link": "https://testnet.cspr.live/deploy/77b1f5e6acf89dbdec06a4d98cd0052b5a4c55761ded7f9960604550d401eb8a",
+    "status": "submitted"
+  },
+  {
+    "label": "RiskPolicyManager::set_threshold[max_risk]",
+    "deploy_hash": "7efd0b77f3bbec253c074639955e7efb08795bac8b9dbbcbf88210c18e723e03",
+    "link": "https://testnet.cspr.live/deploy/7efd0b77f3bbec253c074639955e7efb08795bac8b9dbbcbf88210c18e723e03",
+    "status": "submitted"
+  },
+  {
+    "label": "SentinelCredit::issue_credit[deployer]",
+    "deploy_hash": "29f1924933f16949b5b82d462ed8ad85c1f1d8be25226c55a1c6a627ba2c6ed8",
+    "link": "https://testnet.cspr.live/deploy/29f1924933f16949b5b82d462ed8ad85c1f1d8be25226c55a1c6a627ba2c6ed8",
+    "status": "submitted"
+  },
+  {
+    "label": "SubscriberVault::subscribe[pro_30d]",
+    "deploy_hash": null,
+    "error": "RPC error: {'code': -32008, 'message': 'Invalid Deploy', 'data': 'the deploy was invalid: The deploy had an invalid approval'}",
+    "status": "failed"
+  },
+  {
+    "label": "AgentBehaviorIndex::pipeline_monitor",
+    "deploy_hash": null,
+    "error": "RPC error: {'code': -32008, 'message': 'Invalid Deploy', 'data': 'the deploy was invalid: The deploy had an invalid approval'}",
+    "status": "failed"
+  },
+  {
+    "label": "RiskOracle::threshold_check[CasperDEX]",
+    "deploy_hash": null,
+    "error": "RPC error: {'code': -32008, 'message': 'Invalid Deploy', 'data': 'the deploy was invalid: The deploy had an invalid approval'}",
+    "status": "failed"
+  }
+]

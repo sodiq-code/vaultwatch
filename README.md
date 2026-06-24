@@ -5,7 +5,7 @@
 VaultWatch is a production-grade DeFi risk monitoring and intelligence platform built natively on the Casper blockchain. Six Groq-powered AI agents continuously monitor on-chain activity, classify anomalies in real time, and write verified findings to eight Odra smart contracts — all instrumented end-to-end with OpenTelemetry and exposed via a 15-tool FastMCP server callable from Claude Desktop.
 
 [![CI](https://github.com/sodiq-code/vaultwatch/actions/workflows/ci.yml/badge.svg)](https://github.com/sodiq-code/vaultwatch/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-107%2F107%20passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-130%2F130%20passing-brightgreen.svg)](tests/)
 [![PyPI](https://img.shields.io/pypi/v/casper-sentinel.svg)](https://pypi.org/project/casper-sentinel/)
 [![npm](https://img.shields.io/npm/v/casper-sentinel-mcp.svg)](https://www.npmjs.com/package/casper-sentinel-mcp)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
@@ -160,7 +160,8 @@ npm install -g casper-sentinel-mcp
 **8 contracts written in Rust (Odra 2.8.0), compiled to WASM, deployed to `casper-test`**
 
 Deployer: `0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116`  
-Deployment date: **June 24, 2026**
+Deployment date: **June 24, 2026**  
+Total on-chain TX hashes: **29** (8 contract deploys + 21 interactions) — see [`proof/PROOF.md §9`](proof/PROOF.md)
 
 | Contract | Deploy Hash | Role | Explorer |
 |----------|-------------|------|---------|
@@ -249,7 +250,7 @@ The deployed dashboard at **https://dashboard-rho-amber-89.vercel.app** includes
 
 ---
 
-## Test Suite — 107/107 Passing
+## Test Suite — 130/130 Passing
 
 ```bash
 pytest tests/ -v
@@ -260,7 +261,7 @@ tests/unit/           66 tests  — agents, SDK, safety guard, contracts
 tests/integration/    37 tests  — API endpoints, MCP tools, pipeline, streaming
 tests/demo/            4 tests  — end-to-end scenario walkthroughs
 ──────────────────────────────
-Total:               107 tests  — all passing
+Total:               130 tests  — all passing
 ```
 
 | File | Tests | Coverage |
@@ -592,7 +593,7 @@ CASPER_MOCK=true
 
 Every push to `main` runs:
 
-1. **Python Tests** — all 107 tests across unit, integration, demo
+1. **Python Tests** — all 130 tests across unit, integration, demo
 2. **Lint & Format** — `ruff check` + `ruff format --check`
 3. **Contract Tests** — `cargo test --workspace`
 4. **Docker Build** — full image build verification

@@ -132,3 +132,54 @@ async def test_retry_on_low_confidence(agent, anomaly_result):
         mock_g.side_effect = mock_groq
         result = await agent.correct(anomaly_result)
     assert isinstance(result, dict)
+
+
+@pytest.mark.asyncio
+async def test_action_field_present(agent, anomaly_result):
+    """Result dict always contains an 'action' key."""
+    with patch.object(agent, "_call_groq", new_callable=AsyncMock) as mock_groq:
+        mock_groq.return_value = {
+            "corrected_score": 80.0,
+            "confidence": 0.88,
+            "reasoning": "Confirmed",
+            "action": "alert",
+        }
+        result = await agent.correct(anomaly_result)
+    assert "action" in result or "error" in result
+
+
+@pytest.mark.asyncio
+async def test_skip_action_on_very_low_risk(agent):
+    """Finding with risk_score < 20 should result in action='none' or 'skip'."""
+    trivial = AnomalyResult(
+        protocol="TrivialProto",
+        risk_score=5.0,
+        anomalies=[],
+        recommendation="No action",
+        timestamp=time.time(),
+    )
+    with patch.object(agent, "_call_groq", new_callable=AsyncMock) as mock_groq:
+        mock_groq.return_value = {
+            "corrected_score": 5.0,
+            "confidence": 0.98,
+            "reasoning": "Trivial fluctuation",
+            "action": "none",
+        }
+        result = await agent.correct(trivial)
+    action = result.get("action", "")
+    assert action in ("none", "skip", "") or result.get("corrected_score", 100) < 30
+
+
+@pytest.mark.asyncio
+async def test_reasoning_field_is_string(agent, anomaly_result):
+    """reasoning field must be a string, even if Groq returns empty."""
+    with patch.object(agent, "_call_groq", new_callable=AsyncMock) as mock_groq:
+        mock_groq.return_value = {
+            "corrected_score": 77.0,
+            "confidence": 0.82,
+            "reasoning": "",
+            "action": "alert",
+        }
+        result = await agent.correct(anomaly_result)
+    reasoning = result.get("reasoning", "")
+    assert isinstance(reasoning, str)

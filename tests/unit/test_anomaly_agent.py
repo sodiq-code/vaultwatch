@@ -135,3 +135,125 @@ async def test_concurrent_detections(agent, safe_metrics, risky_metrics):
         )
     assert len(results) == 2
     assert all(isinstance(r, AnomalyResult) for r in results)
+
+
+@pytest.mark.asyncio
+async def test_risk_score_clamped_to_100(agent, safe_metrics):
+    """Groq returning score > 100 must be clamped."""
+    with patch.object(agent, "_call_groq", new_callable=AsyncMock) as mock_groq:
+        mock_groq.return_value = {
+            "risk_score": 150,
+            "anomalies": ["overflow"],
+            "recommendation": "cap it",
+        }
+        result = await agent.detect(safe_metrics)
+    assert result.risk_score <= 100
+
+
+@pytest.mark.asyncio
+async def test_risk_score_not_negative(agent, safe_metrics):
+    """Groq returning negative score must be clamped to 0."""
+    with patch.object(agent, "_call_groq", new_callable=AsyncMock) as mock_groq:
+        mock_groq.return_value = {
+            "risk_score": -10,
+            "anomalies": [],
+            "recommendation": "none",
+        }
+        result = await agent.detect(safe_metrics)
+    assert result.risk_score >= 0
+
+
+@pytest.mark.asyncio
+async def test_anomalies_is_list_even_on_empty(agent, safe_metrics):
+    """anomalies field is always a list, never None."""
+    with patch.object(agent, "_call_groq", new_callable=AsyncMock) as mock_groq:
+        mock_groq.return_value = {
+            "risk_score": 5,
+            "anomalies": None,
+            "recommendation": "",
+        }
+        result = await agent.detect(safe_metrics)
+    assert isinstance(result.anomalies, list)
+
+
+@pytest.mark.asyncio
+async def test_multiple_anomaly_types(agent, risky_metrics):
+    """Multiple anomaly tags are preserved in result."""
+    tags = ["whale_dump", "flash_loan", "oracle_drift", "depeg"]
+    with patch.object(agent, "_call_groq", new_callable=AsyncMock) as mock_groq:
+        mock_groq.return_value = {
+            "risk_score": 95,
+            "anomalies": tags,
+            "recommendation": "emergency",
+        }
+        result = await agent.detect(risky_metrics)
+    assert len(result.anomalies) == 4
+
+
+@pytest.mark.asyncio
+async def test_recommendation_non_empty_on_high_risk(agent, risky_metrics):
+    """High risk result should always carry a non-empty recommendation."""
+    with patch.object(agent, "_call_groq", new_callable=AsyncMock) as mock_groq:
+        mock_groq.return_value = {
+            "risk_score": 92,
+            "anomalies": ["whale_dump"],
+            "recommendation": "Halt withdrawals immediately",
+        }
+        result = await agent.detect(risky_metrics)
+    assert len(result.recommendation) > 0
+
+
+@pytest.mark.asyncio
+async def test_protocol_name_preserved(agent):
+    """Protocol name from metrics is stored unchanged in result."""
+    metrics = {
+        "protocol": "UniqueProtoXYZ",
+        "tvl": 1_000_000.0,
+        "volume_24h": 100_000.0,
+        "price_change_1h": -2.0,
+        "num_transactions": 300,
+        "liquidity_ratio": 0.5,
+    }
+    with patch.object(agent, "_call_groq", new_callable=AsyncMock) as mock_groq:
+        mock_groq.return_value = {
+            "risk_score": 20,
+            "anomalies": [],
+            "recommendation": "ok",
+        }
+        result = await agent.detect(metrics)
+    assert result.protocol == "UniqueProtoXYZ"
+
+
+@pytest.mark.asyncio
+async def test_detect_called_with_metrics_context(agent, risky_metrics):
+    """_call_groq is invoked exactly once per detect call."""
+    with patch.object(agent, "_call_groq", new_callable=AsyncMock) as mock_groq:
+        mock_groq.return_value = {
+            "risk_score": 55,
+            "anomalies": ["volume_spike"],
+            "recommendation": "Watch",
+        }
+        await agent.detect(risky_metrics)
+    mock_groq.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_liquidity_crisis_classification(agent):
+    """Very low liquidity ratio should trigger liquidity-related anomaly."""
+    metrics = {
+        "protocol": "LiquidCrisis",
+        "tvl": 50_000_000.0,
+        "volume_24h": 45_000_000.0,
+        "price_change_1h": -5.0,
+        "num_transactions": 8000,
+        "liquidity_ratio": 0.01,
+    }
+    with patch.object(agent, "_call_groq", new_callable=AsyncMock) as mock_groq:
+        mock_groq.return_value = {
+            "risk_score": 89,
+            "anomalies": ["liquidity_crisis"],
+            "recommendation": "Suspend operations",
+        }
+        result = await agent.detect(metrics)
+    assert result.risk_score >= 70
+    assert any("liquidity" in a for a in result.anomalies)
