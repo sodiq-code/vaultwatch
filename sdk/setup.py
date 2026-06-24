@@ -10,7 +10,9 @@ setup(
     name="casper-sentinel",
     version="4.0.0",
     description="DeFi Risk Intelligence on Casper — Python SDK",
-    long_description=open(os.path.join(os.path.dirname(__file__), "..", "README.md"), encoding="utf-8").read()
+    long_description=open(
+        os.path.join(os.path.dirname(__file__), "..", "README.md"), encoding="utf-8"
+    ).read()
     if os.path.exists(os.path.join(os.path.dirname(__file__), "..", "README.md"))
     else "",
     long_description_content_type="text/markdown",

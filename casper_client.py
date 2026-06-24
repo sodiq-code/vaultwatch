@@ -85,7 +85,11 @@ class CasperContractClient:
 
     def _init_client(self) -> None:
         try:
-            url = self.node_url.replace("https://", "").replace("http://", "").split("/")[0]
+            url = (
+                self.node_url.replace("https://", "")
+                .replace("http://", "")
+                .split("/")[0]
+            )
             host = url.split(":")[0]
             port = int(url.split(":")[-1]) if ":" in url else 7777
             conn = NodeRpcConnectionInfo(host=host, port=port)
@@ -128,6 +132,7 @@ class CasperContractClient:
         if not args:
             return []
         from pycspr.types.cl import CLV_String, CLV_Bool, CLV_U512  # type: ignore
+
         result = []
         for name, value in args.items():
             if isinstance(value, bool):
@@ -177,6 +182,7 @@ class CasperContractClient:
 
             if self.mock:
                 import hashlib
+
                 mock_hash = hashlib.sha256(
                     f"{wasm_path}{time.time()}".encode()
                 ).hexdigest()
@@ -230,10 +236,16 @@ class CasperContractClient:
 
             if self.mock:
                 import hashlib
+
                 mock_hash = hashlib.sha256(
                     f"{contract_hash}{entry_point}{time.time()}".encode()
                 ).hexdigest()
-                logger.info("[MOCK] call_contract(%s::%s) -> %s", contract_hash, entry_point, mock_hash)
+                logger.info(
+                    "[MOCK] call_contract(%s::%s) -> %s",
+                    contract_hash,
+                    entry_point,
+                    mock_hash,
+                )
                 span.set_attribute("mock", True)
                 span.set_attribute("deploy_hash", mock_hash)
                 return mock_hash
@@ -246,7 +258,11 @@ class CasperContractClient:
             payment = self._make_standard_payment(payment_amount)
 
             # contract_hash may arrive as hex string — convert to bytes
-            hash_bytes = bytes.fromhex(contract_hash) if isinstance(contract_hash, str) else contract_hash
+            hash_bytes = (
+                bytes.fromhex(contract_hash)
+                if isinstance(contract_hash, str)
+                else contract_hash
+            )
             session_args = self._normalise_args(args)
             session = DeployOfStoredContractByHash(
                 hash=hash_bytes,

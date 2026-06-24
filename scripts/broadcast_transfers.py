@@ -4,6 +4,7 @@ VaultWatch — Broadcast 17 CSPR transfer TXs to testnet.
 Transfers tiny amounts to self (1 mote each), labelled by contract interaction purpose.
 Each produces a valid on-chain TX hash proving network activity.
 """
+
 from __future__ import annotations
 import json
 import sys
@@ -34,30 +35,33 @@ DEPLOYER_PUBKEY = "0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce5
 # 17 labelled interactions — self-transfers with unique correlation IDs
 INTERACTIONS = [
     # AuditTrail — 3
-    {"label": "AuditTrail::add_entry[agent_risk_scan]",          "correlation_id": 1001},
-    {"label": "AuditTrail::add_entry[self_correction_skip]",     "correlation_id": 1002},
-    {"label": "AuditTrail::add_entry[pipeline_heartbeat]",       "correlation_id": 1003},
+    {"label": "AuditTrail::add_entry[agent_risk_scan]", "correlation_id": 1001},
+    {"label": "AuditTrail::add_entry[self_correction_skip]", "correlation_id": 1002},
+    {"label": "AuditTrail::add_entry[pipeline_heartbeat]", "correlation_id": 1003},
     # RiskOracle — 2
-    {"label": "RiskOracle::update_score[CasperSwap]",            "correlation_id": 1004},
-    {"label": "RiskOracle::update_score[CasperLend]",            "correlation_id": 1005},
+    {"label": "RiskOracle::update_score[CasperSwap]", "correlation_id": 1004},
+    {"label": "RiskOracle::update_score[CasperLend]", "correlation_id": 1005},
     # SentinelAlertLog — 3
-    {"label": "SentinelAlertLog::log_alert[HIGH]",               "correlation_id": 1006},
-    {"label": "SentinelAlertLog::log_alert[MEDIUM]",             "correlation_id": 1007},
-    {"label": "SentinelAlertLog::log_alert[LOW]",                "correlation_id": 1008},
+    {"label": "SentinelAlertLog::log_alert[HIGH]", "correlation_id": 1006},
+    {"label": "SentinelAlertLog::log_alert[MEDIUM]", "correlation_id": 1007},
+    {"label": "SentinelAlertLog::log_alert[LOW]", "correlation_id": 1008},
     # AgentBehaviorIndex — 2
-    {"label": "AgentBehaviorIndex::record_action[classify]",     "correlation_id": 1009},
-    {"label": "AgentBehaviorIndex::record_action[skip]",         "correlation_id": 1010},
+    {"label": "AgentBehaviorIndex::record_action[classify]", "correlation_id": 1009},
+    {"label": "AgentBehaviorIndex::record_action[skip]", "correlation_id": 1010},
     # RiskPolicyManager — 2
-    {"label": "RiskPolicyManager::set_threshold[min_confidence]","correlation_id": 1011},
-    {"label": "RiskPolicyManager::set_threshold[max_risk]",      "correlation_id": 1012},
+    {
+        "label": "RiskPolicyManager::set_threshold[min_confidence]",
+        "correlation_id": 1011,
+    },
+    {"label": "RiskPolicyManager::set_threshold[max_risk]", "correlation_id": 1012},
     # SentinelRegistry — 2
-    {"label": "SentinelRegistry::register_sentinel[v2]",         "correlation_id": 1013},
-    {"label": "SentinelRegistry::register_sentinel[mcp_v2]",     "correlation_id": 1014},
+    {"label": "SentinelRegistry::register_sentinel[v2]", "correlation_id": 1013},
+    {"label": "SentinelRegistry::register_sentinel[mcp_v2]", "correlation_id": 1014},
     # SentinelCredit — 1
-    {"label": "SentinelCredit::issue_credit[deployer]",          "correlation_id": 1015},
+    {"label": "SentinelCredit::issue_credit[deployer]", "correlation_id": 1015},
     # SubscriberVault — 2
-    {"label": "SubscriberVault::subscribe[pro_30d]",             "correlation_id": 1016},
-    {"label": "SubscriberVault::subscribe[basic_7d]",            "correlation_id": 1017},
+    {"label": "SubscriberVault::subscribe[pro_30d]", "correlation_id": 1016},
+    {"label": "SubscriberVault::subscribe[basic_7d]", "correlation_id": 1017},
 ]
 
 
@@ -92,7 +96,7 @@ def main():
             # Transfer 1 mote to self — guaranteed to succeed, produces valid TX hash
             deploy = create_transfer(
                 params=params,
-                amount=2_500_000_000,   # 2.5 CSPR (above minimum transfer)
+                amount=2_500_000_000,  # 2.5 CSPR (above minimum transfer)
                 target=pubkey.account_key,  # bytes, not PublicKey object
                 correlation_id=correlation_id,
             )
@@ -100,20 +104,24 @@ def main():
 
             deploy_hash = put_deploy(deploy)
             logger.info("  -> %s", deploy_hash)
-            results.append({
-                "label": label,
-                "deploy_hash": deploy_hash,
-                "link": f"https://testnet.cspr.live/deploy/{deploy_hash}",
-                "status": "submitted",
-            })
+            results.append(
+                {
+                    "label": label,
+                    "deploy_hash": deploy_hash,
+                    "link": f"https://testnet.cspr.live/deploy/{deploy_hash}",
+                    "status": "submitted",
+                }
+            )
         except Exception as exc:
             logger.error("  FAILED: %s", exc)
-            results.append({
-                "label": label,
-                "deploy_hash": None,
-                "error": str(exc),
-                "status": "failed",
-            })
+            results.append(
+                {
+                    "label": label,
+                    "deploy_hash": None,
+                    "error": str(exc),
+                    "status": "failed",
+                }
+            )
 
         time.sleep(2)
 
@@ -126,8 +134,13 @@ def main():
     successful = [r for r in results if r.get("deploy_hash")]
     total = 8 + len(successful)
 
-    logger.info("\nDone: %d/%d submitted. Total TX hashes: %d (8 deploy + %d transfer)",
-                len(successful), len(results), total, len(successful))
+    logger.info(
+        "\nDone: %d/%d submitted. Total TX hashes: %d (8 deploy + %d transfer)",
+        len(successful),
+        len(results),
+        total,
+        len(successful),
+    )
 
     print("\n=== SUBMITTED TX HASHES ===")
     for r in successful:

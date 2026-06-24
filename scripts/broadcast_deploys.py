@@ -27,8 +27,8 @@ logger = logging.getLogger("broadcast_deploys")
 
 DEPLOYS_DIR = Path(__file__).parent.parent / "deploys"
 NODE_URL = "https://node.testnet.cspr.cloud/rpc"
-API_KEY  = "019ef63a-5ffc-7657-8627-d7436d9f0e8c"
-HEADERS  = {"Content-Type": "application/json", "Authorization": API_KEY}
+API_KEY = "019ef63a-5ffc-7657-8627-d7436d9f0e8c"
+HEADERS = {"Content-Type": "application/json", "Authorization": API_KEY}
 
 CONTRACT_ORDER = [
     "AuditTrail",
@@ -99,7 +99,9 @@ def broadcast_all() -> dict:
             if ok:
                 logger.info("%s CONFIRMED on-chain!", name)
             else:
-                logger.warning("%s not confirmed after 120s — hash saved, check explorer", name)
+                logger.warning(
+                    "%s not confirmed after 120s — hash saved, check explorer", name
+                )
 
         except Exception as exc:
             logger.error("Failed to broadcast %s: %s", name, exc)

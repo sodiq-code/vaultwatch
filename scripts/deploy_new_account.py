@@ -30,11 +30,16 @@ import requests
 
 # Try importing pycspr
 try:
-    from pycspr.factory import parse_private_key, create_deploy_parameters, create_deploy
+    from pycspr.factory import (
+        parse_private_key,
+        create_deploy_parameters,
+        create_deploy,
+    )
     from pycspr.types.crypto import KeyAlgorithm
     from pycspr.types.cl import CLV_U512
     from pycspr.types.node.rpc.complex import DeployArgument, DeployOfModuleBytes
     import pycspr
+
     SDK_OK = True
 except ImportError:
     SDK_OK = False
@@ -52,17 +57,59 @@ RPC_HEADERS = {
 }
 CHAIN_NAME = "casper-test"
 
-NEW_ACCOUNT_PUBKEY = "0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116"
+NEW_ACCOUNT_PUBKEY = (
+    "0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116"
+)
 
 CONTRACTS = [
-    {"name": "AuditTrail",          "wasm": "AuditTrail.wasm",          "payment": 120_000_000_000, "args": []},
-    {"name": "RiskOracle",          "wasm": "RiskOracle.wasm",          "payment": 120_000_000_000, "args": []},
-    {"name": "SentinelCredit",      "wasm": "SentinelCredit.wasm",      "payment": 150_000_000_000, "args": []},
-    {"name": "SentinelRegistry",    "wasm": "SentinelRegistry.wasm",    "payment": 130_000_000_000, "args": []},
-    {"name": "SentinelAlertLog",    "wasm": "SentinelAlertLog.wasm",    "payment": 120_000_000_000, "args": []},
-    {"name": "AgentBehaviorIndex",  "wasm": "AgentBehaviorIndex.wasm",  "payment": 130_000_000_000, "args": []},
-    {"name": "RiskPolicyManager",   "wasm": "RiskPolicyManager.wasm",   "payment": 130_000_000_000, "args": []},
-    {"name": "SubscriberVault",     "wasm": "SubscriberVault.wasm",     "payment": 140_000_000_000, "args": []},
+    {
+        "name": "AuditTrail",
+        "wasm": "AuditTrail.wasm",
+        "payment": 120_000_000_000,
+        "args": [],
+    },
+    {
+        "name": "RiskOracle",
+        "wasm": "RiskOracle.wasm",
+        "payment": 120_000_000_000,
+        "args": [],
+    },
+    {
+        "name": "SentinelCredit",
+        "wasm": "SentinelCredit.wasm",
+        "payment": 150_000_000_000,
+        "args": [],
+    },
+    {
+        "name": "SentinelRegistry",
+        "wasm": "SentinelRegistry.wasm",
+        "payment": 130_000_000_000,
+        "args": [],
+    },
+    {
+        "name": "SentinelAlertLog",
+        "wasm": "SentinelAlertLog.wasm",
+        "payment": 120_000_000_000,
+        "args": [],
+    },
+    {
+        "name": "AgentBehaviorIndex",
+        "wasm": "AgentBehaviorIndex.wasm",
+        "payment": 130_000_000_000,
+        "args": [],
+    },
+    {
+        "name": "RiskPolicyManager",
+        "wasm": "RiskPolicyManager.wasm",
+        "payment": 130_000_000_000,
+        "args": [],
+    },
+    {
+        "name": "SubscriberVault",
+        "wasm": "SubscriberVault.wasm",
+        "payment": 140_000_000_000,
+        "args": [],
+    },
 ]
 
 # Total payment needed: ~1060 CSPR (well within 5000 CSPR balance)
@@ -85,7 +132,7 @@ def check_balance() -> int:
         timeout=10,
     )
     bal = int(r.json().get("data", {}).get("balance", 0))
-    print(f"Account balance: {bal/1e9:.1f} CSPR")
+    print(f"Account balance: {bal / 1e9:.1f} CSPR")
     return bal
 
 
@@ -126,6 +173,7 @@ def wait_for_deploy(deploy_hash: str, timeout: int = 180) -> bool:
 
 def main():
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--key-path", default=str(ROOT / "secret_key.pem"))
     args = parser.parse_args()
@@ -156,8 +204,11 @@ def main():
         # Write raw hex key as PEM
         key_bytes = bytes.fromhex(secret_hex)
         import base64
+
         b64 = base64.b64encode(key_bytes).decode()
-        pem_content = f"-----BEGIN EC PRIVATE KEY-----\n{b64}\n-----END EC PRIVATE KEY-----\n"
+        pem_content = (
+            f"-----BEGIN EC PRIVATE KEY-----\n{b64}\n-----END EC PRIVATE KEY-----\n"
+        )
         tmp_pem.write_text(pem_content)
         key = parse_private_key(tmp_pem, KeyAlgorithm.SECP256K1)
         tmp_pem.unlink(missing_ok=True)
@@ -175,13 +226,17 @@ def main():
     print(f"Loaded key — public: {pub_hex[:30]}...")
 
     # Verify it matches expected account
-    if pub_hex.lower() != NEW_ACCOUNT_PUBKEY[2:].lower():  # strip leading '02' algo prefix
+    if (
+        pub_hex.lower() != NEW_ACCOUNT_PUBKEY[2:].lower()
+    ):  # strip leading '02' algo prefix
         print("WARNING: Key doesn't match expected account. Proceeding anyway.")
 
     # Check node
     try:
         status = rpc_call("info_get_status", {})
-        print(f"Node: {status.get('chainspec_name')} era {status.get('last_added_block_info', {}).get('era_id')}")
+        print(
+            f"Node: {status.get('chainspec_name')} era {status.get('last_added_block_info', {}).get('era_id')}"
+        )
     except Exception as e:
         print(f"ERROR: Cannot reach node — {e}")
         sys.exit(1)
@@ -201,7 +256,9 @@ def main():
             if ok:
                 print(f"  ✅ {name} confirmed on-chain!")
             else:
-                print(f"  ⚠️  {name} not confirmed after 3min — hash saved, check explorer")
+                print(
+                    f"  ⚠️  {name} not confirmed after 3min — hash saved, check explorer"
+                )
             if i < len(CONTRACTS):
                 time.sleep(2)
         except Exception as e:

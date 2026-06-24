@@ -114,9 +114,7 @@ def test_address_log_index(mock_client):
                 "delivered": True,
             },
         )
-    ids_str = mock_client.query_contract_state(
-        "hash-alertlog", ["address_logs", addr]
-    )
+    ids_str = mock_client.query_contract_state("hash-alertlog", ["address_logs", addr])
     assert ids_str is not None
     ids = [int(x) for x in ids_str.split(",")]
     assert len(ids) == 3
@@ -160,9 +158,7 @@ def test_severity_values_preserved(mock_client):
             },
         )
     for idx, sev in enumerate(severities, start=1):
-        record = mock_client.query_contract_state(
-            "hash-alertlog", ["logs", str(idx)]
-        )
+        record = mock_client.query_contract_state("hash-alertlog", ["logs", str(idx)])
         assert record["severity"] == sev
 
 

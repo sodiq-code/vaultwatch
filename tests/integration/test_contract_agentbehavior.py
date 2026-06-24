@@ -45,9 +45,7 @@ def mock_client():
 
             m = _metrics[name]
             m["total_decisions"] += 1
-            total_conf = (
-                m["avg_confidence"] * (m["total_decisions"] - 1) + confidence
-            )
+            total_conf = m["avg_confidence"] * (m["total_decisions"] - 1) + confidence
             m["avg_confidence"] = total_conf // m["total_decisions"]
             if correction:
                 m["corrections_applied"] += 1
@@ -225,9 +223,7 @@ def test_multiple_agents_tracked_independently(mock_client):
             },
         )
     for agent, conf in zip(agents, confidences):
-        m = mock_client.query_contract_state(
-            "hash-agentbehavior", ["metrics", agent]
-        )
+        m = mock_client.query_contract_state("hash-agentbehavior", ["metrics", agent])
         assert m is not None
         assert m["avg_confidence"] == conf
         assert m["agent_name"] == agent

@@ -3,6 +3,7 @@
 VaultWatch — Live Testnet Contract Deployer
 Submits all 8 WASM contracts to Casper testnet via cspr.cloud JSON-RPC proxy.
 """
+
 from __future__ import annotations
 
 import json
@@ -30,14 +31,54 @@ RPC_HEADERS = {
 CHAIN_NAME = "casper-test"
 
 CONTRACTS = [
-    {"name": "AuditTrail",          "wasm": "AuditTrail.wasm",          "payment": 120_000_000_000, "args": []},
-    {"name": "RiskOracle",          "wasm": "RiskOracle.wasm",          "payment": 120_000_000_000, "args": []},
-    {"name": "SentinelCredit",      "wasm": "SentinelCredit.wasm",      "payment": 150_000_000_000, "args": []},
-    {"name": "SentinelRegistry",    "wasm": "SentinelRegistry.wasm",    "payment": 130_000_000_000, "args": []},
-    {"name": "SentinelAlertLog",    "wasm": "SentinelAlertLog.wasm",    "payment": 120_000_000_000, "args": []},
-    {"name": "AgentBehaviorIndex",  "wasm": "AgentBehaviorIndex.wasm",  "payment": 130_000_000_000, "args": []},
-    {"name": "RiskPolicyManager",   "wasm": "RiskPolicyManager.wasm",   "payment": 130_000_000_000, "args": []},
-    {"name": "SubscriberVault",     "wasm": "SubscriberVault.wasm",     "payment": 140_000_000_000, "args": []},
+    {
+        "name": "AuditTrail",
+        "wasm": "AuditTrail.wasm",
+        "payment": 120_000_000_000,
+        "args": [],
+    },
+    {
+        "name": "RiskOracle",
+        "wasm": "RiskOracle.wasm",
+        "payment": 120_000_000_000,
+        "args": [],
+    },
+    {
+        "name": "SentinelCredit",
+        "wasm": "SentinelCredit.wasm",
+        "payment": 150_000_000_000,
+        "args": [],
+    },
+    {
+        "name": "SentinelRegistry",
+        "wasm": "SentinelRegistry.wasm",
+        "payment": 130_000_000_000,
+        "args": [],
+    },
+    {
+        "name": "SentinelAlertLog",
+        "wasm": "SentinelAlertLog.wasm",
+        "payment": 120_000_000_000,
+        "args": [],
+    },
+    {
+        "name": "AgentBehaviorIndex",
+        "wasm": "AgentBehaviorIndex.wasm",
+        "payment": 130_000_000_000,
+        "args": [],
+    },
+    {
+        "name": "RiskPolicyManager",
+        "wasm": "RiskPolicyManager.wasm",
+        "payment": 130_000_000_000,
+        "args": [],
+    },
+    {
+        "name": "SubscriberVault",
+        "wasm": "SubscriberVault.wasm",
+        "payment": 140_000_000_000,
+        "args": [],
+    },
 ]
 
 
@@ -55,11 +96,14 @@ def get_account_balance(pub_key_hex: str) -> int:
     try:
         status = rpc_call("info_get_status", {})
         state_root = status.get("last_added_block_info", {}).get("state_root_hash", "")
-        result = rpc_call("query_global_state", {
-            "state_identifier": {"StateRootHash": state_root},
-            "key": f"account-hash-{pub_key_hex}",
-            "path": [],
-        })
+        result = rpc_call(
+            "query_global_state",
+            {
+                "state_identifier": {"StateRootHash": state_root},
+                "key": f"account-hash-{pub_key_hex}",
+                "path": [],
+            },
+        )
         purse = result["stored_value"]["Account"]["main_purse"]
         bal = rpc_call("query_balance", {"purse_identifier": {"URef": purse}})
         return int(bal.get("balance", 0))
@@ -103,7 +147,9 @@ def main():
     # Check node connectivity
     try:
         status = rpc_call("info_get_status", {})
-        print(f"Node: {status.get('chainspec_name', '?')} era {status.get('last_added_block_info', {}).get('era_id', '?')}")
+        print(
+            f"Node: {status.get('chainspec_name', '?')} era {status.get('last_added_block_info', {}).get('era_id', '?')}"
+        )
     except Exception as e:
         print(f"ERROR: Cannot reach node — {e}")
         sys.exit(1)

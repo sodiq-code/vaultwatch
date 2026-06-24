@@ -37,14 +37,54 @@ WASM_DIR = Path(__file__).parent.parent / "contracts" / "wasm"
 OUT_DIR = Path(__file__).parent.parent / "deploys"
 
 CONTRACTS = [
-    {"name": "AuditTrail",          "wasm": "AuditTrail.wasm",          "payment": 120_000_000_000, "args": {}},
-    {"name": "RiskOracle",          "wasm": "RiskOracle.wasm",          "payment": 120_000_000_000, "args": {}},
-    {"name": "SentinelCredit",      "wasm": "SentinelCredit.wasm",      "payment": 150_000_000_000, "args": {"name": "SentinelCredit", "symbol": "SRC", "decimals": 9}},
-    {"name": "SentinelRegistry",    "wasm": "SentinelRegistry.wasm",    "payment": 130_000_000_000, "args": {}},
-    {"name": "SentinelAlertLog",    "wasm": "SentinelAlertLog.wasm",    "payment": 120_000_000_000, "args": {}},
-    {"name": "AgentBehaviorIndex",  "wasm": "AgentBehaviorIndex.wasm",  "payment": 130_000_000_000, "args": {}},
-    {"name": "RiskPolicyManager",   "wasm": "RiskPolicyManager.wasm",   "payment": 130_000_000_000, "args": {}},
-    {"name": "SubscriberVault",     "wasm": "SubscriberVault.wasm",     "payment": 140_000_000_000, "args": {}},
+    {
+        "name": "AuditTrail",
+        "wasm": "AuditTrail.wasm",
+        "payment": 120_000_000_000,
+        "args": {},
+    },
+    {
+        "name": "RiskOracle",
+        "wasm": "RiskOracle.wasm",
+        "payment": 120_000_000_000,
+        "args": {},
+    },
+    {
+        "name": "SentinelCredit",
+        "wasm": "SentinelCredit.wasm",
+        "payment": 150_000_000_000,
+        "args": {"name": "SentinelCredit", "symbol": "SRC", "decimals": 9},
+    },
+    {
+        "name": "SentinelRegistry",
+        "wasm": "SentinelRegistry.wasm",
+        "payment": 130_000_000_000,
+        "args": {},
+    },
+    {
+        "name": "SentinelAlertLog",
+        "wasm": "SentinelAlertLog.wasm",
+        "payment": 120_000_000_000,
+        "args": {},
+    },
+    {
+        "name": "AgentBehaviorIndex",
+        "wasm": "AgentBehaviorIndex.wasm",
+        "payment": 130_000_000_000,
+        "args": {},
+    },
+    {
+        "name": "RiskPolicyManager",
+        "wasm": "RiskPolicyManager.wasm",
+        "payment": 130_000_000_000,
+        "args": {},
+    },
+    {
+        "name": "SubscriberVault",
+        "wasm": "SubscriberVault.wasm",
+        "payment": 140_000_000_000,
+        "args": {},
+    },
 ]
 
 
@@ -82,8 +122,7 @@ def main():
             args=[DeployArgument("amount", CLV_U512(contract["payment"]))],
         )
         session_args = [
-            DeployArgument(k, make_cl_value(v))
-            for k, v in contract["args"].items()
+            DeployArgument(k, make_cl_value(v)) for k, v in contract["args"].items()
         ]
         session = DeployOfModuleBytes(module_bytes=wasm_bytes, args=session_args)
 
@@ -94,7 +133,9 @@ def main():
         out_path = OUT_DIR / f"{name}_deploy.json"
         out_path.write_text(json.dumps(deploy_json, indent=2))
 
-        deploy_hash = deploy.hash.hex() if hasattr(deploy.hash, "hex") else str(deploy.hash)
+        deploy_hash = (
+            deploy.hash.hex() if hasattr(deploy.hash, "hex") else str(deploy.hash)
+        )
         hashes[name] = deploy_hash
         logger.info("%s -> hash: %s  saved: %s", name, deploy_hash, out_path)
 
