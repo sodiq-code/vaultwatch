@@ -314,7 +314,8 @@ export default function App() {
                 lineHeight: 1.5,
               }}>
                 ● Live Groq AI — real-time<br />
-                ● 8 Odra contracts on-chain<br />
+                ● 8 Odra contracts · 29 TX hashes<br />
+                ● 130 tests passing<br />
                 ● llama-3.3-70b-versatile<br />
                 ● CoinGecko price feed
               </div>
