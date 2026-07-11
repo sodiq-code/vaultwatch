@@ -27,16 +27,15 @@ VaultWatch is a production-grade DeFi risk monitoring and intelligence platform 
 
 ## Final Round Differentiators
 
-These are the original primitives added for the Final Round to compete
-with the top 2 (Casper Trust Layer 8.875, Pantheon 8.625):
+These are the original primitives added for the Final Round:
 
 | Primitive | What it does | Why it's original |
 |-----------|--------------|-------------------|
-| **Hybrid Reputation Formula** ([docs](docs/REPUTATION_FORMULA.md)) | Combines Brier-scored AI agent accuracy + escrow-derived economic trust into one reputation number | Top 2 each have only ONE formula; VaultWatch combines both |
-| **12-Check Red-Team Checklist** ([docs](docs/RED_TEAM_CHECKLIST.md)) | Adversarial analysis of the reputation formula — 8/12 fully resist, 4/12 partial, 0/12 vulnerable | Matches CTL's 12-check methodology; published in full |
-| **5 New MCP Tools** ([server](vaultwatch_mcp/server.py)) | agent_attestation, reputation_query, x402_subscribe, policy_hotswap, behavior_index_lookup | Brings total to 20 tools — the largest MCP surface in the cohort |
+| **Hybrid Reputation Formula** ([docs](docs/REPUTATION_FORMULA.md)) | Combines Brier-scored AI agent accuracy + escrow-derived economic trust into one reputation number | Combines both trust signals in a single formula with tunable weights |
+| **12-Check Red-Team Checklist** ([docs](docs/RED_TEAM_CHECKLIST.md)) | Adversarial analysis of the reputation formula — 8/12 fully resist, 4/12 partial, 0/12 vulnerable | Published in full for transparency |
+| **5 New MCP Tools** ([server](vaultwatch_mcp/server.py)) | agent_attestation, reputation_query, x402_subscribe, policy_hotswap, behavior_index_lookup | Brings total to 20 tools |
 | **Official x402 SDK** ([x402/](x402/)) | Replaces home-rolled x402 stub with `@make-software/casper-x402` integration | Real payment verification, not simulated |
-| **Bulk-Memory-Safe WASM Build** ([script](scripts/build_contracts.sh)) | CI compiles 8 contracts with `-C target-feature=-bulk-memory` + `wasm-opt` + automated opcode gate | Fixes the June 24 deploy failure; prevents recurrence |
+| **Bulk-Memory-Safe WASM Build** ([script](scripts/build_contracts.sh)) | CI compiles 8 contracts with `-C target-feature=-bulk-memory` + `wasm-opt` + automated opcode gate | Resolved the deployment failure; verified on Casper Testnet |
 
 ---
 

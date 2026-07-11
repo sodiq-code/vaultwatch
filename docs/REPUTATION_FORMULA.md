@@ -1,7 +1,7 @@
 # VaultWatch Hybrid Reputation Formula
 
-> **Final Round Original Primitive** — the single most important differentiator
-> vs. Casper Trust Layer (8.875) and Pantheon (8.625).
+> **VaultWatch's signature primitive** — a hybrid reputation formula that
+> combines two independent trust signals into one score.
 
 ## TL;DR
 
@@ -17,30 +17,26 @@ R = w_B · (100 − Brier_normalized) + w_E · escrow_trust
 | **Brier** | `AgentBehaviorIndex` on-chain metrics | 0.6 | AI agent prediction accuracy over time |
 | **Escrow** | `SentinelCredit` + `SubscriberVault` on-chain state | 0.4 | Economic stake + slash history |
 
-Both top-2 submissions have **one** formula each. VaultWatch is the only
-submission that combines both — reflecting that AI accuracy is the core
-value but economic stake is the backstop. Every component is verifiable
-on-chain via Casper RPC.
+Both the Brier and escrow approaches are established reputation primitives.
+VaultWatch's contribution is combining both in a single formula — reflecting
+that AI accuracy is the core value but economic stake is the backstop. Every
+component is verifiable on-chain via Casper RPC.
 
 ---
 
 ## 1. Why Hybrid?
 
-| Submission | Reputation approach | Strength | Weakness |
-|------------|---------------------|----------|----------|
-| **Casper Trust Layer** (#1, 8.875) | Escrow-derived + 12-check red-team | Ties trust to real economic stake; hard to game | Says nothing about agent accuracy |
-| **Pantheon** (#2, 8.625) | Brier-score with EWMA + auto-slashing | Rigorously measures prediction quality | No economic stake; a broke agent can still score high |
-| **VaultWatch** (this formula) | Hybrid: Brier + escrow | Captures BOTH dimensions; weights tunable on-chain | Slightly more complex (but every term is published) |
+The Brier score and escrow-derived trust are two established approaches to
+measuring reputation. Each captures an important but incomplete signal:
 
-The hybrid is **not** a marketing combination. The two components measure
-**orthogonal** failure modes:
-
-- An agent with great Brier but zero escrow has no "skin in the game" —
-  it can walk away from bad predictions.
-- An agent with huge escrow but terrible Brier is just a well-funded
-  idiot — money doesn't make it right.
+- **Brier-scored reputation** rigorously measures prediction quality but
+  doesn't account for economic stake — an agent with no "skin in the game"
+  can still score high.
+- **Escrow-derived reputation** ties trust to real economic stake but says
+  nothing about the agent's accuracy or prediction quality.
 
 VaultWatch's thesis: a trustworthy intelligence system needs **both**.
+The hybrid formula captures both failure modes in a single score.
 
 ---
 
@@ -258,16 +254,16 @@ can recompute the score by hand from on-chain state.
 
 ---
 
-## 7. Comparison to Top 2
+## 7. Approach Comparison
 
-| Dimension | CTL (8.875) | Pantheon (8.625) | VaultWatch (this) |
-|-----------|-------------|------------------|-------------------|
-| Formula type | Escrow-derived | Brier (EWMA) | **Hybrid (Brier + escrow)** |
-| Red-team checklist | 12 checks | Implicit | **12 checks (see RED_TEAM_CHECKLIST.md)** |
-| On-chain source | Off-chain registry | On-chain predictions | **On-chain (AgentBehaviorIndex + SentinelCredit + SubscriberVault)** |
-| Tunable weights | No | No | **Yes (per-query via MCP)** |
-| AI accuracy signal | No | Yes | **Yes** |
-| Economic stake signal | Yes | No | **Yes** |
+| Dimension | Brier-only | Escrow-only | VaultWatch (hybrid) |
+|-----------|------------|-------------|---------------------|
+| Formula type | Brier (EWMA) | Escrow-derived | Hybrid (Brier + escrow) |
+| Red-team checklist | varies | varies | 12 checks (see RED_TEAM_CHECKLIST.md) |
+| On-chain source | On-chain predictions | Off-chain registry | On-chain (AgentBehaviorIndex + SentinelCredit + SubscriberVault) |
+| Tunable weights | No | No | Yes (per-query via MCP) |
+| AI accuracy signal | Yes | No | Yes |
+| Economic stake signal | No | Yes | Yes |
 
 ---
 
@@ -284,6 +280,6 @@ can recompute the score by hand from on-chain state.
 4. **Weight tuning** — defaults (0.6/0.4) are reasonable but empirical
    tuning would require a labeled dataset of agent decisions.
 
-These are honest limitations. The top 2 have analogous gaps (CTL's
-escrow formula doesn't measure AI accuracy at all; Pantheon's Brier
-ignores economic stake entirely).
+These are honest limitations. The Brier-only and escrow-only approaches have
+analogous gaps (Brier-only doesn't measure economic stake; escrow-only doesn't
+measure AI accuracy).

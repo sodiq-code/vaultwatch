@@ -5,7 +5,7 @@ Transport: stdio + HTTP/SSE
 Published: npm install casper-sentinel-mcp (calls this via npx)
 Any Claude Desktop user can query VaultWatch live via MCP protocol.
 
-Final Round originals (the differentiators vs. top 2):
+Final Round originals:
   16. agent_attestation      — on-chain AI agent attestation via AgentBehaviorIndex
   17. reputation_query       — hybrid Brier + escrow-derived reputation score
   18. x402_subscribe         — official @make-software/casper-x402 paid subscription
@@ -343,7 +343,7 @@ async def upgrade_policy(
     """
     Hot-swap VaultWatch risk thresholds via RiskPolicyManager contract.
     Agents read updated policy every decision cycle — no restart required.
-    DEMO KILLSHOT: change threshold → agents reclassify same events → new TX on-chain.
+    DEMO FEATURE: change threshold → agents reclassify same events → new TX on-chain.
     """
     with tracer.start_as_current_span("mcp.upgrade_policy") as span:
         span.set_attribute("mcp.new_min_confidence", min_confidence)
@@ -490,10 +490,9 @@ async def reputation_query(
       - Brier-scored AI agent accuracy (from AgentBehaviorIndex on-chain)
       - Escrow-derived economic trust (from SentinelCredit + SubscriberVault)
 
-    This hybrid approach is VaultWatch's original contribution: the top 2
-    each have ONE formula (Pantheon = Brier only, CTL = escrow only).
-    VaultWatch combines both, weighted to reflect that AI accuracy is the
-    core value but economic stake is the backstop.
+    This hybrid approach is VaultWatch's original contribution: it combines
+    both signals in a single formula with tunable weights, reflecting that
+    AI accuracy is the core value but economic stake is the backstop.
 
     The formula is published in docs/REPUTATION_FORMULA.md and accompanied
     by a 12-check red-team checklist (docs/RED_TEAM_CHECKLIST.md).

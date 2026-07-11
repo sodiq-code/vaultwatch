@@ -1,11 +1,9 @@
 
 /// RiskPolicyManager — Hot-swappable risk thresholds without contract redeployment
 ///
-/// THE KILLSHOT DEMO FEATURE.
 /// Run `npm run demo:upgrade-policy` → threshold changes live on testnet →
 /// agents immediately reclassify events at new threshold → new finding on-chain.
 /// Hot upgrade of a live production system in 30 seconds.
-/// No other submission can demonstrate this.
 
 use odra::prelude::*;
 

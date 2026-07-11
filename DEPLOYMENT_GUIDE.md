@@ -367,5 +367,4 @@ state.
 - [ ] DoraHacks BUIDL page updated with new hashes + testing instructions
 - [ ] Hybrid reputation formula + red-team checklist linked from README
 
-When all boxes are checked, you are Final-Round eligible and competitive
-with the top 2.
+When all boxes are checked, you are Final-Round eligible.

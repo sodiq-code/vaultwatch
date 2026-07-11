@@ -14,22 +14,35 @@ const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 // cspr.cloud public testnet API — no key needed for basic queries
 const CSPR_CLOUD_BASE = 'https://event-store-api-clarity-testnet.make.services'
 
-// Real contract deploy hashes on Casper Testnet (signed & broadcast Jun 24 2026)
+// Verified contract deploy hashes on Casper Testnet (protocol 2.2.2)
+// All 8 contracts SUCCESSFULLY DEPLOYED July 11, 2026 — verified with 16 named keys
 export const CONTRACT_HASHES = {
-  AuditTrail:         'f06e33573efbe1c8db658b4ab37db4c0ef7996ba02bfd8378049ada251e8e102',
-  RiskOracle:         'fb877bae9a273ce74886a68d772841f9089503d802d106bb93bd018f7ef5e98a',
-  SentinelCredit:     '01cfe8d1e596859aa81954a6bf4792961c3c7587e6df2e4ce7d98bc802c7a403',
-  SentinelRegistry:   'd9c8c5eff41f81e659c907255c48813ad56303634dbb4d8fb1e2b0df4ae48622',
-  SentinelAlertLog:   '45dbc90b56dc40e419d9da7b6a972fc6027ea0125065d6a1ddfa0c9394eb42c7',
-  AgentBehaviorIndex: '162a4f5ff991b7eceb8aa38ff3c2a2beb27dc2007a8c499602d372563cdc63a9',
-  RiskPolicyManager:  '048dcfe5ca296101eb7aa11694165b321f7a42c2c8d560aeddd628f4c08c8b1a',
-  SubscriberVault:    '786b611f007e410aa2d8d8ed47b267ea6e9bb3c7d343003c3dad3ba0d3fd35f0',
+  AuditTrail:         'b9c70cdceff1011008b3933835d4a46146f26f1d1e82ada8520be77e1d6333a7',
+  RiskOracle:         'e071aacc460a62e538092f5006930710f49e632598846c4c843e3daf0c5a7c9d',
+  SentinelCredit:     '0c09f2ad66701b38b1720390e20bf8ac5b7bf6a20cc174cba44f3861549baf71',
+  SentinelRegistry:   '9a5eb4f83de8cbfef4f389516b977258b0e1d63179b288ca623a860fc6ec346c',
+  SentinelAlertLog:   '53317e080ffdffcf097447ea3375c9195c6936fe7b1ed53795bf46134322a925',
+  AgentBehaviorIndex: '05066c33ddb73b523ab8f67275ca6096254f9d1832e76075d1e5f41f188b7dd0',
+  RiskPolicyManager:  '93e35d6488dcab8524a22c82241c7ddc6d07b0f7c011544e6c4a296c1a0eee2e',
+  SubscriberVault:    '6620787c14d9d78506b281be8c95c8f9b105781b9705d2bd9736f2aabfd6956d',
 }
 
-export const DEPLOYER_ACCOUNT = '0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116'
+// Contract package hashes (queryable on-chain via state_get_account_info)
+export const CONTRACT_PACKAGE_HASHES = {
+  AuditTrail:         'hash-7e653fc142ddd4f1759aec0c2f4fb0537eb167cfb9771',
+  SentinelRegistry:   'hash-d97d1f1ef30bf765fbf13aa11817fea409b67056dd59f',
+  RiskOracle:         'hash-1a47fd766eb021aa83cc44b5a729920842253510936cb',
+  SentinelCredit:     'hash-47ea0c53777a68d79cf2f66b9171e4a1b588048c283b2',
+  AgentBehaviorIndex: 'hash-d888dc3696046633582f1355f9708dfbd5acde3528466',
+  SentinelAlertLog:   'hash-f75ce1bc111d185c39d7c81d5a18b093749643957b8c3',
+  RiskPolicyManager:  'hash-aaf7f48dbcdbd59996b9b181c7980bb6c5116a7c72005',
+  SubscriberVault:    'hash-68c4b7cca84982833af3f9346a5a9ea337bfdcd20875b',
+}
 
-// Seed block height — synced to real testnet height Jun 24 2026
-let _blockHeight = 8_279_455
+export const DEPLOYER_ACCOUNT = '0203cd257525b180a32cab4efc0d9d9a365bf9bc1b8d2e76ebfb9186a4eeb23bace7'
+
+// Seed block height — synced to real testnet height Jul 11 2026 (post-redeploy)
+let _blockHeight = 8_463_753
 let _blockTimestamp = Date.now()
 let _cspr_price = null
 let _price_last_fetched = 0

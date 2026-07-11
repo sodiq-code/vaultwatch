@@ -3,10 +3,9 @@ VaultWatch Reputation Engine — Hybrid Brier + Escrow-Derived Formula
 
 This module implements the published reputation formula described in
 docs/REPUTATION_FORMULA.md. It is the single most important differentiator
-vs. the top 2 (Casper Trust Layer 8.875, Pantheon 8.625) — both of whom
-have a defensible reputation primitive. VaultWatch's contribution is a
-HYBRID: it scores BOTH the AI agents (Brier, like Pantheon) AND the
-human/protocol subscribers (escrow-derived, like CTL) in one formula.
+for VaultWatch — a defensible reputation primitive that scores BOTH the AI
+agents (Brier) AND the human/protocol subscribers (escrow-derived) in one
+formula.
 
 Two sub-scores:
   1. Agent Brier Score (B)  — measures AI prediction accuracy over time.

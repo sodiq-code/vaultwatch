@@ -1,8 +1,7 @@
 # VaultWatch Reputation Red-Team Checklist (12 Checks)
 
 > Companion to `docs/REPUTATION_FORMULA.md`. This is the adversarial
-> review of our own formula — inspired by Casper Trust Layer's 12-check
-> red-team methodology. Each check describes an attack, whether our
+> review of our own formula. Each check describes an attack, whether our
 > formula resists it, and the evidence.
 
 ## How to Read This
@@ -241,5 +240,4 @@ formula reproduces `reputation_score` exactly.
 
 The partial resistances are documented with mitigations in
 `REPUTATION_FORMULA.md §8` (Limitations & Future Work). This honest
-accounting is itself a signal of rigor — the top 2 do not publish
-their adversarial analysis at this depth.
+accounting is itself a signal of rigor.
