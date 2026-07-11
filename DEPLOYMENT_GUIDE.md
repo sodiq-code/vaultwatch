@@ -276,7 +276,7 @@ round deadline.
 ## Step 9 — Merge the fix branch
 
 ```bash
-# From your local machine (NOT this sandbox)
+# From your local machine
 git fetch origin
 git checkout main
 git merge --no-ff fix/final-round-wasm-mcp-x402-reputation
