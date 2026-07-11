@@ -33,7 +33,7 @@ cd dashboard && npm install && cd ..
 - `main` — always deployable. Never push directly.
 - `develop` — integration branch.
 - Feature branches: `feat/<short-name>` or `fix/<short-name>`.
-- The Final Round fix branch is `fix/final-round-wasm-mcp-x402-reputation`.
+- 
 
 **Critical rule** (from the hackathon team): the repo MUST be in a
 functional state at every commit. A judge may visit mid-PR. So:

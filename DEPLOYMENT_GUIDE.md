@@ -1,4 +1,4 @@
-# VaultWatch — Final Round Deployment Guide
+# VaultWatch — Deployment Guide
 
 > **Read this first.** This is the step-by-step path from the current
 > state (8 failed deploys) to a verified, Final-Round-eligible submission.

@@ -4,7 +4,7 @@
 **Network**: Casper Testnet (`casper-test`)  
 **Deployer**: `<UPDATE_WITH_ROTATED_DEPLOYER_PUBKEY>` <!-- rotate from compromised key -->
 
-> **Final Round Update (July 2026)**: The original June 24 deploys all FAILED
+> The original June 24 deploys all FAILED
 > with "Wasm preprocessing error: Bulk memory operations are not supported."
 > We rebuilt all 8 contracts with `RUSTFLAGS=-C target-feature=-bulk-memory`
 > + `wasm-opt --enable-bulk-memory=no` and redeployed. The hashes below are

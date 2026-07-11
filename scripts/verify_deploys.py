@@ -147,7 +147,7 @@ def main() -> int:
     print()
     if all_ok:
         print("✅ ALL DEPLOYS VERIFIED — contracts are installed on Casper Testnet.")
-        print("   Update proof/PROOF.md with these hashes and proceed to Final Round.")
+        print("   Update proof/PROOF.md with these hashes and update proof/PROOF.md.")
         return 0
     print("❌ VERIFICATION FAILED — see table above. Do NOT update PROOF.md yet.")
     return 1

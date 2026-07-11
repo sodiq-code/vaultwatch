@@ -1,11 +1,11 @@
 """
-VaultWatch MCP Server — 20 tools (15 original + 5 Final Round originals)
+VaultWatch MCP Server — 20 tools (15 original + 5 New tools added July 2026:)
 Framework: FastMCP (Python)
 Transport: stdio + HTTP/SSE
 Published: npm install casper-sentinel-mcp (calls this via npx)
 Any Claude Desktop user can query VaultWatch live via MCP protocol.
 
-Final Round originals:
+New tools added July 2026::
   16. agent_attestation      — on-chain AI agent attestation via AgentBehaviorIndex
   17. reputation_query       — hybrid Brier + escrow-derived reputation score
   18. x402_subscribe         — official @make-software/casper-x402 paid subscription
@@ -414,7 +414,7 @@ async def get_subscriber_balance(address: str) -> dict:
     }
 
 
-# ─── Tool 16: agent_attestation (FINAL ROUND ORIGINAL) ───────────────────────
+# ─── Tool 16: agent_attestation  ───────────────────────
 @mcp.tool()
 async def agent_attestation(
     agent_name: str,
@@ -474,7 +474,7 @@ async def agent_attestation(
         return attestation
 
 
-# ─── Tool 17: reputation_query (FINAL ROUND ORIGINAL) ────────────────────────
+# ─── Tool 17: reputation_query  ────────────────────────
 @mcp.tool()
 async def reputation_query(
     address: str,
@@ -565,7 +565,7 @@ async def reputation_query(
         return result
 
 
-# ─── Tool 18: x402_subscribe (FINAL ROUND ORIGINAL) ──────────────────────────
+# ─── Tool 18: x402_subscribe  ──────────────────────────
 @mcp.tool()
 async def x402_subscribe(
     subscriber_address: str,
@@ -635,14 +635,14 @@ async def x402_subscribe(
         }
 
 
-# ─── Tool 19: policy_hotswap (FINAL ROUND ORIGINAL) ──────────────────────────
+# ─── Tool 19: policy_hotswap  ──────────────────────────
 @mcp.tool()
 async def policy_hotswap(
     new_min_confidence: int = 80,
     new_critical_threshold: int = 85,
     new_high_threshold: int = 65,
     rollback_on_failure: bool = True,
-    reason: str = "Final Round policy tuning",
+    reason: str = "Policy tuning",
 ) -> dict:
     """
     Atomically hot-swap VaultWatch risk thresholds via RiskPolicyManager.
@@ -699,7 +699,7 @@ async def policy_hotswap(
         }
 
 
-# ─── Tool 20: behavior_index_lookup (FINAL ROUND ORIGINAL) ───────────────────
+# ─── Tool 20: behavior_index_lookup  ───────────────────
 @mcp.tool()
 async def behavior_index_lookup(
     agent_names: Optional[list[str]] = None,

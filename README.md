@@ -4,15 +4,6 @@
 
 VaultWatch is a production-grade DeFi risk monitoring and intelligence platform built natively on the Casper blockchain. Six Groq-powered AI agents continuously monitor on-chain activity, classify anomalies in real time, and write verified findings to eight Odra smart contracts — all instrumented end-to-end with OpenTelemetry and exposed via a 20-tool FastMCP server callable from Claude Desktop.
 
-> **Final Round Update (July 2026)** — Added 5 original MCP tools (agent
-> attestation, hybrid reputation query, official x402 subscribe, atomic
-> policy hotswap, cross-agent behavior index lookup), published a hybrid
-> Brier + escrow-derived reputation formula with a 12-check red-team
-> checklist, and integrated the official `@make-software/casper-x402` SDK.
-> Rebuilt all 8 contracts with bulk-memory-safe WASM flags after the
-> original June 24 deploys failed preprocessing. See
-> [`DEPLOYMENT_GUIDE.md`](DEPLOYMENT_GUIDE.md) for the full fix story.
-
 [![CI](https://github.com/sodiq-code/vaultwatch/actions/workflows/ci.yml/badge.svg)](https://github.com/sodiq-code/vaultwatch/actions/workflows/ci.yml)
 [![Build Contracts](https://github.com/sodiq-code/vaultwatch/actions/workflows/build-contracts.yml/badge.svg)](https://github.com/sodiq-code/vaultwatch/actions/workflows/build-contracts.yml)
 [![CodeQL](https://github.com/sodiq-code/vaultwatch/actions/workflows/codeql.yml/badge.svg)](https://github.com/sodiq-code/vaultwatch/actions/workflows/codeql.yml)
@@ -25,17 +16,15 @@ VaultWatch is a production-grade DeFi risk monitoring and intelligence platform 
 
 ---
 
-## Final Round Differentiators
+## Key Features
 
-These are the original primitives added for the Final Round:
-
-| Primitive | What it does | Why it's original |
-|-----------|--------------|-------------------|
-| **Hybrid Reputation Formula** ([docs](docs/REPUTATION_FORMULA.md)) | Combines Brier-scored AI agent accuracy + escrow-derived economic trust into one reputation number | Combines both trust signals in a single formula with tunable weights |
-| **12-Check Red-Team Checklist** ([docs](docs/RED_TEAM_CHECKLIST.md)) | Adversarial analysis of the reputation formula — 8/12 fully resist, 4/12 partial, 0/12 vulnerable | Published in full for transparency |
-| **5 New MCP Tools** ([server](vaultwatch_mcp/server.py)) | agent_attestation, reputation_query, x402_subscribe, policy_hotswap, behavior_index_lookup | Brings total to 20 tools |
-| **Official x402 SDK** ([x402/](x402/)) | Replaces home-rolled x402 stub with `@make-software/casper-x402` integration | Real payment verification, not simulated |
-| **Bulk-Memory-Safe WASM Build** ([script](scripts/build_contracts.sh)) | CI compiles 8 contracts with `-C target-feature=-bulk-memory` + `wasm-opt` + automated opcode gate | Resolved the deployment failure; verified on Casper Testnet |
+| Feature | Description |
+|---------|-------------|
+| **Hybrid Reputation Formula** ([docs](docs/REPUTATION_FORMULA.md)) | Combines Brier-scored AI agent accuracy + escrow-derived economic trust into one reputation number with tunable weights |
+| **12-Check Red-Team Checklist** ([docs](docs/RED_TEAM_CHECKLIST.md)) | Adversarial analysis of the reputation formula — 8/12 fully resist, 4/12 partial, 0/12 vulnerable |
+| **20-Tool MCP Server** ([server](vaultwatch_mcp/server.py)) | agent_attestation, reputation_query, x402_subscribe, policy_hotswap, behavior_index_lookup + 15 original tools |
+| **Official x402 SDK** ([x402/](x402/)) | `@make-software/casper-x402` integration for real payment verification |
+| **Bulk-Memory-Safe WASM Build** ([script](scripts/build_contracts.sh)) | CI compiles 8 contracts with `-C target-feature=-bulk-memory` + `wasm-opt` + automated opcode gate |
 
 ---
 
@@ -44,10 +33,6 @@ These are the original primitives added for the Final Round:
 [![VaultWatch Demo](https://img.youtube.com/vi/Jmg_MFSxwdE/maxresdefault.jpg)](https://youtu.be/Jmg_MFSxwdE)
 
 **[▶ Watch on YouTube — VaultWatch: AI-Powered DeFi Risk Intelligence on Casper Blockchain](https://youtu.be/Jmg_MFSxwdE)**
-
-> Note: the demo video above references the original June 24 deploys. A
-> fresh demo covering the Final Round primitives is in progress — see
-> [`DEPLOYMENT_GUIDE.md §10`](DEPLOYMENT_GUIDE.md).
 
 ---
 
@@ -211,7 +196,7 @@ All 8 deploys **VERIFIED SUCCESS** — 16 named keys on deployer account, 135-14
 | **SentinelCredit** | `0c09f2ad…af71` | x402 credit ledger for pay-per-query billing | [View →](https://testnet.cspr.live/deploy/0c09f2ad66701b38b1720390e20bf8ac5b7bf6a20cc174cba44f3861549baf71) |
 | **AgentBehaviorIndex** | `05066c33…7dd0` | AI agent performance + confidence on-chain | [View →](https://testnet.cspr.live/deploy/05066c33ddb73b523ab8f67275ca6096254f9d1832e76075d1e5f41f188b7dd0) |
 | **SentinelAlertLog** | `53317e08…a925` | Timestamped alert history per address | [View →](https://testnet.cspr.live/deploy/53317e080ffdffcf097447ea3375c9195c6936fe7b1ed53795bf46134322a925) |
-| **RiskPolicyManager** | `048dcfe5…c8b1a` | Hot-swappable risk thresholds | [View →](https://testnet.cspr.live/deploy/93e35d6488dcab8524a22c82241c7ddc6d07b0f7c011544e6c4a296c1a0eee2e) |
+| **RiskPolicyManager** | `93e35d64…ee2e` | Hot-swappable risk thresholds | [View →](https://testnet.cspr.live/deploy/93e35d6488dcab8524a22c82241c7ddc6d07b0f7c011544e6c4a296c1a0eee2e) |
 | **SubscriberVault** | `6620787c…956d` | Escrowed prepay balance for subscribers | [View →](https://testnet.cspr.live/deploy/6620787c14d9d78506b281be8c95c8f9b105781b9705d2bd9736f2aabfd6956d) |
 
 ---
