@@ -10,9 +10,9 @@ httpx>=0.27.0
 aiohttp>=3.9.0
 
 # OpenTelemetry (stable API + SDK; instrumentation uses pre-release scheme)
-opentelemetry-api>=1.25.0
-opentelemetry-sdk>=1.25.0
-opentelemetry-instrumentation-fastapi>=0.46b0
+opentelemetry-api>=1.43.0
+opentelemetry-sdk>=1.43.0
+opentelemetry-instrumentation-fastapi>=0.64b0
 
 # MCP
 fastmcp>=0.1.0
