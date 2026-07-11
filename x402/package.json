@@ -1,0 +1,48 @@
+{
+  "name": "@vaultwatch/x402",
+  "version": "4.1.0",
+  "description": "Official x402 payment integration for VaultWatch intelligence subscriptions on Casper",
+  "type": "module",
+  "main": "vaultwatch-x402.ts",
+  "scripts": {
+    "demo": "tsx vaultwatch-x402.ts",
+    "typecheck": "tsc --noEmit vaultwatch-x402.ts"
+  },
+  "keywords": [
+    "casper",
+    "casper-blockchain",
+    "casper-network",
+    "x402",
+    "payment-protocol",
+    "vaultwatch",
+    "defi",
+    "risk-intelligence"
+  ],
+  "author": "VaultWatch <dev@vaultwatch.io>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sodiq-code/vaultwatch",
+    "directory": "x402"
+  },
+  "homepage": "https://github.com/sodiq-code/vaultwatch#x402-integration",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "peerDependencies": {
+    "@make-software/casper-x402": "^1.0.0",
+    "casper-js-sdk": "^2.15.0"
+  },
+  "peerDependenciesMeta": {
+    "@make-software/casper-x402": {
+      "optional": false
+    },
+    "casper-js-sdk": {
+      "optional": false
+    }
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "tsx": "^4.7.0"
+  }
+}

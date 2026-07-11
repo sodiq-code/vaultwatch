@@ -1,0 +1,95 @@
+version: 2
+updates:
+  # Python dependencies (requirements.txt + sdk/setup.py)
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Africa/Lagos"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "python"
+    commit-message:
+      prefix: "deps(python)"
+    groups:
+      opentelemetry:
+        patterns:
+          - "opentelemetry-*"
+      testing:
+        patterns:
+          - "pytest*"
+      dev-tools:
+        patterns:
+          - "ruff"
+          - "mypy"
+
+  # Root package.json (devDependencies only — dashboard has its own)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Africa/Lagos"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "npm"
+    commit-message:
+      prefix: "deps(npm)"
+
+  # x402/ package.json
+  - package-ecosystem: "npm"
+    directory: "/x402"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "x402"
+
+  # vaultwatch_mcp/ package.json
+  - package-ecosystem: "npm"
+    directory: "/vaultwatch_mcp"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "mcp"
+
+  # dashboard/ package.json
+  - package-ecosystem: "npm"
+    directory: "/dashboard"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "dashboard"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+      - "ci"
+    commit-message:
+      prefix: "deps(ci)"
+
+  # Cargo (Rust contracts)
+  - package-ecosystem: "cargo"
+    directory: "/contracts"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "rust"
+    commit-message:
+      prefix: "deps(rust)"

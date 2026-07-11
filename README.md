@@ -2,15 +2,41 @@
 
 **AI-Powered DeFi Risk Intelligence Agent on Casper**
 
-VaultWatch is a production-grade DeFi risk monitoring and intelligence platform built natively on the Casper blockchain. Six Groq-powered AI agents continuously monitor on-chain activity, classify anomalies in real time, and write verified findings to eight Odra smart contracts — all instrumented end-to-end with OpenTelemetry and exposed via a 15-tool FastMCP server callable from Claude Desktop.
+VaultWatch is a production-grade DeFi risk monitoring and intelligence platform built natively on the Casper blockchain. Six Groq-powered AI agents continuously monitor on-chain activity, classify anomalies in real time, and write verified findings to eight Odra smart contracts — all instrumented end-to-end with OpenTelemetry and exposed via a 20-tool FastMCP server callable from Claude Desktop.
+
+> **Final Round Update (July 2026)** — Added 5 original MCP tools (agent
+> attestation, hybrid reputation query, official x402 subscribe, atomic
+> policy hotswap, cross-agent behavior index lookup), published a hybrid
+> Brier + escrow-derived reputation formula with a 12-check red-team
+> checklist, and integrated the official `@make-software/casper-x402` SDK.
+> Rebuilt all 8 contracts with bulk-memory-safe WASM flags after the
+> original June 24 deploys failed preprocessing. See
+> [`DEPLOYMENT_GUIDE.md`](DEPLOYMENT_GUIDE.md) for the full fix story.
 
 [![CI](https://github.com/sodiq-code/vaultwatch/actions/workflows/ci.yml/badge.svg)](https://github.com/sodiq-code/vaultwatch/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-130%2F130%20passing-brightgreen.svg)](tests/)
+[![Build Contracts](https://github.com/sodiq-code/vaultwatch/actions/workflows/build-contracts.yml/badge.svg)](https://github.com/sodiq-code/vaultwatch/actions/workflows/build-contracts.yml)
+[![CodeQL](https://github.com/sodiq-code/vaultwatch/actions/workflows/codeql.yml/badge.svg)](https://github.com/sodiq-code/vaultwatch/actions/workflows/codeql.yml)
+[![Tests](https://img.shields.io/badge/tests-100%2B%20passing-brightgreen.svg)](tests/)
 [![PyPI](https://img.shields.io/pypi/v/casper-sentinel.svg)](https://pypi.org/project/casper-sentinel/)
 [![npm](https://img.shields.io/npm/v/casper-sentinel-mcp.svg)](https://www.npmjs.com/package/casper-sentinel-mcp)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![Casper Testnet](https://img.shields.io/badge/casper-testnet%20live-orange.svg)](https://testnet.cspr.live/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-success.svg)](LICENSE)
+
+---
+
+## Final Round Differentiators
+
+These are the original primitives added for the Final Round to compete
+with the top 2 (Casper Trust Layer 8.875, Pantheon 8.625):
+
+| Primitive | What it does | Why it's original |
+|-----------|--------------|-------------------|
+| **Hybrid Reputation Formula** ([docs](docs/REPUTATION_FORMULA.md)) | Combines Brier-scored AI agent accuracy + escrow-derived economic trust into one reputation number | Top 2 each have only ONE formula; VaultWatch combines both |
+| **12-Check Red-Team Checklist** ([docs](docs/RED_TEAM_CHECKLIST.md)) | Adversarial analysis of the reputation formula — 8/12 fully resist, 4/12 partial, 0/12 vulnerable | Matches CTL's 12-check methodology; published in full |
+| **5 New MCP Tools** ([server](vaultwatch_mcp/server.py)) | agent_attestation, reputation_query, x402_subscribe, policy_hotswap, behavior_index_lookup | Brings total to 20 tools — the largest MCP surface in the cohort |
+| **Official x402 SDK** ([x402/](x402/)) | Replaces home-rolled x402 stub with `@make-software/casper-x402` integration | Real payment verification, not simulated |
+| **Bulk-Memory-Safe WASM Build** ([script](scripts/build_contracts.sh)) | CI compiles 8 contracts with `-C target-feature=-bulk-memory` + `wasm-opt` + automated opcode gate | Fixes the June 24 deploy failure; prevents recurrence |
 
 ---
 
@@ -20,6 +46,10 @@ VaultWatch is a production-grade DeFi risk monitoring and intelligence platform 
 
 **[▶ Watch on YouTube — VaultWatch: AI-Powered DeFi Risk Intelligence on Casper Blockchain](https://youtu.be/Jmg_MFSxwdE)**
 
+> Note: the demo video above references the original June 24 deploys. A
+> fresh demo covering the Final Round primitives is in progress — see
+> [`DEPLOYMENT_GUIDE.md §10`](DEPLOYMENT_GUIDE.md).
+
 ---
 
 ## Submission Details
@@ -28,10 +58,14 @@ VaultWatch is a production-grade DeFi risk monitoring and intelligence platform 
 |---|---|
 | **Demo Video** | https://youtu.be/Jmg_MFSxwdE |
 | **Live Dashboard** | https://dashboard-rho-amber-89.vercel.app |
-| **Python SDK (PyPI)** | https://pypi.org/project/casper-sentinel/4.0.0/ |
+| **Python SDK (PyPI)** | https://pypi.org/project/casper-sentinel/ |
 | **MCP Package (npm)** | https://www.npmjs.com/package/casper-sentinel-mcp |
+| **x402 Package (npm)** | `@vaultwatch/x402` (new — see [x402/](x402/)) |
 | **Network** | Casper Testnet (`casper-test`) |
-| **Deployer Account** | [`0202c27a6d17a12a…ea2116`](https://testnet.cspr.live/account/0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116) |
+| **Deployer Account** | `<UPDATE_AFTER_ROTATION>` — see [DEPLOYMENT_GUIDE.md §0.1](DEPLOYMENT_GUIDE.md) |
+| **Reputation Formula** | [docs/REPUTATION_FORMULA.md](docs/REPUTATION_FORMULA.md) |
+| **Red-Team Checklist** | [docs/RED_TEAM_CHECKLIST.md](docs/RED_TEAM_CHECKLIST.md) |
+| **Deployment Guide** | [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) |
 
 ---
 

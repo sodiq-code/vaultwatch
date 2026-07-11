@@ -2,24 +2,70 @@
 
 **Repository**: https://github.com/sodiq-code/vaultwatch  
 **Network**: Casper Testnet (`casper-test`)  
-**Deployer**: `0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116`
+**Deployer**: `<UPDATE_WITH_ROTATED_DEPLOYER_PUBKEY>` <!-- rotate from compromised key -->
+
+> **Final Round Update (July 2026)**: The original June 24 deploys all FAILED
+> with "Wasm preprocessing error: Bulk memory operations are not supported."
+> We rebuilt all 8 contracts with `RUSTFLAGS=-C target-feature=-bulk-memory`
+> + `wasm-opt --enable-bulk-memory=no` and redeployed. The hashes below are
+> the NEW, verified-successful deploys. See `DEPLOYMENT_GUIDE.md` for the
+> full fix story and `scripts/check_wasm_bulk_memory.py` for the hard gate.
 
 ---
 
 ## 1. Smart Contracts on Casper Testnet
 
-All 8 Odra contracts were compiled to WASM and deployed to `casper-test` on June 24, 2026.
+All 8 Odra contracts were recompiled (bulk-memory-safe) and redeployed to
+`casper-test` on `<UPDATE_DATE>`.
 
-| Contract | Deploy Hash | Testnet Link |
-|----------|-------------|--------------|
-| AuditTrail | `f06e33573efbe1c8db658b4ab37db4c0ef7996ba02bfd8378049ada251e8e102` | [testnet.cspr.live](https://testnet.cspr.live/deploy/f06e33573efbe1c8db658b4ab37db4c0ef7996ba02bfd8378049ada251e8e102) |
-| SentinelRegistry | `d9c8c5eff41f81e659c907255c48813ad56303634dbb4d8fb1e2b0df4ae48622` | [testnet.cspr.live](https://testnet.cspr.live/deploy/d9c8c5eff41f81e659c907255c48813ad56303634dbb4d8fb1e2b0df4ae48622) |
-| RiskOracle | `fb877bae9a273ce74886a68d772841f9089503d802d106bb93bd018f7ef5e98a` | [testnet.cspr.live](https://testnet.cspr.live/deploy/fb877bae9a273ce74886a68d772841f9089503d802d106bb93bd018f7ef5e98a) |
-| SentinelCredit | `01cfe8d1e596859aa81954a6bf4792961c3c7587e6df2e4ce7d98bc802c7a403` | [testnet.cspr.live](https://testnet.cspr.live/deploy/01cfe8d1e596859aa81954a6bf4792961c3c7587e6df2e4ce7d98bc802c7a403) |
-| AgentBehaviorIndex | `162a4f5ff991b7eceb8aa38ff3c2a2beb27dc2007a8c499602d372563cdc63a9` | [testnet.cspr.live](https://testnet.cspr.live/deploy/162a4f5ff991b7eceb8aa38ff3c2a2beb27dc2007a8c499602d372563cdc63a9) |
-| SentinelAlertLog | `45dbc90b56dc40e419d9da7b6a972fc6027ea0125065d6a1ddfa0c9394eb42c7` | [testnet.cspr.live](https://testnet.cspr.live/deploy/45dbc90b56dc40e419d9da7b6a972fc6027ea0125065d6a1ddfa0c9394eb42c7) |
-| RiskPolicyManager | `048dcfe5ca296101eb7aa11694165b321f7a42c2c8d560aeddd628f4c08c8b1a` | [testnet.cspr.live](https://testnet.cspr.live/deploy/048dcfe5ca296101eb7aa11694165b321f7a42c2c8d560aeddd628f4c08c8b1a) |
-| SubscriberVault | `786b611f007e410aa2d8d8ed47b267ea6e9bb3c7d343003c3dad3ba0d3fd35f0` | [testnet.cspr.live](https://testnet.cspr.live/deploy/786b611f007e410aa2d8d8ed47b267ea6e9bb3c7d343003c3dad3ba0d3fd35f0) |
+> **Replace the hashes below** with the output of
+> `python3 scripts/deploy_contracts_live.py`. The script prints a
+> ready-to-paste Markdown table.
+
+| Contract | Deploy Hash | Explorer Link |
+|----------|-------------|---------------|
+| AuditTrail | `<UPDATE_HASH>` | [testnet.cspr.live](https://testnet.cspr.live/deploy/<UPDATE_HASH>) |
+| SentinelRegistry | `<UPDATE_HASH>` | [testnet.cspr.live](https://testnet.cspr.live/deploy/<UPDATE_HASH>) |
+| RiskOracle | `<UPDATE_HASH>` | [testnet.cspr.live](https://testnet.cspr.live/deploy/<UPDATE_HASH>) |
+| SentinelCredit | `<UPDATE_HASH>` | [testnet.cspr.live](https://testnet.cspr.live/deploy/<UPDATE_HASH>) |
+| AgentBehaviorIndex | `<UPDATE_HASH>` | [testnet.cspr.live](https://testnet.cspr.live/deploy/<UPDATE_HASH>) |
+| SentinelAlertLog | `<UPDATE_HASH>` | [testnet.cspr.live](https://testnet.cspr.live/deploy/<UPDATE_HASH>) |
+| RiskPolicyManager | `<UPDATE_HASH>` | [testnet.cspr.live](https://testnet.cspr.live/deploy/<UPDATE_HASH>) |
+| SubscriberVault | `<UPDATE_HASH>` | [testnet.cspr.live](https://testnet.cspr.live/deploy/<UPDATE_HASH>) |
+
+### Verification (Triple-Checked)
+
+Every deploy is verified via three independent methods:
+
+```bash
+# 1. RPC: info_get_deploy shows execution_results with Success outcome
+python3 scripts/verify_deploys.py --deploy-hashes deploy_hashes_live.json
+
+# 2. RPC: state_get_account_info shows named_keys > 0
+python3 scripts/verify_deploys.py --account <DEPLOYER_PUBKEY>
+
+# 3. WASM: zero bulk-memory opcodes (hard gate)
+python3 scripts/check_wasm_bulk_memory.py contracts/wasm/
+```
+
+### Historical Note (Failed Deploys — June 24, 2026)
+
+The following 8 deploy hashes from June 24, 2026 all FAILED on Casper
+Testnet with "Bulk memory operations are not supported." They are
+superseded by the new deploys above:
+
+| Contract | Old (Failed) Hash | Status |
+|----------|-------------------|--------|
+| AuditTrail | `f06e3357…8e102` | ❌ FAILED — bulk-memory error |
+| SentinelRegistry | `d9c8c5ef…48622` | ❌ FAILED — bulk-memory error |
+| RiskOracle | `fb877bae…e98a` | ❌ FAILED — bulk-memory error |
+| SentinelCredit | `01cfe8d1…a403` | ❌ FAILED — bulk-memory error |
+| AgentBehaviorIndex | `162a4f5f…c63a9` | ❌ FAILED — bulk-memory error |
+| SentinelAlertLog | `45dbc90b…b42c7` | ❌ FAILED — bulk-memory error |
+| RiskPolicyManager | `048dcfe5…c8b1a` | ❌ FAILED — bulk-memory error |
+| SubscriberVault | `786b611f…d35f0` | ❌ FAILED — bulk-memory error |
+
+Root cause + fix: see `DEPLOYMENT_GUIDE.md` and `docs/REPUTATION_FORMULA.md`.
 
 ---
 

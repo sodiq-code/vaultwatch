@@ -23,4 +23,3 @@ path = "bin/build_contract.rs"
 opt-level = "z"
 lto = true
 codegen-units = 1
-strip = true

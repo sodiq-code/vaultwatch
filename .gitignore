@@ -15,8 +15,14 @@ node_modules/
 recordings/
 target/
 Cargo.lock
+# Ignore .cargo/ registry caches but TRACK contracts/.cargo/config.toml (build config)
 .cargo/
+!.cargo/config.toml
+contracts/.cargo/
+!contracts/.cargo/config.toml
+# Ignore stray WASM, but TRACK the deployable artifacts in contracts/wasm/
 *.wasm
+!contracts/wasm/*.wasm
 deploy_results/
 tx_hashes/
 *.log
