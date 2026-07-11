@@ -18,7 +18,7 @@ opentelemetry-instrumentation-fastapi>=0.46b0
 fastmcp>=0.1.0
 
 # Casper SDK
-pycspr>=1.0.0
+pycspr>=1.2.0
 
 # Testing
 pytest>=8.2.0
