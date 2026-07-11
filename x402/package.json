@@ -42,7 +42,7 @@
     }
   },
   "devDependencies": {
-    "typescript": "^5.4.0",
+    "typescript": "^7.0.2",
     "tsx": "^4.7.0"
   }
 }
