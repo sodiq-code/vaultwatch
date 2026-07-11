@@ -95,7 +95,7 @@ jobs:
           cat artifacts/WASM_MANIFEST.md
 
       - name: Upload clean WASM artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: casper-wasm-bulkmem-safe
           path: |
@@ -106,7 +106,7 @@ jobs:
 
       - name: Upload build logs on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: build-logs-failed
           path: |
