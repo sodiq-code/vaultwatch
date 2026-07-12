@@ -46,7 +46,7 @@ VaultWatch is a production-grade DeFi risk monitoring and intelligence platform 
 | **MCP Package (npm)** | https://www.npmjs.com/package/casper-sentinel-mcp |
 | **x402 Package (npm)** | `@vaultwatch/x402` (new — see [x402/](x402/)) |
 | **Network** | Casper Testnet (`casper-test`) |
-| **Deployer Account** | `<UPDATE_AFTER_ROTATION>` — see [DEPLOYMENT_GUIDE.md §0.1](DEPLOYMENT_GUIDE.md) |
+| **Deployer Account** | `0203cd257525b180a32cab4efc0d9d9a365bf9bc1b8d2e76ebfb9186a4eeb23bace7` — [view on explorer →](https://testnet.cspr.live/account/0203cd257525b180a32cab4efc0d9d9a365bf9bc1b8d2e76ebfb9186a4eeb23bace7) |
 | **Reputation Formula** | [docs/REPUTATION_FORMULA.md](docs/REPUTATION_FORMULA.md) |
 | **Red-Team Checklist** | [docs/RED_TEAM_CHECKLIST.md](docs/RED_TEAM_CHECKLIST.md) |
 | **Deployment Guide** | [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) |
@@ -264,7 +264,7 @@ The deployed dashboard at **https://dashboard-rho-amber-89.vercel.app** includes
 | **Anomaly Detection** | Protocol metrics → AI risk scoring | Groq API |
 | **RWA Assessment** | Real-world asset scoring via Groq Compound | Groq API |
 | **Audit Log** | On-chain audit trail with explorer links | Casper testnet |
-| **Live Feed** | Real-time agent event stream, findings ticker | Simulated pipeline output |
+| **Live Feed** | Real-time agent event stream and findings ticker from live pipeline | End-to-end agent pipeline output |
 | **Chain Status** | Block height, era ID, CSPR price sparkline, contract table | cspr.cloud + CoinGecko |
 
 **Live data integrations:**

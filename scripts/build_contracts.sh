@@ -53,6 +53,7 @@ CONTRACTS=(
 )
 
 log()  { echo "[build_contracts] $*"; }
+warn() { echo "[build_contracts] WARN: $*" >&2; }
 fail() { echo "[build_contracts] ERROR: $*" >&2; exit "${2:-1}"; }
 
 # ─── Step 0: --check mode ────────────────────────────────────────────────────

@@ -1,0 +1,7 @@
+# Casper testnet compatibility: disable bulk-memory WASM operations
+# Casper protocol 2.2.2 rejects deploys with "Bulk memory operations are not supported"
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "target-feature=-bulk-memory"]
+
+[build]
+target = "wasm32-unknown-unknown"
