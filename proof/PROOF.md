@@ -17,7 +17,7 @@
 All 8 Odra contracts deployed to `casper-test` on **July 11, 2026**.
 Verified: 16 named keys on deployer account, all deploys executed successfully.
 
-| Contract | Deploy Hash | Explorer Link |
+| Contract | Transaction Hash | Explorer Link |
 |----------|-------------|---------------|
 | AuditTrail | `b9c70cdceff1011008b3933835d4a46146f26f1d1e82ada8520be77e1d6333a7` | [testnet.cspr.live](https://testnet.cspr.live/deploy/b9c70cdceff1011008b3933835d4a46146f26f1d1e82ada8520be77e1d6333a7) |
 | SentinelRegistry | `9a5eb4f83de8cbfef4f389516b977258b0e1d63179b288ca623a860fc6ec346c` | [testnet.cspr.live](https://testnet.cspr.live/deploy/9a5eb4f83de8cbfef4f389516b977258b0e1d63179b288ca623a860fc6ec346c) |
@@ -31,8 +31,8 @@ Verified: 16 named keys on deployer account, all deploys executed successfully.
 ### Verification (Triple-Checked)
 
 ```bash
-# 1. RPC: info_get_deploy shows execution_results with Success outcome
-python3 scripts/verify_deploys.py --deploy-hashes deploy_hashes_live.json
+# 1. RPC: info_get_transaction shows execution_results with Success outcome
+python3 scripts/verify_deploys.py --deploy-hashes transaction_hashes_live.json
 
 # 2. RPC: state_get_account_info shows named_keys > 0
 python3 scripts/verify_deploys.py --account 0203cd257525b180a32cab4efc0d9d9a365bf9bc1b8d2e76ebfb9186a4eeb23bace7
@@ -122,7 +122,7 @@ Every push to `main` runs: lint → unit tests → integration tests → contrac
 21 interaction deploys broadcast to Casper testnet, bringing total on-chain
 TX hashes to **29** (8 contract deploys + 21 interactions).
 
-| # | Interaction | Deploy Hash |
+| # | Interaction | Transaction Hash |
 |---|-------------|-------------|
 | 1 | AuditTrail::add_entry | `aca60b05fb801960ae1f4db9bdd3c2d3a0cfd142c9b020edcf57df27c0f8ea72` |
 | 2 | AuditTrail::pipeline_heartbeat | `6f5cd6bf7a21146502d2b5e53250a45aa352e73560e6d228a0c271fc2d29262d` |

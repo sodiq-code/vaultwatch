@@ -8,7 +8,7 @@ the June 24 deploys FAILED — they were included but rejected during WASM
 preprocessing, producing zero named keys and zero published contracts.
 
 This script checks the three evidentiary tests for "deployed" on Casper:
-  1. RPC info_get_deploy — execution_results contains a Success outcome
+  1. RPC info_get_transaction — execution_results contains a Success outcome
   2. RPC state_get_account_info — named_keys count > 0 for deployer
   3. RPC query_global_state — ContractPackage is queryable
 
@@ -51,9 +51,9 @@ def rpc(node_url: str, method: str, params: dict) -> dict:
 
 
 def verify_deploy(node_url: str, deploy_hash: str) -> dict:
-    """Check 1: info_get_deploy shows Success execution result."""
+    """Check 1: info_get_transaction shows Success execution result."""
     try:
-        result = rpc(node_url, "info_get_deploy", {"deploy_hash": deploy_hash})
+        result = rpc(node_url, "info_get_transaction", {"deploy_hash": deploy_hash})
         deploy = result.get("deploy", {})
         exec_results = deploy.get("execution_results", [])
         if not exec_results:

@@ -4,7 +4,7 @@
  * Calls Groq directly from the frontend for real AI-powered risk analysis.
  * Uses CoinGecko for live CSPR price data.
  * Uses cspr.cloud REST API for live Casper network data.
- * All Casper contract deploy hashes link to testnet explorer for verification.
+ * All Casper contract transaction hashes link to testnet explorer for verification.
  */
 
 // Set VITE_GROQ_API_KEY in your .env.local or Vercel environment variables
@@ -14,7 +14,7 @@ const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 // cspr.cloud public testnet API — no key needed for basic queries
 const CSPR_CLOUD_BASE = 'https://event-store-api-clarity-testnet.make.services'
 
-// Verified contract deploy hashes on Casper Testnet (protocol 2.2.2)
+// Verified contract transaction hashes on Casper Testnet (protocol 2.2.2)
 // All 8 contracts SUCCESSFULLY DEPLOYED July 11, 2026 — verified with 16 named keys
 export const CONTRACT_HASHES = {
   AuditTrail:         'b9c70cdceff1011008b3933835d4a46146f26f1d1e82ada8520be77e1d6333a7',

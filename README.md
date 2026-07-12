@@ -71,7 +71,7 @@ All contract deployments came from this funded testnet account:
 
 8 Rust/WASM contracts compiled with Odra 2.8.0, bulk-memory-safe WASM, deployed to `casper-test` (protocol 2.2.2). All 8 deploys **VERIFIED SUCCESS** — 16 named keys on the deployer account.
 
-| Contract | Deploy Hash | Explorer Link |
+| Contract | Transaction Hash | Explorer Link |
 |----------|-------------|---------------|
 | **AuditTrail** | `b9c70cdc…336a7` | [→ testnet.cspr.live](https://testnet.cspr.live/deploy/b9c70cdceff1011008b3933835d4a46146f26f1d1e82ada8520be77e1d6333a7) |
 | **SentinelRegistry** | `9a5eb4f8…346c` | [→ testnet.cspr.live](https://testnet.cspr.live/deploy/9a5eb4f83de8cbfef4f389516b977258b0e1d63179b288ca623a860fc6ec346c) |
@@ -188,7 +188,7 @@ Deployer: `0203cd257525b180a32cab4efc0d9d9a365bf9bc1b8d2e76ebfb9186a4eeb23bace7`
 Deployment date: **July 11, 2026** (redeployed — original June 24 deploys failed with bulk-memory error)  
 All 8 deploys **VERIFIED SUCCESS** — 16 named keys on deployer account, 135-143 CSPR gas each. See [`proof/PROOF.md`](proof/PROOF.md) for verification details.
 
-| Contract | Deploy Hash | Role | Explorer |
+| Contract | Transaction Hash | Role | Explorer |
 |----------|-------------|------|---------|
 | **AuditTrail** | `b9c70cdc…336a7` | Immutable on-chain log of every agent action | [View →](https://testnet.cspr.live/deploy/b9c70cdceff1011008b3933835d4a46146f26f1d1e82ada8520be77e1d6333a7) |
 | **SentinelRegistry** | `9a5eb4f8…346c` | Subscriber registry for push alerts | [View →](https://testnet.cspr.live/deploy/9a5eb4f83de8cbfef4f389516b977258b0e1d63179b288ca623a860fc6ec346c) |
@@ -571,7 +571,7 @@ vaultwatch/
 │   ├── demo_upgrade_policy.py
 │   └── deploy_contracts.py
 │
-├── deploy_hashes.json            # Live contract deploy hashes
+├── transaction_hashes.json            # Live contract deploy hashes
 ├── pipeline.py                   # Main agent pipeline orchestrator
 ├── casper_client.py              # Casper network client wrapper
 ├── docker-compose.yml
