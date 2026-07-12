@@ -1,0 +1,13 @@
+# VaultWatch ruff configuration
+# Line length is generous because AI prompt strings are embedded in Python code
+
+line-length = 160
+target-version = "py311"
+
+[lint]
+select = ["E", "F", "W"]
+ignore = []
+
+[lint.per-file-ignores]
+"scripts/*" = ["E701", "E702", "E722"]
+"tests/*" = ["F841"]

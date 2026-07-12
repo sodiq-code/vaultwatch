@@ -28,9 +28,7 @@ groq_client = Groq(api_key=os.getenv("GROQ_API_KEY", "mock-key-for-testing"))
 
 @dataclass
 class RawEvent:
-    event_type: (
-        str  # token_transfer | staking | whale_movement | deploy | contract_call
-    )
+    event_type: str  # token_transfer | staking | whale_movement | deploy | contract_call
     address: str
     amount_motes: int
     block_height: int
@@ -45,9 +43,7 @@ class ScannerAgent:
         self.last_block = 0
         self.scan_count = 0
         self._groq_key = groq_api_key or os.getenv("GROQ_API_KEY", "")
-        self._client = (
-            Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
-        )
+        self._client = Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
 
     async def _call_groq(self, prompt: str) -> dict:
         """Call Groq for protocol scan analysis."""
@@ -73,9 +69,7 @@ class ScannerAgent:
 
         return json.loads(resp.choices[0].message.content)
 
-    async def scan(
-        self, protocol: str, contract_address: str = None, chain: str = "casper"
-    ) -> dict:
+    async def scan(self, protocol: str, contract_address: str = None, chain: str = "casper") -> dict:
         """Scan a protocol for vulnerabilities and return risk assessment."""
         with tracer.start_as_current_span("scanner.scan") as span:
             span.set_attribute("protocol", protocol)
@@ -116,9 +110,7 @@ class ScannerAgent:
                         await self.queue.put(event)
 
                     self.scan_count += 1
-                    logger.info(
-                        f"Scan #{self.scan_count}: {len(events)} events from block {self.last_block}"
-                    )
+                    logger.info(f"Scan #{self.scan_count}: {len(events)} events from block {self.last_block}")
 
                 except Exception as e:
                     span.record_exception(e)
@@ -152,11 +144,7 @@ class ScannerAgent:
                     for transfer in data.get("data", []):
                         amount = int(transfer.get("amount", 0))
                         # Flag whale movements: > 100,000 CSPR (100B motes)
-                        event_type = (
-                            "whale_movement"
-                            if amount > 100_000_000_000_000
-                            else "token_transfer"
-                        )
+                        event_type = "whale_movement" if amount > 100_000_000_000_000 else "token_transfer"
                         events.append(
                             RawEvent(
                                 event_type=event_type,
@@ -215,9 +203,7 @@ class ScannerAgent:
             summary = [
                 {
                     "type": e.event_type,
-                    "address": e.address[:20] + "..."
-                    if len(e.address) > 20
-                    else e.address,
+                    "address": e.address[:20] + "..." if len(e.address) > 20 else e.address,
                     "amount_cspr": e.amount_motes / 1_000_000_000,
                     "block": e.block_height,
                 }

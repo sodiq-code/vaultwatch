@@ -5,8 +5,8 @@ These tests prove the reputation formula works as documented in
 docs/REPUTATION_FORMULA.md and resist the attacks in
 docs/RED_TEAM_CHECKLIST.md.
 """
+
 import importlib.util
-import pytest
 import sys
 import types
 from pathlib import Path
@@ -20,21 +20,28 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 if "opentelemetry" not in sys.modules:
     _otel_stub = types.ModuleType("opentelemetry")
     _trace_stub = types.ModuleType("opentelemetry.trace")
+
     class _FakeSpan:
-        def __enter__(self): return self
-        def __exit__(self, *a): return False
-        def set_attribute(self, *a, **k): pass
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def set_attribute(self, *a, **k):
+            pass
+
     class _FakeTracer:
-        def start_as_current_span(self, *a, **k): return _FakeSpan()
+        def start_as_current_span(self, *a, **k):
+            return _FakeSpan()
+
     _trace_stub.get_tracer = lambda *a, **k: _FakeTracer()
     _otel_stub.trace = _trace_stub
     sys.modules["opentelemetry"] = _otel_stub
     sys.modules["opentelemetry.trace"] = _trace_stub
 
 # Register the module in sys.modules BEFORE exec so dataclass can find it
-_spec = importlib.util.spec_from_file_location(
-    "agents.reputation", _REPO_ROOT / "agents" / "reputation.py"
-)
+_spec = importlib.util.spec_from_file_location("agents.reputation", _REPO_ROOT / "agents" / "reputation.py")
 _mod = importlib.util.module_from_spec(_spec)
 sys.modules["agents.reputation"] = _mod
 # Also need a parent package stub
@@ -55,6 +62,7 @@ reputation_for_agent = _mod.reputation_for_agent
 
 
 # ─── Brier Score Tests ──────────────────────────────────────────────────────
+
 
 class TestBrierScore:
     def test_perfect_predictions(self):
@@ -89,6 +97,7 @@ class TestBrierScore:
 
 # ─── Normalization Tests ────────────────────────────────────────────────────
 
+
 class TestNormalizeBrier:
     def test_perfect_becomes_100(self):
         assert normalize_brier_to_trust(0.0) == 100.0
@@ -103,26 +112,36 @@ class TestNormalizeBrier:
 
     def test_beyond_range_clamps(self):
         assert normalize_brier_to_trust(-1.0) == 100.0  # impossible, clamps
-        assert normalize_brier_to_trust(5.0) == 0.0     # impossible, clamps
+        assert normalize_brier_to_trust(5.0) == 0.0  # impossible, clamps
 
 
 # ─── Escrow Trust Tests ────────────────────────────────────────────────────
+
 
 class TestEscrowTrust:
     def test_zero_stake_is_baseline(self):
         """Zero escrow, zero queries, zero slashes = 30 (base)."""
         stake = EscrowStake(
-            address="x", escrowed_balance_motes=0, total_deposited_motes=0,
-            total_spent_motes=0, slash_count=0, successful_queries=0, disputed_queries=0,
+            address="x",
+            escrowed_balance_motes=0,
+            total_deposited_motes=0,
+            total_spent_motes=0,
+            slash_count=0,
+            successful_queries=0,
+            disputed_queries=0,
         )
         assert escrow_trust(stake) == 30.0
 
     def test_whale_does_not_dominate(self):
         """Check 1: 1M CSPR should not produce 1000+ trust (log-scaled)."""
         whale = EscrowStake(
-            address="whale", escrowed_balance_motes=10**15,  # 1M CSPR
-            total_deposited_motes=10**15, total_spent_motes=0,
-            slash_count=0, successful_queries=0, disputed_queries=0,
+            address="whale",
+            escrowed_balance_motes=10**15,  # 1M CSPR
+            total_deposited_motes=10**15,
+            total_spent_motes=0,
+            slash_count=0,
+            successful_queries=0,
+            disputed_queries=0,
         )
         score = escrow_trust(whale)
         assert score <= 100.0
@@ -131,9 +150,13 @@ class TestEscrowTrust:
     def test_small_staker_still_scores(self):
         """1 CSPR stake should produce meaningful (but lower) trust."""
         small = EscrowStake(
-            address="small", escrowed_balance_motes=10**9,  # 1 CSPR
-            total_deposited_motes=10**9, total_spent_motes=0,
-            slash_count=0, successful_queries=0, disputed_queries=0,
+            address="small",
+            escrowed_balance_motes=10**9,  # 1 CSPR
+            total_deposited_motes=10**9,
+            total_spent_motes=0,
+            slash_count=0,
+            successful_queries=0,
+            disputed_queries=0,
         )
         score = escrow_trust(small)
         assert 60.0 <= score <= 100.0  # 30 base + ~60 stake = 90, clamped to 90
@@ -166,13 +189,12 @@ class TestEscrowTrust:
 
 # ─── Hybrid Reputation Tests ───────────────────────────────────────────────
 
+
 class TestHybridReputation:
     def test_perfect_agent_gets_platinum(self):
         """Check 3: a perfect predictor with good escrow hits PLATINUM."""
         preds = [AgentPrediction("AnomalyAgent", 0.95, 1.0) for _ in range(20)]
-        stake = EscrowStake(
-            "AnomalyAgent", 50_000_000_000, 50_000_000_000, 0, 0, 20, 0
-        )
+        stake = EscrowStake("AnomalyAgent", 50_000_000_000, 50_000_000_000, 0, 0, 20, 0)
         r = hybrid_reputation(preds, stake)
         assert r["tier"] == "PLATINUM"
         assert r["reputation_score"] >= 85.0
@@ -231,6 +253,7 @@ class TestHybridReputation:
 
 # ─── Aggregate Reconstruction Tests ────────────────────────────────────────
 
+
 class TestAggregateReconstruction:
     def test_reconstructs_from_metrics(self):
         """predictions_from_agent_metrics should produce sensible history."""
@@ -260,8 +283,13 @@ class TestAggregateReconstruction:
                 "avg_confidence": 85,
             },
             escrow_stake=EscrowStake(
-                "AnomalyAgent", 50_000_000_000, 50_000_000_000,
-                5_000_000_000, 0, 100, 0,
+                "AnomalyAgent",
+                50_000_000_000,
+                50_000_000_000,
+                5_000_000_000,
+                0,
+                100,
+                0,
             ),
         )
         assert "reputation_score" in r

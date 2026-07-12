@@ -2,7 +2,7 @@ name: CodeQL Security Analysis
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
   pull_request:
     branches: [main]
   schedule:
@@ -38,7 +38,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - Name: Install Python deps (for CodeQL to trace imports)
+      - name: Install Python deps (for CodeQL to trace imports)
         run: |
           pip install --upgrade pip
           pip install groq fastapi "uvicorn[standard]" pydantic httpx aiohttp

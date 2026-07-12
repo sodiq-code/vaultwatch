@@ -99,9 +99,7 @@ def broadcast_all() -> dict:
             if ok:
                 logger.info("%s CONFIRMED on-chain!", name)
             else:
-                logger.warning(
-                    "%s not confirmed after 120s — hash saved, check explorer", name
-                )
+                logger.warning("%s not confirmed after 120s — hash saved, check explorer", name)
 
         except Exception as exc:
             logger.error("Failed to broadcast %s: %s", name, exc)

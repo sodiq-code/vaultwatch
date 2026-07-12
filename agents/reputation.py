@@ -26,19 +26,19 @@ Final reputation:
 The formula is deterministic, on-chain-verifiable, and accompanied by a
 12-check red-team checklist (docs/RED_TEAM_CHECKLIST.md).
 """
+
 from __future__ import annotations
 
 import math
 import time
 from dataclasses import dataclass, field
-from typing import Optional
 
 from opentelemetry import trace
 
 tracer = trace.get_tracer("vaultwatch.reputation")
 
 # ─── Default weights ─────────────────────────────────────────────────────────
-DEFAULT_W_BRIER = 0.6   # weight on agent prediction accuracy
+DEFAULT_W_BRIER = 0.6  # weight on agent prediction accuracy
 DEFAULT_W_ESCROW = 0.4  # weight on economic stake / slash history
 
 # EWMA decay for Brier (matches Pantheon's approach). lambda = 0.92 means
@@ -49,9 +49,10 @@ EWMA_LAMBDA = 0.92
 @dataclass
 class AgentPrediction:
     """A single agent prediction with realized outcome. Used for Brier scoring."""
+
     agent_name: str
     predicted_probability: float  # the agent's confidence, 0.0–1.0
-    outcome: float                # realized: 1.0 = event happened, 0.0 = didn't
+    outcome: float  # realized: 1.0 = event happened, 0.0 = didn't
     timestamp: float = field(default_factory=time.time)
     # weight for EWMA (older = lower)
 
@@ -59,13 +60,14 @@ class AgentPrediction:
 @dataclass
 class EscrowStake:
     """A subscriber's economic position. Used for escrow-derived score."""
+
     address: str
-    escrowed_balance_motes: int   # from SubscriberVault
-    total_deposited_motes: int    # from SentinelCredit + SubscriberVault
-    total_spent_motes: int        # queries consumed
-    slash_count: int              # number of times slashed (penalty events)
-    successful_queries: int       # queries served without dispute
-    disputed_queries: int         # queries that were disputed/resolved against
+    escrowed_balance_motes: int  # from SubscriberVault
+    total_deposited_motes: int  # from SentinelCredit + SubscriberVault
+    total_spent_motes: int  # queries consumed
+    slash_count: int  # number of times slashed (penalty events)
+    successful_queries: int  # queries served without dispute
+    disputed_queries: int  # queries that were disputed/resolved against
 
 
 def brier_score(predictions: list[AgentPrediction]) -> float:
@@ -228,23 +230,20 @@ def predictions_from_agent_metrics(
     for i in range(high_confidence_count):
         preds.append(AgentPrediction(agent_name, 0.85, 1.0, base_t + i * 60))
     for i in range(corrections_applied):
-        preds.append(AgentPrediction(agent_name, 0.70, 0.0,
-                                     base_t + (high_confidence_count + i) * 60))
+        preds.append(AgentPrediction(agent_name, 0.70, 0.0, base_t + (high_confidence_count + i) * 60))
     for i in range(safety_rejections):
-        preds.append(AgentPrediction(agent_name, 0.60, 0.0,
-                                     base_t + (high_confidence_count + corrections_applied + i) * 60))
+        preds.append(AgentPrediction(agent_name, 0.60, 0.0, base_t + (high_confidence_count + corrections_applied + i) * 60))
     # Remaining neutral decisions
     remaining = total_decisions - high_confidence_count - corrections_applied - safety_rejections
     for i in range(max(0, remaining)):
         p = (avg_confidence / 100.0) if avg_confidence else 0.5
-        preds.append(AgentPrediction(agent_name, p, 0.5,
-                                     base_t + (high_confidence_count + corrections_applied + safety_rejections + i) * 60))
+        preds.append(AgentPrediction(agent_name, p, 0.5, base_t + (high_confidence_count + corrections_applied + safety_rejections + i) * 60))
     return preds
 
 
 def reputation_for_agent(
     agent_name: str,
-    agent_metrics: dict,        # from AgentBehaviorIndex.get_metrics()
+    agent_metrics: dict,  # from AgentBehaviorIndex.get_metrics()
     escrow_stake: EscrowStake,
 ) -> dict:
     """End-to-end: on-chain metrics → hybrid reputation. Used by MCP tool."""

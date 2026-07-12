@@ -101,9 +101,7 @@ class AuditAgent:
             safety_result: SafetyResult = await self.input_queue.get()
 
             if not safety_result.approved:
-                logger.info(
-                    f"AuditAgent SKIP (rejected by SafetyGuard): {safety_result.rejection_reason}"
-                )
+                logger.info(f"AuditAgent SKIP (rejected by SafetyGuard): {safety_result.rejection_reason}")
                 self.input_queue.task_done()
                 continue
 
@@ -163,16 +161,10 @@ class AuditAgent:
                     )
 
                     finding_id = audit_tx.get("finding_id", 0)
-                    span.set_attribute(
-                        "audit.audit_trail_tx", audit_tx.get("deploy_hash", "")
-                    )
-                    span.set_attribute(
-                        "audit.risk_oracle_tx", oracle_tx.get("deploy_hash", "")
-                    )
+                    span.set_attribute("audit.audit_trail_tx", audit_tx.get("deploy_hash", ""))
+                    span.set_attribute("audit.risk_oracle_tx", oracle_tx.get("deploy_hash", ""))
 
-                    logger.info(
-                        f"On-chain write SUCCESS: {audit_tx.get('deploy_hash', 'unknown')}"
-                    )
+                    logger.info(f"On-chain write SUCCESS: {audit_tx.get('deploy_hash', 'unknown')}")
 
                     return OnChainRecord(
                         finding=finding,

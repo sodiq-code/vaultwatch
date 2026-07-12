@@ -36,9 +36,7 @@ def test_mcp_has_15_tools():
     import inspect
 
     funcs = [name for name, obj in inspect.getmembers(srv, inspect.iscoroutinefunction)]
-    assert len(funcs) >= 10, (
-        f"Expected >=10 async tool functions, got {len(funcs)}: {funcs}"
-    )
+    assert len(funcs) >= 10, f"Expected >=10 async tool functions, got {len(funcs)}: {funcs}"
 
 
 @pytest.mark.asyncio
@@ -47,9 +45,7 @@ async def test_get_market_state_returns_dict():
     import vaultwatch_mcp.server as srv
 
     mock_resp = MagicMock()
-    mock_resp.json.return_value = {
-        "casper-network": {"usd": 0.05, "usd_24h_change": 1.5}
-    }
+    mock_resp.json.return_value = {"casper-network": {"usd": 0.05, "usd_24h_change": 1.5}}
     mock_client = AsyncMock()
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=False)
@@ -77,9 +73,7 @@ async def test_detect_anomaly_returns_dict():
     )
     mock_groq.chat.completions.create.return_value = MagicMock(choices=[mock_choice])
     with patch("groq.Groq", return_value=mock_groq):
-        result = await srv.detect_anomaly(
-            address="test_address_001", amount_cspr=5000.0
-        )
+        result = await srv.detect_anomaly(address="test_address_001", amount_cspr=5000.0)
     assert isinstance(result, dict)
     assert result.get("address") == "test_address_001"
     assert "timestamp" in result
@@ -92,9 +86,7 @@ async def test_get_rwa_risk_returns_dict():
 
     mock_groq = MagicMock()
     mock_choice = MagicMock()
-    mock_choice.message.content = json.dumps(
-        {"depeg_risk": "low", "collateral_ratio": 1.5}
-    )
+    mock_choice.message.content = json.dumps({"depeg_risk": "low", "collateral_ratio": 1.5})
     mock_groq.chat.completions.create.return_value = MagicMock(choices=[mock_choice])
     with patch("groq.Groq", return_value=mock_groq):
         result = await srv.get_rwa_risk(asset_type="stablecoin")

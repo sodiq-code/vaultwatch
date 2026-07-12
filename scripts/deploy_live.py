@@ -147,9 +147,7 @@ def main():
     # Check node connectivity
     try:
         status = rpc_call("info_get_status", {})
-        print(
-            f"Node: {status.get('chainspec_name', '?')} era {status.get('last_added_block_info', {}).get('era_id', '?')}"
-        )
+        print(f"Node: {status.get('chainspec_name', '?')} era {status.get('last_added_block_info', {}).get('era_id', '?')}")
     except Exception as e:
         print(f"ERROR: Cannot reach node — {e}")
         sys.exit(1)

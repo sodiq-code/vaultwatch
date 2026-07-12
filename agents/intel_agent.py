@@ -59,9 +59,7 @@ class IntelAgent:
         self.alert_count = 0
         self._groq_key = groq_api_key or os.getenv("GROQ_API_KEY", "")
         self._model = "compound-beta"
-        self._client = (
-            Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
-        )
+        self._client = Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
 
     async def _call_groq(self, prompt: str) -> dict:
         if not self._client:
@@ -85,9 +83,7 @@ class IntelAgent:
         )
         return json.loads(resp.choices[0].message.content)
 
-    async def analyze(
-        self, query: str, protocol: str = None, extra_context: dict = None
-    ) -> dict:
+    async def analyze(self, query: str, protocol: str = None, extra_context: dict = None) -> dict:
         """Analyze a risk query using the Groq Compound model."""
         with tracer.start_as_current_span("intel.analyze") as span:
             span.set_attribute("query_length", len(query))
@@ -174,9 +170,7 @@ class IntelAgent:
             else:
                 span.set_attribute("intel.alert_pushed", False)
 
-            logger.info(
-                f"IntelAgent stored finding #{record.finding_id}: {base.severity} {base.risk_type}"
-            )
+            logger.info(f"IntelAgent stored finding #{record.finding_id}: {base.severity} {base.risk_type}")
 
     async def _push_alerts(self, record: OnChainRecord, finding: dict):
         """Push alert to all registered subscribers via webhook"""
@@ -218,9 +212,7 @@ class IntelAgent:
         return None
 
     @classmethod
-    async def serve_intel_with_x402(
-        cls, query_type: str, address: str, caller_address: str, casper_client=None
-    ) -> dict:
+    async def serve_intel_with_x402(cls, query_type: str, address: str, caller_address: str, casper_client=None) -> dict:
         """x402 gate: verify credit, deduct, serve premium finding"""
         with tracer.start_as_current_span("intel.x402_query") as span:
             span.set_attribute("intel.query_type", query_type)
@@ -238,17 +230,11 @@ class IntelAgent:
                 )
                 if not has_credit:
                     span.set_attribute("intel.credit_denied", True)
-                    return {
-                        "error": "Insufficient credit. Deposit CSPR to SentinelCredit contract."
-                    }
+                    return {"error": "Insufficient credit. Deposit CSPR to SentinelCredit contract."}
                 span.set_attribute("intel.credit_deducted", True)
 
             # Serve finding
-            findings = [
-                f
-                for f in _findings_store
-                if f.get("address", "").startswith(address[:10])
-            ]
+            findings = [f for f in _findings_store if f.get("address", "").startswith(address[:10])]
             if not findings:
                 findings = list(reversed(_findings_store))[:3]
 

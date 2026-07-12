@@ -38,9 +38,7 @@ def make_ambiguous_result(protocol: str = "CasperSwap") -> AnomalyResult:
     """Create a low-confidence anomaly result that should trigger the retry loop."""
     mock_event = MagicMock()
     mock_event.event_type = "large_transfer"
-    mock_event.address = (
-        "0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116"
-    )
+    mock_event.address = "0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116"
     mock_event.amount_motes = 500_000_000_000  # 500 CSPR
     mock_event.block_height = 4_200_000
 
@@ -91,15 +89,11 @@ async def run_demo() -> None:
     agent = SelfCorrectionAgent()
 
     # --- Scenario 1: stays low confidence → SKIP ---
-    print(
-        "\n[Scenario 1] Low-confidence finding — both retries fail to gain confidence"
-    )
+    print("\n[Scenario 1] Low-confidence finding — both retries fail to gain confidence")
     print("-" * 60)
 
     ambiguous = make_ambiguous_result("CasperSwap")
-    print(
-        f"  Input  | protocol={ambiguous.protocol}  confidence={ambiguous.confidence}  severity={ambiguous.severity}"
-    )
+    print(f"  Input  | protocol={ambiguous.protocol}  confidence={ambiguous.confidence}  severity={ambiguous.severity}")
     print(f"  Input  | anomalies={ambiguous.anomalies}")
     print(f"  Input  | reasoning: {ambiguous.reasoning}")
 
@@ -116,18 +110,14 @@ async def run_demo() -> None:
         correction: CorrectionResult = await agent._evaluate(ambiguous)
         elapsed = (time.perf_counter() - t0) * 1000
 
-    print(
-        f"\n  Result | passed={correction.passed}  retry_count={correction.retry_count}"
-    )
+    print(f"\n  Result | passed={correction.passed}  retry_count={correction.retry_count}")
     print(f"  Result | final_confidence={correction.final_result.confidence}")
     if correction.skip_reason:
         print(f"  Result | skip_reason: {correction.skip_reason}")
     print(f"  Result | elapsed={elapsed:.1f}ms")
 
     if not correction.passed:
-        print(
-            "\n  [SKIP] On-chain write SUPPRESSED — no garbage persisted to AuditTrail ✓"
-        )
+        print("\n  [SKIP] On-chain write SUPPRESSED — no garbage persisted to AuditTrail ✓")
     else:
         print("\n  [PASS] Forwarded to RWAAgent")
 
@@ -138,9 +128,7 @@ async def run_demo() -> None:
     ambiguous2 = make_ambiguous_result("CasperLend")
     ambiguous2.confidence = 0.40
 
-    print(
-        f"  Input  | protocol={ambiguous2.protocol}  confidence={ambiguous2.confidence}"
-    )
+    print(f"  Input  | protocol={ambiguous2.protocol}  confidence={ambiguous2.confidence}")
 
     with patch.object(
         agent,
@@ -154,9 +142,7 @@ async def run_demo() -> None:
         correction2: CorrectionResult = await agent._evaluate(ambiguous2)
         elapsed2 = (time.perf_counter() - t0) * 1000
 
-    print(
-        f"\n  Result | passed={correction2.passed}  retry_count={correction2.retry_count}"
-    )
+    print(f"\n  Result | passed={correction2.passed}  retry_count={correction2.retry_count}")
     print(f"  Result | final_confidence={correction2.final_result.confidence}")
     print(f"  Result | elapsed={elapsed2:.1f}ms")
 
@@ -168,12 +154,8 @@ async def run_demo() -> None:
     # --- Summary ---
     print("\n" + "=" * 70)
     print("  Dispute Demo Complete")
-    print(
-        f"  Scenario 1 → {'SKIP (no on-chain write)' if not correction.passed else 'PASS'}"
-    )
-    print(
-        f"  Scenario 2 → {'PASS (forwarded after retry)' if correction2.passed else 'SKIP'}"
-    )
+    print(f"  Scenario 1 → {'SKIP (no on-chain write)' if not correction.passed else 'PASS'}")
+    print(f"  Scenario 2 → {'PASS (forwarded after retry)' if correction2.passed else 'SKIP'}")
     print("  Self-correction logic: working as designed.")
     print("=" * 70 + "\n")
 

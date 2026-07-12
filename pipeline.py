@@ -159,9 +159,7 @@ class VaultWatchPipeline:
                 with tracer.start_as_current_span("pipeline.scanner"):
                     protocol = _extract_protocol(event)
                     result = await self.scanner.scan(protocol=protocol, chain="casper")
-                    logger.debug(
-                        "Scanner result for %s: %s", protocol, result.get("risk_level")
-                    )
+                    logger.debug("Scanner result for %s: %s", protocol, result.get("risk_level"))
                     # High-risk scans get forwarded to intel
                     if result.get("risk_level") in ("HIGH", "CRITICAL"):
                         await _put_nowait(
@@ -206,9 +204,7 @@ class VaultWatchPipeline:
         logger.info("Self-correction worker started")
         while self._running:
             try:
-                anomaly_result = await asyncio.wait_for(
-                    self.correction_q.get(), timeout=1.0
-                )
+                anomaly_result = await asyncio.wait_for(self.correction_q.get(), timeout=1.0)
             except asyncio.TimeoutError:
                 continue
             except asyncio.CancelledError:
@@ -327,11 +323,7 @@ class VaultWatchPipeline:
 
 
 def _extract_protocol(event: Dict[str, Any]) -> str:
-    return (
-        event.get("contract_package_hash")
-        or event.get("deploy_hash", "")[:16]
-        or "unknown"
-    )
+    return event.get("contract_package_hash") or event.get("deploy_hash", "")[:16] or "unknown"
 
 
 def _event_to_metrics(event: Dict[str, Any]) -> Dict[str, Any]:

@@ -19,9 +19,7 @@ def mock_client():
     _metrics: dict = {}
     _agent_count = {"n": 0}
 
-    def mock_call_contract(
-        contract_hash, entry_point, args, payment_amount=5_000_000_000
-    ):
+    def mock_call_contract(contract_hash, entry_point, args, payment_amount=5_000_000_000):
         if entry_point == "record_decision":
             name = args["agent_name"]
             confidence = args["confidence"]
@@ -96,9 +94,7 @@ def test_record_decision_returns_hash(mock_client):
 
 def test_new_agent_registered_on_first_decision(mock_client):
     """First decision for an agent increments the agent count."""
-    count_before = mock_client.query_contract_state(
-        "hash-agentbehavior", ["agent_count"]
-    )
+    count_before = mock_client.query_contract_state("hash-agentbehavior", ["agent_count"])
     mock_client.call_contract(
         contract_hash="hash-agentbehavior",
         entry_point="record_decision",
@@ -110,9 +106,7 @@ def test_new_agent_registered_on_first_decision(mock_client):
             "block_height": 1_000_000,
         },
     )
-    count_after = mock_client.query_contract_state(
-        "hash-agentbehavior", ["agent_count"]
-    )
+    count_after = mock_client.query_contract_state("hash-agentbehavior", ["agent_count"])
     assert count_after == (count_before or 0) + 1
 
 
@@ -160,9 +154,7 @@ def test_correction_rate_tracked(mock_client):
             "block_height": 1_200_001,
         },
     )
-    m = mock_client.query_contract_state(
-        "hash-agentbehavior", ["metrics", "SelfCorrectionAgent"]
-    )
+    m = mock_client.query_contract_state("hash-agentbehavior", ["metrics", "SelfCorrectionAgent"])
     assert m["corrections_applied"] == 1
     assert m["total_decisions"] == 2
 
@@ -182,9 +174,7 @@ def test_trust_score_decreases_with_corrections(mock_client):
                 "block_height": 1_300_000,
             },
         )
-    m_clean = mock_client.query_contract_state(
-        "hash-agentbehavior", ["metrics", "AuditAgent"]
-    )
+    m_clean = mock_client.query_contract_state("hash-agentbehavior", ["metrics", "AuditAgent"])
     clean_score = m_clean["trust_score"]
 
     # Now add corrections
@@ -200,9 +190,7 @@ def test_trust_score_decreases_with_corrections(mock_client):
                 "block_height": 1_300_010,
             },
         )
-    m_penalised = mock_client.query_contract_state(
-        "hash-agentbehavior", ["metrics", "AuditAgent"]
-    )
+    m_penalised = mock_client.query_contract_state("hash-agentbehavior", ["metrics", "AuditAgent"])
     assert m_penalised["trust_score"] <= clean_score
 
 

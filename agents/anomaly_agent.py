@@ -71,9 +71,7 @@ class AnomalyAgent:
         self.output_queue = output_queue or asyncio.Queue()
         self.decision_count = 0
         self._groq_key = groq_api_key or os.getenv("GROQ_API_KEY", "")
-        self._client = (
-            Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
-        )
+        self._client = Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
 
     async def _call_groq(self, prompt: str) -> dict:
         if not self._client:
@@ -103,10 +101,7 @@ class AnomalyAgent:
         with tracer.start_as_current_span("anomaly.detect") as span:
             protocol = metrics.get("protocol", "unknown")
             span.set_attribute("protocol", protocol)
-            prompt = (
-                f"Analyze these DeFi metrics for anomalies: {metrics}. "
-                "Return JSON: {risk_score: 0-100, anomalies: [], recommendation: string}"
-            )
+            prompt = f"Analyze these DeFi metrics for anomalies: {metrics}. Return JSON: {{risk_score: 0-100, anomalies: [], recommendation: string}}"
             try:
                 result = await self._call_groq(prompt)
                 score = min(100.0, max(0.0, float(result.get("risk_score", 0))))

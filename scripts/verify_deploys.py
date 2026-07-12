@@ -21,6 +21,7 @@ Exit codes:
     0 = all deploys verified (named_keys > 0)
     1 = one or more deploys failed verification
 """
+
 from __future__ import annotations
 
 import argparse
@@ -39,6 +40,7 @@ OLD_DEPLOYER = "0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea
 
 def rpc(node_url: str, method: str, params: dict) -> dict:
     import httpx
+
     body = {"jsonrpc": "2.0", "id": 1, "method": method, "params": [params]}
     r = httpx.post(node_url, json=body, timeout=30)
     r.raise_for_status()
@@ -55,20 +57,15 @@ def verify_deploy(node_url: str, deploy_hash: str) -> dict:
         deploy = result.get("deploy", {})
         exec_results = deploy.get("execution_results", [])
         if not exec_results:
-            return {"deploy_hash": deploy_hash, "status": "pending",
-                    "detail": "included but not yet executed (or never executed)"}
+            return {"deploy_hash": deploy_hash, "status": "pending", "detail": "included but not yet executed (or never executed)"}
         outcome = exec_results[0].get("result", {})
         block_hash = exec_results[0].get("block_hash", "")
         if "Success" in outcome:
-            return {"deploy_hash": deploy_hash, "status": "success",
-                    "block_hash": block_hash,
-                    "gas": outcome["Success"].get("cost", "0")}
+            return {"deploy_hash": deploy_hash, "status": "success", "block_hash": block_hash, "gas": outcome["Success"].get("cost", "0")}
         elif "Failure" in outcome:
             err = outcome["Failure"].get("error_message", "unknown")
-            return {"deploy_hash": deploy_hash, "status": "failed",
-                    "block_hash": block_hash, "error": err}
-        return {"deploy_hash": deploy_hash, "status": "unknown",
-                "block_hash": block_hash, "raw": outcome}
+            return {"deploy_hash": deploy_hash, "status": "failed", "block_hash": block_hash, "error": err}
+        return {"deploy_hash": deploy_hash, "status": "unknown", "block_hash": block_hash, "raw": outcome}
     except Exception as e:
         return {"deploy_hash": deploy_hash, "status": "error", "error": str(e)}
 
@@ -77,15 +74,11 @@ def verify_account(node_url: str, account_hash_or_pubkey: str) -> dict:
     """Check 2: state_get_account_info shows named_keys > 0."""
     try:
         # Accept either a public key (02...) or an account hash (hash-...)
-        params = {"public_key": account_hash_or_pubkey} \
-            if account_hash_or_pubkey.startswith("02") else \
-            {"account_identifier": account_hash_or_pubkey}
+        params = {"public_key": account_hash_or_pubkey} if account_hash_or_pubkey.startswith("02") else {"account_identifier": account_hash_or_pubkey}
         result = rpc(node_url, "state_get_account_info", params)
         account = result.get("account", {})
         named_keys = account.get("named_keys", [])
-        return {"account": account_hash_or_pubkey,
-                "named_keys_count": len(named_keys),
-                "named_key_names": [nk.get("name", "") for nk in named_keys][:20]}
+        return {"account": account_hash_or_pubkey, "named_keys_count": len(named_keys), "named_key_names": [nk.get("name", "") for nk in named_keys][:20]}
     except Exception as e:
         return {"account": account_hash_or_pubkey, "error": str(e)}
 
@@ -93,10 +86,8 @@ def verify_account(node_url: str, account_hash_or_pubkey: str) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Verify VaultWatch deploys on Casper Testnet")
     parser.add_argument("--node-url", default=DEFAULT_NODE)
-    parser.add_argument("--deploy-hashes", default=str(DEFAULT_HASHES_FILE),
-                        help="JSON file mapping contract name → deploy hash")
-    parser.add_argument("--account", default=None,
-                        help="Deployer public key (02...) or account hash to check named_keys")
+    parser.add_argument("--deploy-hashes", default=str(DEFAULT_HASHES_FILE), help="JSON file mapping contract name → deploy hash")
+    parser.add_argument("--account", default=None, help="Deployer public key (02...) or account hash to check named_keys")
     args = parser.parse_args()
 
     hashes_path = Path(args.deploy_hashes)

@@ -19,9 +19,7 @@ def mock_client():
     _address_index: dict = {}
     _counter = {"n": 0}
 
-    def mock_call_contract(
-        contract_hash, entry_point, args, payment_amount=5_000_000_000
-    ):
+    def mock_call_contract(contract_hash, entry_point, args, payment_amount=5_000_000_000):
         if entry_point == "log_alert":
             _counter["n"] += 1
             log_id = _counter["n"]

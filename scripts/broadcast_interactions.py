@@ -59,9 +59,7 @@ INTERACTIONS = [
         [
             DeployArgument("action", CLV_String("self_correction_skip")),
             DeployArgument("actor", CLV_String("correction_agent")),
-            DeployArgument(
-                "details", CLV_String("confidence=0.51 below_threshold=0.75")
-            ),
+            DeployArgument("details", CLV_String("confidence=0.51 below_threshold=0.75")),
         ],
     ),
     (
@@ -97,9 +95,7 @@ INTERACTIONS = [
         [
             DeployArgument("severity", CLV_String("HIGH")),
             DeployArgument("protocol", CLV_String("CasperSwap")),
-            DeployArgument(
-                "message", CLV_String("Price drop 22pct in 1h — anomaly detected")
-            ),
+            DeployArgument("message", CLV_String("Price drop 22pct in 1h — anomaly detected")),
         ],
     ),
     (
@@ -108,9 +104,7 @@ INTERACTIONS = [
         [
             DeployArgument("severity", CLV_String("MEDIUM")),
             DeployArgument("protocol", CLV_String("CasperLend")),
-            DeployArgument(
-                "message", CLV_String("Unusual volume spike in collateral pool")
-            ),
+            DeployArgument("message", CLV_String("Unusual volume spike in collateral pool")),
         ],
     ),
     (
@@ -182,9 +176,7 @@ INTERACTIONS = [
         [
             DeployArgument(
                 "recipient",
-                CLV_String(
-                    "0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116"
-                ),
+                CLV_String("0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116"),
             ),
             DeployArgument("amount", CLV_U64(100)),
         ],
@@ -233,9 +225,7 @@ def make_payment(amount_motes: int) -> DeployOfModuleBytes:
 
 def main():
     key = parse_private_key(KEY_PATH, KeyAlgorithm.SECP256K1)
-    logger.info(
-        "Key loaded. Pubkey: %s", key.to_public_key().account_key.hex()[:20] + "..."
-    )
+    logger.info("Key loaded. Pubkey: %s", key.to_public_key().account_key.hex()[:20] + "...")
 
     results = []
     for i, (contract_name, entry_point, cl_args) in enumerate(INTERACTIONS, 1):

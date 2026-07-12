@@ -12,7 +12,7 @@ name: Build Casper-Compatible WASM
 
 on:
   push:
-    branches: [main, develop, "fix/**"]
+    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch: {}  # manual trigger from Actions tab

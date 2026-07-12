@@ -87,9 +87,7 @@ async def run_demo() -> None:
         print(f"\n[{i}/{len(RWA_ASSETS)}] {asset['description']}")
         print(f"  ID: {asset['asset_id']}")
         print(f"  Type: {asset['asset_type']} | Issuer: {asset['issuer']}")
-        print(
-            f"  Collateral: {asset['collateral_ratio']:.2f}x | Rating: {asset['credit_rating']}"
-        )
+        print(f"  Collateral: {asset['collateral_ratio']:.2f}x | Rating: {asset['credit_rating']}")
         print(f"  Maturity: {asset['maturity_days']}d")
         print("-" * 50)
 

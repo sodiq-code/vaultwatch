@@ -27,9 +27,7 @@ async def record_demo() -> None:
     try:
         from playwright.async_api import async_playwright  # type: ignore
     except ImportError:
-        logger.error(
-            "playwright not installed. Run: pip install playwright && playwright install chromium"
-        )
+        logger.error("playwright not installed. Run: pip install playwright && playwright install chromium")
         sys.exit(1)
 
     VIDEO_DIR.mkdir(parents=True, exist_ok=True)
@@ -60,25 +58,17 @@ async def record_demo() -> None:
 
             # --- Scene 2: Risk query ---
             logger.info("Scene 2: Risk intelligence query...")
-            query_input = page.locator(
-                '[data-testid="risk-query-input"], input[placeholder*="risk"], input[placeholder*="query"]'
-            )
+            query_input = page.locator('[data-testid="risk-query-input"], input[placeholder*="risk"], input[placeholder*="query"]')
             if await query_input.count() > 0:
-                await query_input.first.fill(
-                    "What is the current risk level for CasperSwap?"
-                )
+                await query_input.first.fill("What is the current risk level for CasperSwap?")
                 await page.wait_for_timeout(500)
-                submit_btn = page.locator(
-                    '[data-testid="query-submit"], button[type="submit"], button:has-text("Analyze")'
-                )
+                submit_btn = page.locator('[data-testid="query-submit"], button[type="submit"], button:has-text("Analyze")')
                 if await submit_btn.count() > 0:
                     await submit_btn.first.click()
                     await page.wait_for_timeout(3000)
             else:
                 # Navigate directly to risk section
-                risk_nav = page.locator(
-                    'nav a:has-text("Risk"), a:has-text("Intelligence")'
-                )
+                risk_nav = page.locator('nav a:has-text("Risk"), a:has-text("Intelligence")')
                 if await risk_nav.count() > 0:
                     await risk_nav.first.click()
                     await page.wait_for_timeout(1000)
@@ -88,9 +78,7 @@ async def record_demo() -> None:
 
             # --- Scene 3: Anomaly detection ---
             logger.info("Scene 3: Anomaly detection...")
-            anomaly_nav = page.locator(
-                'nav a:has-text("Anomaly"), a:has-text("Detection")'
-            )
+            anomaly_nav = page.locator('nav a:has-text("Anomaly"), a:has-text("Detection")')
             if await anomaly_nav.count() > 0:
                 await anomaly_nav.first.click()
                 await page.wait_for_timeout(1000)

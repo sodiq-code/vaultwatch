@@ -1,26 +1,36 @@
 #!/usr/bin/env python3
 """Rename 'main' export to 'call' in each WASM file (Casper 2.x requirement)."""
+
 from __future__ import annotations
 import sys
 from pathlib import Path
 
+
 def read_leb128(data, offset):
-    result = 0; shift = 0
+    result = 0
+    shift = 0
     while True:
-        byte = data[offset]; offset += 1
+        byte = data[offset]
+        offset += 1
         result |= (byte & 0x7F) << shift
-        if (byte & 0x80) == 0: break
+        if (byte & 0x80) == 0:
+            break
         shift += 7
     return result, offset
+
 
 def write_leb128(value):
     result = []
     while True:
         byte = value & 0x7F
         value >>= 7
-        if value == 0: result.append(byte); break
-        else: result.append(byte | 0x80)
+        if value == 0:
+            result.append(byte)
+            break
+        else:
+            result.append(byte | 0x80)
     return bytes(result)
+
 
 def rename_main_to_call(data):
     if len(data) < 8 or data[:4] != b"\x00asm":
@@ -60,6 +70,7 @@ def rename_main_to_call(data):
         output.extend(section_body)
         offset += section_size
     return bytes(output), was_renamed
+
 
 if __name__ == "__main__":
     target = Path(sys.argv[1] if len(sys.argv) > 1 else "contracts/wasm")

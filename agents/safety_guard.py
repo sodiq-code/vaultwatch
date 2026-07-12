@@ -36,9 +36,7 @@ class SafetyGuard:
         self.policy_reader = policy_reader
         self.rejection_threshold = 0.80
         self._groq_key = groq_api_key or os.getenv("GROQ_API_KEY", "")
-        self._client = (
-            Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
-        )
+        self._client = Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
 
     async def _call_groq(self, prompt: str) -> dict:
         if not self._client:
@@ -62,10 +60,7 @@ class SafetyGuard:
             return {"safe": True, "reason": "Empty query"}
         with tracer.start_as_current_span("safetyguard.check") as span:
             span.set_attribute("query_length", len(query))
-            prompt = (
-                f"Is this query safe for a DeFi risk analysis system? Query: {query!r}. "
-                "Return JSON: {safe: true|false, reason: string}"
-            )
+            prompt = f"Is this query safe for a DeFi risk analysis system? Query: {query!r}. Return JSON: {{safe: true|false, reason: string}}"
             try:
                 result = await self._call_groq(prompt)
                 result.setdefault("safe", True)
@@ -82,9 +77,7 @@ class SafetyGuard:
         if self.policy_reader:
             try:
                 policy = await self.policy_reader()
-                self.rejection_threshold = (
-                    policy.get("safety_rejection_threshold", 80) / 100
-                )
+                self.rejection_threshold = policy.get("safety_rejection_threshold", 80) / 100
             except Exception:
                 pass
 
@@ -113,11 +106,7 @@ class SafetyGuard:
                 output = response.choices[0].message.content.lower()
 
                 # Parse safety signal
-                if (
-                    "injection" in output
-                    or "jailbreak" in output
-                    or "malicious" in output
-                ):
+                if "injection" in output or "jailbreak" in output or "malicious" in output:
                     safety_score = 0.95
                 elif "safe" in output or "benign" in output:
                     safety_score = 0.05
@@ -135,9 +124,7 @@ class SafetyGuard:
                     rejection_reason = f"Safety score {safety_score:.2f} exceeds threshold {self.rejection_threshold:.2f}"
                     logger.warning(f"SafetyGuard REJECTED: {rejection_reason}")
                 else:
-                    logger.info(
-                        f"SafetyGuard APPROVED: safety_score={safety_score:.2f}"
-                    )
+                    logger.info(f"SafetyGuard APPROVED: safety_score={safety_score:.2f}")
 
                 return SafetyResult(
                     finding=finding,

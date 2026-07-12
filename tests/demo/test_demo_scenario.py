@@ -47,9 +47,7 @@ async def test_demo_scenario_1_risk_query(agents):
     safety = agents["safety"]
     intel = agents["intel"]
 
-    query = (
-        "What is the current risk level for the Casper native CSPR staking protocol?"
-    )
+    query = "What is the current risk level for the Casper native CSPR staking protocol?"
 
     with (
         patch.object(safety, "_call_groq", new_callable=AsyncMock) as mock_safe,
@@ -118,9 +116,7 @@ async def test_demo_scenario_2_anomaly_detection(agents):
         )
         assert isinstance(deploy_hash, str)
 
-    print(
-        f"\n[DEMO 2] Anomaly: score={result.risk_score}, action={corrected.get('action')}, audit_hash={deploy_hash[:16]}..."
-    )
+    print(f"\n[DEMO 2] Anomaly: score={result.risk_score}, action={corrected.get('action')}, audit_hash={deploy_hash[:16]}...")
 
 
 @pytest.mark.asyncio
@@ -146,9 +142,7 @@ async def test_demo_scenario_3_rwa_assessment(agents):
         result = await rwa.assess(asset)
 
     assert result["verdict"] == "APPROVED"
-    print(
-        f"\n[DEMO 3] RWA assessment: {result['verdict']} (score={result.get('risk_score')})"
-    )
+    print(f"\n[DEMO 3] RWA assessment: {result['verdict']} (score={result.get('risk_score')})")
 
 
 @pytest.mark.asyncio
@@ -220,9 +214,7 @@ async def test_demo_scenario_5_full_pipeline_mock(agents, casper):
 
     # 5. Audit
     audit = agents["audit"]
-    h = await audit.record(
-        action="demo_complete", actor="test_suite", details="all_stages_passed"
-    )
+    h = await audit.record(action="demo_complete", actor="test_suite", details="all_stages_passed")
 
     assert safe["safe"] is True
     assert scan["risk_level"] == "LOW"

@@ -157,21 +157,11 @@ def deploy_all(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Deploy VaultWatch contracts to Casper"
-    )
-    parser.add_argument(
-        "--contracts-dir", default="contracts", help="Contracts directory"
-    )
-    parser.add_argument(
-        "--output", default="deploy_hashes.json", help="Output file for deploy hashes"
-    )
-    parser.add_argument(
-        "--mock", action="store_true", default=False, help="Mock mode (no live node)"
-    )
-    parser.add_argument(
-        "--dry-run", action="store_true", default=False, help="Dry run — no deploys"
-    )
+    parser = argparse.ArgumentParser(description="Deploy VaultWatch contracts to Casper")
+    parser.add_argument("--contracts-dir", default="contracts", help="Contracts directory")
+    parser.add_argument("--output", default="deploy_hashes.json", help="Output file for deploy hashes")
+    parser.add_argument("--mock", action="store_true", default=False, help="Mock mode (no live node)")
+    parser.add_argument("--dry-run", action="store_true", default=False, help="Dry run — no deploys")
     args = parser.parse_args()
 
     load_dotenv()

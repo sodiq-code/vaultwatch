@@ -64,13 +64,9 @@ class CasperContractClient:
         signing_key_path: str = "",
         mock: bool = False,
     ) -> None:
-        self.node_url = node_url or os.getenv(
-            "CASPER_NODE_URL", "http://rpc.testnet.casperlabs.io"
-        )
+        self.node_url = node_url or os.getenv("CASPER_NODE_URL", "http://rpc.testnet.casperlabs.io")
         self.chain_name = chain_name or os.getenv("CASPER_CHAIN_NAME", "casper-test")
-        self.signing_key_path = signing_key_path or os.getenv(
-            "CASPER_SIGNING_KEY_PATH", ""
-        )
+        self.signing_key_path = signing_key_path or os.getenv("CASPER_SIGNING_KEY_PATH", "")
         self.mock = mock or not _SDK_AVAILABLE
 
         self._client: Optional[Any] = None
@@ -85,11 +81,7 @@ class CasperContractClient:
 
     def _init_client(self) -> None:
         try:
-            url = (
-                self.node_url.replace("https://", "")
-                .replace("http://", "")
-                .split("/")[0]
-            )
+            url = self.node_url.replace("https://", "").replace("http://", "").split("/")[0]
             host = url.split(":")[0]
             port = int(url.split(":")[-1]) if ":" in url else 7777
             conn = NodeRpcConnectionInfo(host=host, port=port)
@@ -105,9 +97,7 @@ class CasperContractClient:
             return self._account_key
         if not self.signing_key_path:
             raise RuntimeError("No signing key path configured")
-        self._account_key = parse_private_key(
-            Path(self.signing_key_path), KeyAlgorithm.SECP256K1
-        )
+        self._account_key = parse_private_key(Path(self.signing_key_path), KeyAlgorithm.SECP256K1)
         return self._account_key
 
     def _make_standard_payment(self, amount_motes: int) -> "DeployOfModuleBytes":
@@ -183,9 +173,7 @@ class CasperContractClient:
             if self.mock:
                 import hashlib
 
-                mock_hash = hashlib.sha256(
-                    f"{wasm_path}{time.time()}".encode()
-                ).hexdigest()
+                mock_hash = hashlib.sha256(f"{wasm_path}{time.time()}".encode()).hexdigest()
                 logger.info("[MOCK] deploy_contract -> %s", mock_hash)
                 span.set_attribute("mock", True)
                 span.set_attribute("deploy_hash", mock_hash)
@@ -237,9 +225,7 @@ class CasperContractClient:
             if self.mock:
                 import hashlib
 
-                mock_hash = hashlib.sha256(
-                    f"{contract_hash}{entry_point}{time.time()}".encode()
-                ).hexdigest()
+                mock_hash = hashlib.sha256(f"{contract_hash}{entry_point}{time.time()}".encode()).hexdigest()
                 logger.info(
                     "[MOCK] call_contract(%s::%s) -> %s",
                     contract_hash,
@@ -258,11 +244,7 @@ class CasperContractClient:
             payment = self._make_standard_payment(payment_amount)
 
             # contract_hash may arrive as hex string — convert to bytes
-            hash_bytes = (
-                bytes.fromhex(contract_hash)
-                if isinstance(contract_hash, str)
-                else contract_hash
-            )
+            hash_bytes = bytes.fromhex(contract_hash) if isinstance(contract_hash, str) else contract_hash
             session_args = self._normalise_args(args)
             session = DeployOfStoredContractByHash(
                 hash=hash_bytes,

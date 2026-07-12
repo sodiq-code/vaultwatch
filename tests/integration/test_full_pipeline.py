@@ -68,9 +68,7 @@ async def test_scanner_worker_processes_event(pipeline):
 async def test_anomaly_worker_processes_event(pipeline):
     event = {"type": "DeployProcessed", "deploy_hash": "xyz789", "amount": "50000"}
 
-    with patch.object(
-        pipeline.anomaly, "detect", new_callable=AsyncMock
-    ) as mock_detect:
+    with patch.object(pipeline.anomaly, "detect", new_callable=AsyncMock) as mock_detect:
         from agents.anomaly_agent import AnomalyResult
         import time
 
@@ -132,12 +130,8 @@ async def test_high_risk_triggers_correction(pipeline):
         timestamp=time.time(),
     )
 
-    with patch.object(
-        pipeline.anomaly, "detect", new_callable=AsyncMock
-    ) as mock_detect:
-        with patch.object(
-            pipeline.audit, "record", new_callable=AsyncMock
-        ) as mock_record:
+    with patch.object(pipeline.anomaly, "detect", new_callable=AsyncMock) as mock_detect:
+        with patch.object(pipeline.audit, "record", new_callable=AsyncMock) as mock_record:
             mock_detect.return_value = high_risk_result
             mock_record.return_value = "hash"
             pipeline._running = True

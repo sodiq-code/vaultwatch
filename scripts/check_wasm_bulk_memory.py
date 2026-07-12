@@ -19,6 +19,7 @@ Exit codes:
 
 No third-party deps — parses the WASM binary format directly.
 """
+
 from __future__ import annotations
 
 import struct
@@ -95,9 +96,7 @@ def scan_code_section_for_bulk_memory(code_section: bytes) -> list[str]:
                 # bulk-memory ones (0x09..0x0f)
                 key = 0x0FC00 + sub
                 if key in BULK_MEMORY_OPCODES:
-                    findings.append(
-                        f"0xFC 0x{sub:02x} ({BULK_MEMORY_OPCODES[key]}) at byte {i}"
-                    )
+                    findings.append(f"0xFC 0x{sub:02x} ({BULK_MEMORY_OPCODES[key]}) at byte {i}")
             i += 2
             continue
         # Note: we deliberately do NOT flag table.grow (0x0f) alone — Casper's
@@ -171,9 +170,9 @@ def main() -> int:
     if all_clean:
         print(f"✅ PASS — all {len(wasm_files)} WASM files are Casper-compatible (no bulk-memory opcodes).")
         return 0
-    print(f"❌ FAIL — bulk-memory opcodes found. Casper Testnet will reject these deploys with")
-    print(f"          'Wasm preprocessing error: Deserialization error: Bulk memory operations")
-    print(f"          are not supported.' Fix: rebuild with scripts/build_contracts.sh")
+    print("❌ FAIL — bulk-memory opcodes found. Casper Testnet will reject these deploys with")
+    print("          'Wasm preprocessing error: Deserialization error: Bulk memory operations")
+    print("          are not supported.' Fix: rebuild with scripts/build_contracts.sh")
     return 1
 
 

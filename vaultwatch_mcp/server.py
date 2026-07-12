@@ -67,9 +67,7 @@ async def get_market_state() -> dict:
 
 # ─── Tool 2: detect_anomaly ─────────────────────────────────────────────────
 @mcp.tool()
-async def detect_anomaly(
-    address: str, amount_cspr: float = 0.0, event_type: str = "token_transfer"
-) -> dict:
+async def detect_anomaly(address: str, amount_cspr: float = 0.0, event_type: str = "token_transfer") -> dict:
     """
     Run anomaly classification on a Casper address or event.
     Uses llama-3.3-70b-versatile for deep risk reasoning.
@@ -138,9 +136,7 @@ async def get_rwa_risk(asset_type: str = "stablecoin") -> dict:
 
 # ─── Tool 4: query_findings ──────────────────────────────────────────────────
 @mcp.tool()
-async def query_findings(
-    severity: Optional[str] = None, limit: int = 10, risk_type: Optional[str] = None
-) -> dict:
+async def query_findings(severity: Optional[str] = None, limit: int = 10, risk_type: Optional[str] = None) -> dict:
     """
     Retrieve latest VaultWatch findings from on-chain audit trail.
     Filter by severity (CRITICAL/HIGH/MEDIUM/LOW) or risk_type.
@@ -161,9 +157,7 @@ async def query_findings(
 
 # ─── Tool 5: pay_for_intel ───────────────────────────────────────────────────
 @mcp.tool()
-async def pay_for_intel(
-    caller_address: str, target_address: str, query_type: str = "standard"
-) -> dict:
+async def pay_for_intel(caller_address: str, target_address: str, query_type: str = "standard") -> dict:
     """
     x402 pay-per-query: verify credit → deduct from SentinelCredit contract → serve premium finding.
     query_type: 'standard' or 'premium' (includes RWA enrichment).
@@ -171,9 +165,7 @@ async def pay_for_intel(
     with tracer.start_as_current_span("mcp.pay_for_intel") as span:
         span.set_attribute("mcp.caller", caller_address[:20])
         span.set_attribute("mcp.query_type", query_type)
-        result = await IntelAgent.serve_intel_with_x402(
-            query_type, target_address, caller_address
-        )
+        result = await IntelAgent.serve_intel_with_x402(query_type, target_address, caller_address)
         return result
 
 
@@ -197,9 +189,7 @@ async def get_audit_trail(address: str, limit: int = 5) -> dict:
 
 # ─── Tool 7: subscribe_alerts ────────────────────────────────────────────────
 @mcp.tool()
-async def subscribe_alerts(
-    address: str, webhook_url: str, min_severity: str = "HIGH"
-) -> dict:
+async def subscribe_alerts(address: str, webhook_url: str, min_severity: str = "HIGH") -> dict:
     """
     Register address for VaultWatch push alerts on SentinelRegistry contract.
     Alerts delivered for findings at or above min_severity.
@@ -294,9 +284,7 @@ async def stream_events(limit: int = 5) -> dict:
     """
     return {
         "status": "streaming",
-        "sidecar_url": os.getenv(
-            "CASPER_SIDECAR_URL", "http://127.0.0.1:18888/events/main"
-        ),
+        "sidecar_url": os.getenv("CASPER_SIDECAR_URL", "http://127.0.0.1:18888/events/main"),
         "recent_events": list(reversed(_findings_store))[:limit],
         "note": "Full SSE stream available at /stream/events endpoint",
         "timestamp": int(time.time()),
@@ -337,9 +325,7 @@ async def get_agent_behavior(agent_name: Optional[str] = None) -> dict:
 
 # ─── Tool 12: upgrade_policy ─────────────────────────────────────────────────
 @mcp.tool()
-async def upgrade_policy(
-    min_confidence: int = 75, critical_threshold: int = 80, high_threshold: int = 60
-) -> dict:
+async def upgrade_policy(min_confidence: int = 75, critical_threshold: int = 80, high_threshold: int = 60) -> dict:
     """
     Hot-swap VaultWatch risk thresholds via RiskPolicyManager contract.
     Agents read updated policy every decision cycle — no restart required.
@@ -380,9 +366,7 @@ async def get_alert_history(address: str, limit: int = 10) -> dict:
 
 # ─── Tool 14: register_subscriber ────────────────────────────────────────────
 @mcp.tool()
-async def register_subscriber(
-    address: str, webhook_url: str, min_severity: str = "CRITICAL"
-) -> dict:
+async def register_subscriber(address: str, webhook_url: str, min_severity: str = "CRITICAL") -> dict:
     """
     Register address on SentinelRegistry contract for automated alerts.
     """
@@ -512,18 +496,23 @@ async def reputation_query(
             EscrowStake,
             reputation_for_agent,
             hybrid_reputation,
-            predictions_from_agent_metrics,
         )
 
         # If address looks like an agent name, use on-chain AgentBehaviorIndex
         agent_names = [
-            "ScannerAgent", "AnomalyAgent", "SelfCorrectionAgent",
-            "RWAAgent", "SafetyGuard", "AuditAgent", "IntelAgent",
+            "ScannerAgent",
+            "AnomalyAgent",
+            "SelfCorrectionAgent",
+            "RWAAgent",
+            "SafetyGuard",
+            "AuditAgent",
+            "IntelAgent",
         ]
         if address in agent_names:
             # Pull from get_agent_behavior (already an existing tool) — synthetic here
             # In production: call AgentBehaviorIndex.get_metrics(address) via pycspr
             from vaultwatch_mcp.server import get_agent_behavior
+
             behavior = await get_agent_behavior(address)
             metrics = behavior.get("agents", {}).get(address, {})
             agent_metrics = {
@@ -558,6 +547,7 @@ async def reputation_query(
             )
             # Subscribers don't make predictions; use neutral Brier
             from agents.reputation import AgentPrediction
+
             preds = [AgentPrediction(address, 0.5, 0.5)] if include_predictions else []
             result = hybrid_reputation(preds, stake, w_brier, w_escrow)
 
@@ -684,16 +674,12 @@ async def policy_hotswap(
             },
             "reason": reason,
             "rollback_enabled": rollback_on_failure,
-            "rollback_trigger": (
-                "false_positive_rate > 30% within 50 decisions → auto-revert"
-                if rollback_on_failure else "manual only"
-            ),
+            "rollback_trigger": ("false_positive_rate > 30% within 50 decisions → auto-revert" if rollback_on_failure else "manual only"),
             "contract": "RiskPolicyManager.set_threshold()",
             "effective": "immediately — agents read policy every cycle",
             "atomic": True,
             "verification_tx_template": (
-                "RiskPolicyManager.set_threshold('min_confidence', "
-                f"{new_min_confidence}) → check via get_threshold('min_confidence')"
+                f"RiskPolicyManager.set_threshold('min_confidence', {new_min_confidence}) → check via get_threshold('min_confidence')"
             ),
             "timestamp": int(time.time()),
         }
@@ -723,10 +709,15 @@ async def behavior_index_lookup(
         sort_by: "trust_score" | "decisions" | "confidence" | "corrections"
         limit: max agents to return
     """
-    with tracer.start_as_current_span("mcp.behavior_index_lookup") as span:
+    with tracer.start_as_current_span("mcp.behavior_index_lookup"):
         all_agents = [
-            "ScannerAgent", "AnomalyAgent", "SelfCorrectionAgent",
-            "RWAAgent", "SafetyGuard", "AuditAgent", "IntelAgent",
+            "ScannerAgent",
+            "AnomalyAgent",
+            "SelfCorrectionAgent",
+            "RWAAgent",
+            "SafetyGuard",
+            "AuditAgent",
+            "IntelAgent",
         ]
         selected = agent_names if agent_names else all_agents
 
@@ -740,16 +731,18 @@ async def behavior_index_lookup(
             safety_rejections = 1 if agent == "SafetyGuard" else 0
             high_conf = int(decisions * 0.7)
             trust = max(0, min(100, 100 - (corrections * 5) - (safety_rejections * 5)))
-            rankings.append({
-                "agent_name": agent,
-                "trust_score": trust,
-                "total_decisions": decisions,
-                "corrections_applied": corrections,
-                "safety_rejections": safety_rejections,
-                "high_confidence_count": high_conf,
-                "avg_confidence": 80 + (5 - i) if i < 5 else 75,
-                "rank": 0,  # set after sort
-            })
+            rankings.append(
+                {
+                    "agent_name": agent,
+                    "trust_score": trust,
+                    "total_decisions": decisions,
+                    "corrections_applied": corrections,
+                    "safety_rejections": safety_rejections,
+                    "high_confidence_count": high_conf,
+                    "avg_confidence": 80 + (5 - i) if i < 5 else 75,
+                    "rank": 0,  # set after sort
+                }
+            )
 
         # Sort
         valid_sorts = {"trust_score", "total_decisions", "avg_confidence", "corrections_applied"}

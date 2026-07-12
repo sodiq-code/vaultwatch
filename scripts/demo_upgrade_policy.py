@@ -22,9 +22,7 @@ from agents.audit_agent import AuditAgent
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("demo_upgrade_policy")
 
-RISK_POLICY_MANAGER_HASH = os.getenv(
-    "RISK_POLICY_MANAGER_HASH", "hash-mock-policy-manager"
-)
+RISK_POLICY_MANAGER_HASH = os.getenv("RISK_POLICY_MANAGER_HASH", "hash-mock-policy-manager")
 
 POLICY_UPGRADES = [
     {
@@ -106,9 +104,7 @@ async def run_demo() -> None:
             args={
                 "policy_id": policy_id,
                 "max_tvl_drop_pct": int(upgrade["new"]["max_tvl_drop_pct"] * 100),
-                "min_liquidity_ratio": int(
-                    upgrade["new"]["min_liquidity_ratio"] * 10_000
-                ),
+                "min_liquidity_ratio": int(upgrade["new"]["min_liquidity_ratio"] * 10_000),
                 "alert_threshold": upgrade["new"]["alert_threshold"],
             },
         )

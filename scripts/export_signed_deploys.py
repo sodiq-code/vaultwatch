@@ -121,9 +121,7 @@ def main():
             module_bytes=b"",
             args=[DeployArgument("amount", CLV_U512(contract["payment"]))],
         )
-        session_args = [
-            DeployArgument(k, make_cl_value(v)) for k, v in contract["args"].items()
-        ]
+        session_args = [DeployArgument(k, make_cl_value(v)) for k, v in contract["args"].items()]
         session = DeployOfModuleBytes(module_bytes=wasm_bytes, args=session_args)
 
         deploy = create_deploy(params, payment, session)
@@ -133,9 +131,7 @@ def main():
         out_path = OUT_DIR / f"{name}_deploy.json"
         out_path.write_text(json.dumps(deploy_json, indent=2))
 
-        deploy_hash = (
-            deploy.hash.hex() if hasattr(deploy.hash, "hex") else str(deploy.hash)
-        )
+        deploy_hash = deploy.hash.hex() if hasattr(deploy.hash, "hex") else str(deploy.hash)
         hashes[name] = deploy_hash
         logger.info("%s -> hash: %s  saved: %s", name, deploy_hash, out_path)
 

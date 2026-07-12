@@ -44,9 +44,7 @@ class SelfCorrectionAgent:
         self.output_queue = output_queue or asyncio.Queue()
         self.policy_reader = policy_reader
         self._groq_key = groq_api_key or os.getenv("GROQ_API_KEY", "")
-        self._client = (
-            Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
-        )
+        self._client = Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
 
     async def _call_groq(self, prompt: str) -> dict:
         if not self._client:
@@ -87,9 +85,7 @@ class SelfCorrectionAgent:
                 result = await self._call_groq(prompt)
                 # Clamp score
                 if "corrected_score" in result:
-                    result["corrected_score"] = min(
-                        100.0, max(0.0, float(result["corrected_score"]))
-                    )
+                    result["corrected_score"] = min(100.0, max(0.0, float(result["corrected_score"])))
                 result.setdefault("protocol", anomaly_result.protocol)
                 return result
             except Exception as exc:
@@ -146,15 +142,11 @@ class SelfCorrectionAgent:
             # Low confidence — enter retry loop
             current = result
             for attempt in range(max_retries):
-                logger.info(
-                    f"SelfCorrection retry {attempt + 1}/{max_retries} — confidence {current.confidence:.2f} < {threshold}"
-                )
+                logger.info(f"SelfCorrection retry {attempt + 1}/{max_retries} — confidence {current.confidence:.2f} < {threshold}")
                 current = await self._retry_with_context(current, attempt + 1)
                 if current.confidence >= threshold:
                     span.set_attribute("correction.retry_count", attempt + 1)
-                    span.set_attribute(
-                        "correction.final_confidence", current.confidence
-                    )
+                    span.set_attribute("correction.final_confidence", current.confidence)
                     span.set_attribute("correction.result", "PASSED_AFTER_RETRY")
                     return CorrectionResult(
                         original=result,
@@ -167,9 +159,7 @@ class SelfCorrectionAgent:
             span.set_attribute("correction.retry_count", max_retries)
             span.set_attribute("correction.final_confidence", current.confidence)
             span.set_attribute("correction.result", "SKIPPED")
-            logger.info(
-                f"SelfCorrection SKIP: confidence {current.confidence:.2f} after {max_retries} retries"
-            )
+            logger.info(f"SelfCorrection SKIP: confidence {current.confidence:.2f} after {max_retries} retries")
 
             return CorrectionResult(
                 original=result,
@@ -179,9 +169,7 @@ class SelfCorrectionAgent:
                 skip_reason=f"Confidence {current.confidence:.2f} below threshold {threshold} after {max_retries} retries",
             )
 
-    async def _retry_with_context(
-        self, result: AnomalyResult, attempt: int
-    ) -> AnomalyResult:
+    async def _retry_with_context(self, result: AnomalyResult, attempt: int) -> AnomalyResult:
         """Re-query with additional context to improve confidence"""
         with tracer.start_as_current_span("selfcorrection.retry") as span:
             span.set_attribute("correction.attempt", attempt)

@@ -33,9 +33,7 @@ from casper_client import CasperContractClient
 # ---------------------------------------------------------------------------
 # Logging & Tracing bootstrap
 # ---------------------------------------------------------------------------
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
 _span_exporter = InMemorySpanExporter()
@@ -195,9 +193,7 @@ async def get_spans() -> Dict[str, Any]:
             {
                 "name": s.name,
                 "trace_id": format(s.context.trace_id, "032x"),
-                "duration_ms": (s.end_time - s.start_time) / 1_000_000
-                if s.end_time
-                else None,
+                "duration_ms": (s.end_time - s.start_time) / 1_000_000 if s.end_time else None,
                 "status": s.status.status_code.name,
             }
             for s in spans[-50:]  # last 50
@@ -226,9 +222,7 @@ async def risk_query(req: RiskQueryRequest) -> Dict[str, Any]:
         if not safe_result.get("safe", True):
             raise HTTPException(status_code=400, detail="Query failed safety check")
 
-        result = await intel.analyze(
-            req.query, protocol=req.protocol, extra_context=req.context
-        )
+        result = await intel.analyze(req.query, protocol=req.protocol, extra_context=req.context)
         return {"status": "ok", "result": result}
 
 

@@ -43,9 +43,7 @@ class RWAAgent:
         self.input_queue = input_queue or asyncio.Queue()
         self.output_queue = output_queue or asyncio.Queue()
         self._groq_key = groq_api_key or os.getenv("GROQ_API_KEY", "")
-        self._client = (
-            Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
-        )
+        self._client = Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
         self._assets: list = []
 
     async def _call_groq(self, prompt: str) -> dict:

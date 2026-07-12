@@ -96,9 +96,7 @@ class SidecarClient:
                                     pass  # event type hint — handled in data parsing
 
                 except httpx.ConnectError:
-                    logger.warning(
-                        f"SidecarClient: connection refused at {SIDECAR_SSE_URL}. Is Sidecar running?"
-                    )
+                    logger.warning(f"SidecarClient: connection refused at {SIDECAR_SSE_URL}. Is Sidecar running?")
                     span.set_attribute("sidecar.connect_error", True)
                 except httpx.RemoteProtocolError as e:
                     logger.warning(f"SidecarClient: protocol error: {e}")
@@ -109,9 +107,7 @@ class SidecarClient:
 
                 if self.running:
                     self.reconnect_count += 1
-                    logger.info(
-                        f"SidecarClient reconnecting in {RECONNECT_DELAY}s (attempt #{self.reconnect_count})"
-                    )
+                    logger.info(f"SidecarClient reconnecting in {RECONNECT_DELAY}s (attempt #{self.reconnect_count})")
                     await asyncio.sleep(RECONNECT_DELAY)
 
     async def _handle_line(self, data_str: str):
