@@ -2,7 +2,7 @@
 
 **AI-Powered DeFi Risk Intelligence, Built Natively on Casper**
 
-> *Deployed to Casper Testnet · 8 Odra Contracts · 29 On-Chain TX Hashes · 130 Tests · Live Dashboard*
+> *Deployed to Casper Testnet · 8 Odra Contracts · 8 Verified Contract Deploys · 100+ Tests · Live Dashboard*
 
 ---
 
