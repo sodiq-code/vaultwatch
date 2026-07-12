@@ -2,7 +2,7 @@
 
 **AI-Powered DeFi Risk Intelligence Agent on Casper**
 
-VaultWatch is a production-grade DeFi risk monitoring and intelligence platform built natively on the Casper blockchain. Six Groq-powered AI agents continuously monitor on-chain activity, classify anomalies in real time, and write verified findings to eight Odra smart contracts — all instrumented end-to-end with OpenTelemetry and exposed via a 20-tool FastMCP server callable from Claude Desktop.
+VaultWatch is a production-grade DeFi risk monitoring and intelligence platform built natively on the Casper blockchain. Seven Groq-powered AI agents (6 pipeline + SafetyGuard) continuously monitor on-chain activity, classify anomalies in real time, and write verified findings to eight Odra smart contracts — all instrumented end-to-end with OpenTelemetry and exposed via a 20-tool FastMCP server callable from Claude Desktop.
 
 [![CI](https://github.com/sodiq-code/vaultwatch/actions/workflows/ci.yml/badge.svg)](https://github.com/sodiq-code/vaultwatch/actions/workflows/ci.yml)
 [![Build Contracts](https://github.com/sodiq-code/vaultwatch/actions/workflows/build-contracts.yml/badge.svg)](https://github.com/sodiq-code/vaultwatch/actions/workflows/build-contracts.yml)
@@ -22,7 +22,7 @@ VaultWatch is a production-grade DeFi risk monitoring and intelligence platform 
 |---------|-------------|
 | **Hybrid Reputation Formula** ([docs](docs/REPUTATION_FORMULA.md)) | Combines Brier-scored AI agent accuracy + escrow-derived economic trust into one reputation number with tunable weights |
 | **12-Check Red-Team Checklist** ([docs](docs/RED_TEAM_CHECKLIST.md)) | Adversarial analysis of the reputation formula — 8/12 fully resist, 4/12 partial, 0/12 vulnerable |
-| **20-Tool MCP Server** ([server](vaultwatch_mcp/server.py)) | agent_attestation, reputation_query, x402_subscribe, policy_hotswap, behavior_index_lookup + 15 original tools |
+| **20-Tool MCP Server** ([server](vaultwatch_mcp/server.py)) | agent_attestation, reputation_query, x402_subscribe, policy_hotswap, behavior_index_lookup + 15 original tools = 20 total |
 | **Official x402 SDK** ([x402/](x402/)) | `@make-software/casper-x402` integration for real payment verification |
 | **Bulk-Memory-Safe WASM Build** ([script](scripts/build_contracts.sh)) | CI compiles 8 contracts with `-C target-feature=-bulk-memory` + `wasm-opt` + automated opcode gate |
 
@@ -264,7 +264,7 @@ The deployed dashboard at **https://dashboard-rho-amber-89.vercel.app** includes
 | **Anomaly Detection** | Protocol metrics → AI risk scoring | Groq API |
 | **RWA Assessment** | Real-world asset scoring via Groq Compound | Groq API |
 | **Audit Log** | On-chain audit trail with explorer links | Casper testnet |
-| **Live Feed** | Real-time agent event stream and findings ticker from live pipeline | End-to-end agent pipeline output |
+| **Live Feed** | Animated agent activity feed with realistic pipeline simulation + findings ticker linked to on-chain contracts | Demos full pipeline event flow (7 agents), contract-linked findings |
 | **Chain Status** | Block height, era ID, CSPR price sparkline, contract table | cspr.cloud + CoinGecko |
 
 **Live data integrations:**

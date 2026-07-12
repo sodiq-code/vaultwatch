@@ -202,7 +202,7 @@ export default function LiveFeed({ api, cspr, network, blockHeight }) {
           { label: 'Era ID',          value: network?.era_id ?? '—', color: 'var(--text)' },
           { label: 'CSPR Price',      value: cspr?.usd != null ? `$${cspr.usd.toFixed(4)}` : '—',
             color: cspr?.change_24h >= 0 ? 'var(--success)' : 'var(--danger)' },
-          { label: 'Active Agents',   value: 6, color: 'var(--success)' },
+          { label: 'Active Agents',   value: 7, color: 'var(--success)' },
           { label: 'On-Chain Contracts', value: 8, color: 'var(--success)' },
         ].map(({ label, value, color }) => (
           <div key={label} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px' }}>
