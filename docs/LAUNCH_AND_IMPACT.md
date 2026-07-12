@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-VaultWatch is a production-grade, AI-native DeFi risk intelligence platform built natively on the Casper blockchain. Six Groq-powered agents continuously monitor on-chain activity, classify anomalies, score agent behavior, and write cryptographically verifiable findings to eight Odra smart contracts — exposing all results through a live dashboard, a published Python SDK, and a 15-tool MCP server callable from any Claude Desktop instance.
+VaultWatch is a production-grade, AI-native DeFi risk intelligence platform built natively on the Casper blockchain. Six Groq-powered agents continuously monitor on-chain activity, classify anomalies, score agent behavior, and write cryptographically verifiable findings to eight Odra smart contracts — exposing all results through a live dashboard, a published Python SDK, and a 20-tool MCP server callable from any Claude Desktop instance.
 
 Eight contracts are live on `casper-test`. Two packages are published to public registries. A CI pipeline runs 130 tests on every commit. A Vercel-hosted dashboard provides real-time risk intelligence to any user with a browser.
 

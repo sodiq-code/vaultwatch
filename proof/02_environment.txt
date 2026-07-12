@@ -1,7 +1,8 @@
-=== ENVIRONMENT SETUP ===
-Casper Wallet Keys Configured:
-✓ CASPER_ACCOUNT_SECRET_KEY (secp256k1 PEM) - set
-✓ CASPER_ACCOUNT_PUBLIC_KEY (02... prefix) - set
-✓ Wallet ready for testnet deployment
-CASPER_NODE_URL=https://rpc.testnet.casperlabs.io/rpc
-CASPER_CHAIN_NAME=casper-test
+=== ENVIRONMENT ===
+Python: 3.11
+Rust: nightly-2026-01-01
+cargo-odra: 0.1.7
+wasm-opt: binaryen 116+
+ruff: latest
+Node: 18+
+OS: Ubuntu 22.04 (CI) / Windows 10 (local dev)

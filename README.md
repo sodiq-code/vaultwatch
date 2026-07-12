@@ -344,7 +344,7 @@ Event (Casper SSE / CSPR.cloud)
 
 ---
 
-## 15 MCP Tools
+## 20 MCP Tools
 
 All tools are implemented, tested, and callable from Claude Desktop:
 

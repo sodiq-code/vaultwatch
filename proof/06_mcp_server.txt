@@ -1,29 +1,27 @@
-=== MCP SERVER CONFIGURATION ===
-FastMCP 15-Tool Server:
--rw-r--r-- 1 user user 16K Jun 22 21:54 /home/user/vaultwatch/vaultwatch_mcp/server.py
+=== MCP SERVER ===
+Server: vaultwatch_mcp/server.py
+Framework: FastMCP
+Transport: stdio + HTTP/SSE
+Tools: 20
 
-Available Tools:
-@mcp.tool()
-async def get_market_state() -> dict:
-@mcp.tool()
-async def detect_anomaly(address: str, amount_cspr: float = 0.0,
-@mcp.tool()
-async def get_rwa_risk(asset_type: str = "stablecoin") -> dict:
-@mcp.tool()
-async def query_findings(severity: Optional[str] = None, limit: int = 10,
-@mcp.tool()
-async def pay_for_intel(caller_address: str, target_address: str,
-@mcp.tool()
-async def get_audit_trail(address: str, limit: int = 5) -> dict:
-@mcp.tool()
-async def subscribe_alerts(address: str, webhook_url: str,
-@mcp.tool()
-async def get_agent_trace(finding_id: int) -> dict:
-@mcp.tool()
-async def get_risk_score(address: str) -> dict:
-@mcp.tool()
-async def stream_events(limit: int = 5) -> dict:
-
-MCP Dependencies:
-groq>=0.11.0
-fastmcp>=0.1.0
+Tools list:
+1. get_market_state — CSPR price, DEX liquidity, network health
+2. detect_anomaly — Anomaly classification on address/event
+3. get_rwa_risk — Live RWA collateral health via Groq
+4. query_findings — Findings by severity/type/timerange
+5. pay_for_intel — x402 payment → unlock premium finding
+6. get_audit_trail — On-chain audit log for any address
+7. subscribe_alerts — Register webhook for CRITICAL alerts
+8. get_agent_trace — OTel trace for any agent execution
+9. get_risk_score — Aggregate risk score for any Casper address
+10. stream_events — Subscribe to live SSE event stream
+11. get_agent_behavior — Agent performance index from on-chain data
+12. upgrade_policy — Hot-swap thresholds on RiskPolicyManager
+13. get_alert_history — Historical alerts from SentinelAlertLog
+14. register_subscriber — Add address to SentinelRegistry
+15. get_subscriber_balance — Check prepaid credit from SubscriberVault
+16. agent_attestation — Attest agent decisions on-chain
+17. reputation_query — Hybrid reputation score (Brier + escrow)
+18. x402_subscribe — x402 pay-per-query subscription
+19. policy_hotswap — Hot-swap risk policy thresholds
+20. behavior_index_lookup — Query agent performance index

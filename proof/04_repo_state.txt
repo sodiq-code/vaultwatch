@@ -1,25 +1,16 @@
-=== GITHUB REPOSITORY STATE ===
+=== REPO STATE ===
+Repository: https://github.com/sodiq-code/vaultwatch
 Branch: main
-Remote: GitHub (sodiq-code/vaultwatch)
+Commit: latest
+Branches: main (only)
 
-Recent Commits:
-- feat: add contract WASM artifacts + complete submission proof
-- feat: VaultWatch v4 — complete implementation
-- feat: final optimization & testing
-- feat: deployment scripts & MCP integration
-- Initial project setup
+Deployer: 0203cd257525b180a32cab4efc0d9d9a365bf9bc1b8d2e76ebfb9186a4eeb23bace7
+Network: casper-test
+Protocol: 2.2.2
 
-File Structure:
-vaultwatch/
-├── contracts/ (Odra 2.8.0 contracts)
-├── vaultwatch_mcp/ (FastMCP server)
-├── sdk/ (Python SDK)
-├── dashboard/ (React/Vite)
-├── tests/ (Integration tests)
-├── proof/ (Submission proofs - THIS FOLDER)
-├── scripts/ (Deployment utilities)
-├── requirements.txt
-├── Cargo.toml
-└── package.json
+8 contracts deployed + 21 interactions = 29 on-chain TX hashes
+16 named keys on deployer account
 
-Total: 72 files, 8,876 lines (excluding generated code)
+Live dashboard: https://dashboard-rho-amber-89.vercel.app
+PyPI: casper-sentinel v4.0.0
+npm: casper-sentinel-mcp v4.0.0
