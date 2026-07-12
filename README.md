@@ -182,7 +182,7 @@ npm install -g casper-sentinel-mcp
 
 ## Smart Contracts — Casper Testnet
 
-**8 contracts written in Rust (Odra 2.8.0), compiled to WASM, deployed to `casper-test`**
+**8 contracts written in Rust (Odra 2.8.0), compiled to bulk-memory-safe WASM, deployed to `casper-test`**
 
 Deployer: `0203cd257525b180a32cab4efc0d9d9a365bf9bc1b8d2e76ebfb9186a4eeb23bace7`  
 Deployment date: **July 11, 2026** (redeployed — original June 24 deploys failed with bulk-memory error)  
@@ -364,7 +364,13 @@ tools = [
     "upgrade_policy",         # Hot-swap thresholds on RiskPolicyManager
     "get_alert_history",      # Historical alerts from SentinelAlertLog
     "register_subscriber",    # Add address to SentinelRegistry
-    "get_subscriber_balance", # Check prepaid credit from SubscriberVault
+    "get_subscriber_balance",   # Check prepaid credit from SubscriberVault
+    # 5 new tools
+    "agent_attestation",        # On-chain AI agent attestation
+    "reputation_query",         # Hybrid Brier + escrow-derived reputation score
+    "x402_subscribe",           # Official @make-software/casper-x402 paid subscription
+    "policy_hotswap",           # Atomic risk-policy upgrade with rollback safety
+    "behavior_index_lookup",    # Cross-agent trust comparison + ranking
 ]
 ```
 
@@ -390,7 +396,7 @@ npm install -g casper-sentinel-mcp
 
 ## Smart Contracts
 
-8 contracts written in Rust with the [Odra framework](https://odra.dev), compiled to WASM, deployed to Casper testnet.
+8 contracts written in Rust with the [Odra framework](https://odra.dev), compiled to bulk-memory-safe WASM, deployed to Casper testnet.
 
 | Contract | Role | Key Capability |
 |----------|------|----------------|
