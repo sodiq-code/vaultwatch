@@ -57,7 +57,7 @@ push. If it fails, your WASM will be rejected by Casper Testnet.
 ## Testing
 
 ```bash
-# Python tests (130 tests)
+# Python tests (100+ tests)
 pytest tests/ -v
 
 # Contract tests (Rust)

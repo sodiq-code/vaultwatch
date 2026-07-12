@@ -3,7 +3,7 @@
 VaultWatch — Contract Deployer Script
 Deploys all 8 Odra/WASM contracts to Casper Testnet (casper-test).
 
-Deployer Account: 0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116
+Deployer Account: 0203cd257525b180a32cab4efc0d9d9a365bf9bc1b8d2e76ebfb9186a4eeb23bace7
 
 Usage:
     # Option A: Provide secret key as hex (32 bytes = 64 hex chars)
@@ -57,7 +57,7 @@ RPC_HEADERS = {
 }
 CHAIN_NAME = "casper-test"
 
-NEW_ACCOUNT_PUBKEY = "0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116"
+NEW_ACCOUNT_PUBKEY = "0203cd257525b180a32cab4efc0d9d9a365bf9bc1b8d2e76ebfb9186a4eeb23bace7"
 
 CONTRACTS = [
     {

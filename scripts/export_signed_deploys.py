@@ -8,7 +8,7 @@ Usage:
     python scripts/export_signed_deploys.py
 
 Then broadcast each deploy:
-    casper-client put-deploy --input deploys/AuditTrail_deploy.json --node-address https://rpc.testnet.casperlabs.io
+    casper-client put-deploy --input deploys/AuditTrail_deploy.json --node-address https://node.testnet.casper.network
 
 Or use the companion broadcast script:
     python scripts/broadcast_deploys.py
@@ -151,7 +151,7 @@ def main():
     print("  python scripts/broadcast_deploys.py")
     print("\nOr manually per contract:")
     print("  casper-client put-deploy --input deploys/<Name>_deploy.json \\")
-    print("    --node-address https://rpc.testnet.casperlabs.io")
+    print("    --node-address https://node.testnet.casper.network")
 
     return hashes
 

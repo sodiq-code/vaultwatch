@@ -18,7 +18,7 @@ def test_mcp_server_importable():
 
 
 def test_mcp_has_15_tools():
-    """MCP server should expose exactly 15 tools."""
+    """MCP server should expose exactly 20 tools."""
     import vaultwatch_mcp.server as srv
 
     # FastMCP stores tools in mcp._tool_manager or similar

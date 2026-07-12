@@ -48,7 +48,7 @@ class CasperContractClient:
     Parameters
     ----------
     node_url : str
-        RPC endpoint of the Casper node (e.g. ``http://rpc.testnet.casperlabs.io``).
+        RPC endpoint of the Casper node (e.g. ``http://node.testnet.casper.network``).
     chain_name : str
         Network identifier — ``casper-test`` for testnet.
     signing_key_path : str
@@ -64,7 +64,7 @@ class CasperContractClient:
         signing_key_path: str = "",
         mock: bool = False,
     ) -> None:
-        self.node_url = node_url or os.getenv("CASPER_NODE_URL", "http://rpc.testnet.casperlabs.io")
+        self.node_url = node_url or os.getenv("CASPER_NODE_URL", "http://node.testnet.casper.network")
         self.chain_name = chain_name or os.getenv("CASPER_CHAIN_NAME", "casper-test")
         self.signing_key_path = signing_key_path or os.getenv("CASPER_SIGNING_KEY_PATH", "")
         self.mock = mock or not _SDK_AVAILABLE

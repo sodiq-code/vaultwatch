@@ -61,7 +61,7 @@ import { VaultWatchX402 } from './x402/vaultwatch-x402.js';
 const x402 = new VaultWatchX402({ network: 'testnet' });
 
 const result = await x402.subscribe({
-  subscriberAddress: '0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116',
+  subscriberAddress: '0203cd257525b180a32cab4efc0d9d9a365bf9bc1b8d2e76ebfb9186a4eeb23bace7',
   plan: 'premium',
   paymentAmountCSPR: 50,
   lockBlocks: 0,
@@ -137,7 +137,7 @@ casper-client put-deploy \
   --chain-name casper-test \
   --payment-amount 150000000000 \
   --session-path contracts/wasm/SubscriberVault.wasm \
-  --session-arg "subscriber_address:string='0202c27a...'" \
+  --session-arg "subscriber_address:string='0203cd25...'" \
   --session-arg "initial_deposit:u512='10000000000'" \
   --session-arg "lock_blocks:u64='0'" \
   --session-arg "auto_renew:bool='true'" \
@@ -152,7 +152,7 @@ casper-client put-deploy \
   --payment-amount 10000000000 \
   --session-package-hash <SUBSCRIBER_VAULT_PACKAGE_HASH> \
   --session-entry-point deduct \
-  --session-arg "subscriber_address:string='0202c27a...'" \
+  --session-arg "subscriber_address:string='0203cd25...'" \
   --session-arg "amount:u512='1000000000'" \
   --secret-key /path/to/rotated_key.pem
 ```

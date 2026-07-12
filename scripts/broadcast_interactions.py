@@ -176,7 +176,7 @@ INTERACTIONS = [
         [
             DeployArgument(
                 "recipient",
-                CLV_String("0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116"),
+                CLV_String("0203cd257525b180a32cab4efc0d9d9a365bf9bc1b8d2e76ebfb9186a4eeb23bace7"),
             ),
             DeployArgument("amount", CLV_U64(100)),
         ],

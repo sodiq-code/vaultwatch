@@ -10,7 +10,7 @@
 
 VaultWatch is a production-grade, AI-native DeFi risk intelligence platform built natively on the Casper blockchain. Six Groq-powered agents continuously monitor on-chain activity, classify anomalies, score agent behavior, and write cryptographically verifiable findings to eight Odra smart contracts — exposing all results through a live dashboard, a published Python SDK, and a 20-tool MCP server callable from any Claude Desktop instance.
 
-Eight contracts are live on `casper-test`. Two packages are published to public registries. A CI pipeline runs 130 tests on every commit. A Vercel-hosted dashboard provides real-time risk intelligence to any user with a browser.
+Eight contracts are live on `casper-test`. Two packages are published to public registries. A CI pipeline runs 100+ tests on every commit. A Vercel-hosted dashboard provides real-time risk intelligence to any user with a browser.
 
 The long-term trajectory: VaultWatch becomes the canonical on-chain risk infrastructure layer for every protocol, vault, and institution operating on Casper — and, over time, a cross-chain risk standard powered by the Casper AI Toolkit.
 
@@ -40,14 +40,14 @@ Eight Rust/Odra smart contracts compiled to WASM and deployed to `casper-test` o
 
 | Contract | Role | Deploy Hash |
 |---|---|---|
-| `AuditTrail` | Immutable log of every agent action | `f06e3357…8e102` |
-| `RiskOracle` | On-chain risk scores queryable by any dApp | `fb877bae…e98a` |
-| `SentinelAlertLog` | Alert storage with severity tagging | `45dbc90b…42c7` |
-| `SentinelRegistry` | Agent identity and registration registry | `d9c8c5ef…8622` |
-| `AgentBehaviorIndex` | AI agent confidence and correction scores | `162a4f5f…c63a9` |
-| `RiskPolicyManager` | Hot-swappable risk thresholds | `048dcfe5…c8b1a` |
-| `SentinelCredit` | x402 credit ledger for pay-per-query billing | `01cfe8d1…a403` |
-| `SubscriberVault` | Escrowed CSPR prepay for subscribers | `786b611f…d35f0` |
+| `AuditTrail` | Immutable log of every agent action | `b9c70cdc…336a7` |
+| `RiskOracle` | On-chain risk scores queryable by any dApp | `e071aacc…7c9d` |
+| `SentinelAlertLog` | Alert storage with severity tagging | `53317e08…a925` |
+| `SentinelRegistry` | Agent identity and registration registry | `9a5eb4f8…346c` |
+| `AgentBehaviorIndex` | AI agent confidence and correction scores | `05066c33…7dd0` |
+| `RiskPolicyManager` | Hot-swappable risk thresholds | `93e35d64…ee2e` |
+| `SentinelCredit` | x402 credit ledger for pay-per-query billing | `0c09f2ad…af71` |
+| `SubscriberVault` | Escrowed CSPR prepay for subscribers | `6620787c…956d` |
 
 **29 total on-chain TX hashes**: 8 contract deploys + 21 contract interaction deploys — all verifiable at [testnet.cspr.live](https://testnet.cspr.live).
 
@@ -66,7 +66,7 @@ Real-time risk intelligence powered by Groq `llama-3.3-70b-versatile`, live CSPR
 
 ### 2.4 Test Suite
 
-130 tests across unit, integration, contract, and end-to-end demo suites — all passing on every CI run.
+100+ tests across unit, integration, contract, and end-to-end demo suites — all passing on every CI run.
 
 ---
 
@@ -79,7 +79,7 @@ All Phase 1 milestones are already delivered:
 - [x] 8 Odra smart contracts deployed to Casper testnet
 - [x] 6-agent AI pipeline (ScannerAgent, AnomalyAgent, SelfCorrectionAgent, RWAAgent, SafetyGuard, AuditAgent)
 - [x] Python SDK published to PyPI (`casper-sentinel 4.0.0`)
-- [x] MCP server published to npm (`casper-sentinel-mcp`) — 15 tools callable from Claude Desktop
+- [x] MCP server published to npm (`casper-sentinel-mcp`) — 20 tools callable from Claude Desktop
 - [x] Live React dashboard deployed to Vercel with real-time Groq AI + on-chain data
 - [x] OpenTelemetry instrumentation across all 6 agents
 - [x] x402 pay-per-query flow via `SentinelCredit` + `SubscriberVault` contracts
@@ -237,7 +237,7 @@ VaultWatch operates as an open, verifiable project from day one. All deployment 
 | **Live Dashboard** | https://dashboard-rho-amber-89.vercel.app | Always-on |
 | **Python SDK (PyPI)** | https://pypi.org/project/casper-sentinel/4.0.0/ | Published |
 | **MCP Package (npm)** | https://www.npmjs.com/package/casper-sentinel-mcp | Published |
-| **Testnet Explorer** | https://testnet.cspr.live/account/0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116 | Live |
+| **Testnet Explorer** | https://testnet.cspr.live/account/0203cd257525b180a32cab4efc0d9d9a365bf9bc1b8d2e76ebfb9186a4eeb23bace7 | Live |
 | **Verification Guide** | `proof/PROOF.md` in repository | Complete |
 | **CI Badge** | https://github.com/sodiq-code/vaultwatch/actions | Passing |
 
@@ -293,5 +293,5 @@ Every milestone is either already delivered or sequenced directly off a confirme
 
 *Repository: https://github.com/sodiq-code/vaultwatch*
 *Network: Casper Testnet (`casper-test`)*
-*Deployer: `0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116`*
+*Deployer: `0203cd257525b180a32cab4efc0d9d9a365bf9bc1b8d2e76ebfb9186a4eeb23bace7`*
 *Verification: `proof/PROOF.md`*
