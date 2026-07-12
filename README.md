@@ -674,7 +674,7 @@ OTEL_EXPORTER_OTLP_ENDPOINT=http://your-grafana-agent:4317 python pipeline.py
 
 VaultWatch is designed as permanent Casper infrastructure. Four deployment phases sequenced directly against the [Casper Manifest](https://www.casper.network/testing/roadmap):
 
-- **Phase 1 — Done** · 8 contracts live, 29 on-chain TX hashes, 2 published packages, 100+ tests, live dashboard
+- **Phase 1 — Done** · 8 contracts live, 8 verified contract deploys, 2 published packages, 100+ tests, live dashboard
 - **Phase 2 — Q3 2026** · Mainnet migration + 3 protocol integrations as X402 and EVM compatibility land
 - **Phase 3 — Q4 2026** · Institutional RWA risk coverage + Casper Accelerate grant; `RWAAgent` becomes a full on-chain module with regulator-readable audit trails
 - **Phase 4 — 2027** · Cross-chain risk oracle; `RiskPolicyManager` governance via CSPR token votes
