@@ -38,10 +38,12 @@ jobs:
         run: cargo install --locked cargo-odra --version 0.1.7
         continue-on-error: true
 
-      - name: Install binaryen (wasm-opt) and wabt (wasm-objdump)
+      - name: Install binaryen v130 (wasm-opt) and wabt
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq binaryen wabt
+          wget -q https://github.com/WebAssembly/binaryen/releases/download/version_130/binaryen-version_130-x86_64-linux.tar.gz
+          tar xzf binaryen-version_130-x86_64-linux.tar.gz
+          sudo cp binaryen-version_130/bin/* /usr/local/bin/
+          sudo apt-get install -y -qq wabt
           wasm-opt --version
 
       - name: Cache Cargo registry + build artifacts
