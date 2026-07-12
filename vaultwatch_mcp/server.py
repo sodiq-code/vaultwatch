@@ -44,9 +44,11 @@ CONTRACT_PACKAGE_HASHES = {
     "RiskPolicyManager": "hash-aaf7f48dbcdbd59996b9b181c7980bb6c5116a7c72005",
 }
 
+
 async def casper_rpc_call(method: str, params: list) -> dict:
     """Make a JSON-RPC call to the Casper node."""
     import httpx
+
     body = {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}
     try:
         async with httpx.AsyncClient(timeout=15) as client:
@@ -283,10 +285,7 @@ async def get_risk_score(address: str) -> dict:
     """
     with tracer.start_as_current_span("mcp.get_risk_score"):
         package_hash = CONTRACT_PACKAGE_HASHES.get("RiskOracle", "")
-        on_chain_data = await casper_rpc_call(
-            "query_global_state",
-            [{"StateIdentifier": "BlockHeight", "value": 0}, package_hash, ["scores", address]]
-        )
+        on_chain_data = await casper_rpc_call("query_global_state", [{"StateIdentifier": "BlockHeight", "value": 0}, package_hash, ["scores", address]])
         on_chain_error = on_chain_data.get("error", "")
 
         score = 0
@@ -351,10 +350,7 @@ async def get_agent_behavior(agent_name: Optional[str] = None) -> dict:
         "IntelAgent",
     ]
     package_hash = CONTRACT_PACKAGE_HASHES.get("AgentBehaviorIndex", "")
-    on_chain_data = await casper_rpc_call(
-        "query_global_state",
-        [{"StateIdentifier": "BlockHeight", "value": 0}, package_hash, ["metrics"]]
-    )
+    on_chain_data = await casper_rpc_call("query_global_state", [{"StateIdentifier": "BlockHeight", "value": 0}, package_hash, ["metrics"]])
     on_chain_error = on_chain_data.get("error", "")
 
     result = {}
@@ -445,10 +441,7 @@ async def get_subscriber_balance(address: str) -> dict:
     Shows escrowed CSPR available for intelligence queries.
     """
     package_hash = CONTRACT_PACKAGE_HASHES.get("SubscriberVault", "")
-    on_chain_data = await casper_rpc_call(
-        "query_global_state",
-        [{"StateIdentifier": "BlockHeight", "value": 0}, package_hash, ["accounts", address]]
-    )
+    on_chain_data = await casper_rpc_call("query_global_state", [{"StateIdentifier": "BlockHeight", "value": 0}, package_hash, ["accounts", address]])
     on_chain_error = on_chain_data.get("error", "")
 
     balance_motes = 0
