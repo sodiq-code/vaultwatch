@@ -275,18 +275,18 @@ The deployed dashboard at **https://dashboard-rho-amber-89.vercel.app** includes
 
 ---
 
-## Test Suite — 130/130 Passing
+## Test Suite — 100+ Passing
 
 ```bash
 pytest tests/ -v
 ```
 
 ```
-tests/unit/           66 tests  — agents, SDK, safety guard, contracts
+tests/unit/           77 tests  — agents, SDK, safety guard, contracts
 tests/integration/    37 tests  — API endpoints, MCP tools, pipeline, streaming
 tests/demo/            4 tests  — end-to-end scenario walkthroughs
 ──────────────────────────────
-Total:               130 tests  — all passing
+Total:               100+ tests  — all passing
 ```
 
 | File | Tests | Coverage |
@@ -582,7 +582,7 @@ vaultwatch/
 GROQ_API_KEY=your_groq_key           # Free at console.groq.com
 
 # Casper Network
-CASPER_NODE_URL=https://rpc.testnet.casperlabs.io/rpc
+CASPER_NODE_URL=https://node.testnet.casper.network/rpc
 CASPER_CHAIN_NAME=casper-test
 CASPER_ACCOUNT_SECRET_KEY=your_key   # For live testnet interactions
 
@@ -618,7 +618,7 @@ CASPER_MOCK=true
 
 Every push to `main` runs:
 
-1. **Python Tests** — all 130 tests across unit, integration, demo
+1. **Python Tests** — all 100+ tests across unit, integration, demo
 2. **Lint & Format** — `ruff check` + `ruff format --check`
 3. **Contract Tests** — `cargo test --workspace`
 4. **Docker Build** — full image build verification
@@ -638,7 +638,7 @@ pip install casper-sentinel
 
 # 2. Configure
 export GROQ_API_KEY=your_key
-export CASPER_NODE_URL=https://rpc.testnet.casperlabs.io/rpc
+export CASPER_NODE_URL=https://node.testnet.casper.network/rpc
 
 # 3. Query
 python -c "
@@ -668,7 +668,7 @@ OTEL_EXPORTER_OTLP_ENDPOINT=http://your-grafana-agent:4317 python pipeline.py
 
 VaultWatch is designed as permanent Casper infrastructure. Four deployment phases sequenced directly against the [Casper Manifest](https://www.casper.network/testing/roadmap):
 
-- **Phase 1 — Done** · 8 contracts live, 29 on-chain TX hashes, 2 published packages, 130 tests, live dashboard
+- **Phase 1 — Done** · 8 contracts live, 29 on-chain TX hashes, 2 published packages, 100+ tests, live dashboard
 - **Phase 2 — Q3 2026** · Mainnet migration + 3 protocol integrations as X402 and EVM compatibility land
 - **Phase 3 — Q4 2026** · Institutional RWA risk coverage + Casper Accelerate grant; `RWAAgent` becomes a full on-chain module with regulator-readable audit trails
 - **Phase 4 — 2027** · Cross-chain risk oracle; `RiskPolicyManager` governance via CSPR token votes
