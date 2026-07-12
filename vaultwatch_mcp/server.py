@@ -700,7 +700,7 @@ async def behavior_index_lookup(
     confidence averages). This is the dashboard behind the reputation
     formula — judges can verify that the AI system is accountable.
 
-    Unique to VaultWatch: no other submission puts AI agent behavior
+    VaultWatch puts AI agent behavior
     metrics on-chain. CTL tracks agent reputation off-chain; Pantheon
     tracks prediction outcomes but not the decision process.
 

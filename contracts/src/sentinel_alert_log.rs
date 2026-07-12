@@ -3,7 +3,7 @@
 ///
 /// Every alert pushed to a subscriber is logged here immutably.
 /// Compliance-grade: any protocol can prove "we received a CRITICAL alert
-/// at block X from VaultWatch" — no other submission has this feature.
+/// at block X from VaultWatch" 
 
 use odra::prelude::*;
 

@@ -38,7 +38,7 @@ def make_ambiguous_result(protocol: str = "CasperSwap") -> AnomalyResult:
     """Create a low-confidence anomaly result that should trigger the retry loop."""
     mock_event = MagicMock()
     mock_event.event_type = "large_transfer"
-    mock_event.address = "0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116"
+    mock_event.address = "0203cd257525b180a32cab4efc0d9d9a365bf9bc1b8d2e76ebfb9186a4eeb23bace7"
     mock_event.amount_motes = 500_000_000_000  # 500 CSPR
     mock_event.block_height = 4_200_000
 
