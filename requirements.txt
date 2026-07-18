@@ -9,7 +9,7 @@ opentelemetry-instrumentation-fastapi>=0.45b0
 
 # API framework
 fastapi>=0.111.0
-uvicorn[standard]>=0.30.0
+uvicorn[standard]>=0.51.0
 pydantic>=2.7.0
 
 # HTTP client (for RPC calls, CSPR.cloud proxy)
