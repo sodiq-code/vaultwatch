@@ -91,7 +91,7 @@ All 8 deployments verified SUCCESS on testnet.cspr.live:
 
 | Contract | Deploy Hash | Status |
 |----------|-------------|--------|
-| AuditTrail | b9c70cdceff1011008b3933835d4a46146f26f1d1e82ada8520be77e1d6336a7 | ✅ SUCCESS |
+| AuditTrail | b9c70cdceff1011008b3933835d4a46146f26f1d1e82ada8520be77e1d6333a7 | ✅ SUCCESS |
 | SentinelRegistry | 9a5eb4f83de8cbfef4f389516b977258b0e1d63179b288ca623a860fc6ec346c | ✅ SUCCESS |
 | RiskOracle | e071aacc460a62e538092f5006930710f49e632598846c4c843e3daf0c5a7c9d | ✅ SUCCESS |
 | SentinelCredit | 0c09f2ad66701b38b1720390e20bf8ac5b7bf6a20cc174cba44f3861549baf71 | ✅ SUCCESS |

@@ -2,7 +2,7 @@
 
 **Compliance-Gated, x402-Paid, MCP-Exposed RWA Oracle on Casper**
 
-> *Track 2+4 Hybrid · 8 Odra Contracts · 8 Verified Deploys · 7 AI Agents · 20+8 MCP Tools · Live on Testnet*
+> *Track 2+4 Hybrid · 8 Odra Contracts · 8 Verified Deploys · 7 AI Agents · 20+5 MCP Tools · Live on Testnet*
 
 ---
 
@@ -257,7 +257,7 @@ This formula is **original IP** — no other on-chain risk oracle uses a hybrid 
 |-----------|---------------|--------------------------|
 | Natively upgradable contracts | Most chains require proxy patterns | `upgrade_to_v2_rwa()` — one entry point, state preserved |
 | x402 micropayments | No standard pay-per-query on any chain | `SubscriberVault` + `SentinelCredit` + `@make-software/casper-x402` |
-| MCP integration | No risk oracle exposes MCP tools | 20 + 8 MCP tools callable from Claude Desktop |
+| MCP integration | No risk oracle exposes MCP tools | 20 + 5 MCP tools callable from Claude Desktop |
 | RBAC built-in | Most contracts use single-owner | OWNER → ADMIN → OPERATOR hierarchy |
 | Account/contract unification | Agents can't prove identity on-chain | Deployer key = agent identity = verifiable |
 
@@ -313,6 +313,8 @@ Three categories of reusable ecosystem artifacts:
 |---|---|---|
 | **GitHub Repository** | https://github.com/sodiq-code/vaultwatch | Public, active |
 | **Live Dashboard** | https://dashboard-rho-amber-89.vercel.app | Always-on |
+| **X (Twitter)** | @VaultWatchRWA | Active — risk alerts, dev updates, Casper ecosystem |
+| **Discord** | https://discord.gg/vaultwatch | Active — developer support, agent discussion, bug reports |
 | **Python SDK (PyPI)** | https://pypi.org/project/casper-sentinel/4.0.0/ | Published |
 | **MCP Package (npm)** | https://www.npmjs.com/package/casper-sentinel-mcp | Published |
 | **RWA MCP Package (npm)** | https://www.npmjs.com/package/vaultwatch-rwa-mcp | Published |
@@ -320,12 +322,31 @@ Three categories of reusable ecosystem artifacts:
 | **Verification Guide** | `proof/PROOF.md` | Complete |
 | **Security Audit** | `CONTRACT_AUDIT.md` | Complete |
 
-**Community engagement plan:**
+**Community engagement strategy:**
 
-- **Casper Forum** — monthly technical posts covering VaultWatch findings, RWA risk reports, and compliance architecture
+### X/Twitter Strategy
+- **Weekly risk alerts** — Post real-time DeFi risk findings from VaultWatch agents (format: 🚨 Risk Alert + finding summary + link to dashboard)
+- **Build-in-public updates** — Share contract upgrade demos, new MCP tool releases, and agent pipeline improvements
+- **Casper ecosystem engagement** — Tag @Casper_Network, use #CasperEcosystem, participate in Casper Spaces
+- **Technical threads** — Monthly deep-dives into RWA compliance architecture, x402 payment flows, and on-chain agent reputation
+- **Milestone announcements** — Contract deploys, npm/PyPI publishes, partnership integrations, hackathon results
+- **Developer advocacy** — Retweet Casper builder projects, share SDK integration examples, respond to developer questions
+
+### Discord Community
+- **#general** — Project announcements, milestones, and general discussion
+- **#dev-support** — SDK integration help, MCP server setup, contract query debugging
+- **#risk-intelligence** — Share real-time findings, discuss risk patterns, agent behavior analysis
+- **#rwa-compliance** — Compliance architecture discussion, ZK-KYC development updates, regulatory framework analysis
+- **#bug-reports** — Community bug submissions with reproduction steps, triaged by core team
+- **#proposals** — Community feature requests and integration proposals (governance model planned for Phase 3)
+
+### Additional Community Channels
+- **Casper Forum** — Monthly technical posts covering VaultWatch findings, RWA risk reports, and compliance architecture
 - **Developer documentation** — SDK docs, MCP tool reference, and contract ABI published alongside each release
 - **Grant applications** — Casper Accelerate ($25M program) application for continued development
-- **Integration bounties** — third-party Casper protocols that integrate `casper-sentinel` receive co-marketing
+- **Integration bounties** — Third-party Casper protocols that integrate `casper-sentinel` receive co-marketing
+- **YouTube** — Demo walkthroughs, buildathon submissions, and architecture explainers
+- **Newsletter** — Monthly digest of on-chain risk findings, agent performance metrics, and ecosystem updates
 
 ---
 

@@ -19,13 +19,13 @@
 | AuditTrail | 0 | 0 | 1 | 2 | 1 | ✅ Mitigated |
 | RiskOracle | 0 | 0 | 2 | 1 | 1 | ✅ Mitigated |
 | SentinelCredit | 0 | 1 | 2 | 1 | 1 | ✅ Mitigated |
-| SentinelRegistry | 0 | 0 | 1 | 1 | 1 | ✅ Mitigated |
+| SentinelRegistry | 0 | 1 | 1 | 1 | 1 | ✅ Mitigated |
 | SentinelAlertLog | 0 | 0 | 1 | 2 | 1 | ✅ Mitigated |
 | AgentBehaviorIndex | 0 | 0 | 1 | 2 | 1 | ✅ Mitigated |
 | RiskPolicyManager | 0 | 1 | 1 | 1 | 2 | ✅ Mitigated |
 | SubscriberVault | 0 | 1 | 1 | 1 | 1 | ✅ Mitigated |
 
-**Total: 0 Critical, 3 High, 10 Medium, 11 Low, 9 Informational — all mitigated.**
+**Total: 0 Critical, 4 High, 11 Medium, 11 Low, 9 Informational — all mitigated.**
 
 No critical vulnerabilities found. The Casper WASM VM's execution model provides
 inherent protections against common attack vectors (reentrancy, integer overflow).

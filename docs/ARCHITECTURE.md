@@ -230,15 +230,12 @@ the vault `deduct()`s per-request fees with cryptographic payment verification.
 20. `behavior_index_lookup` — Query agent performance index
 
 ### RWA MCP Server (`vaultwatch_rwa_mcp/server.py`)
-8 tools exposed for RWA-specific intelligence:
-1. `rwa_collateral_health` — Live collateral ratio for RWA-backed assets
-2. `rwa_depeg_risk` — Stablecoin depeg probability and distance
-3. `rwa_yield_analysis` — RWA yield vs DeFi yield comparison
-4. `rwa_attestation_verify` — Verify on-chain RWA attestation
-5. `rwa_portfolio_scan` — Full RWA portfolio risk scan
-6. `rwa_compliance_check` — KYC/AML compliance flag check
-7. `rwa_oracle_feed` — Live RWA price oracle data
-8. `rwa_casper_registry` — List all registered RWA assets on Casper
+5 tools exposed for RWA-specific intelligence:
+1. `rwa_risk_assessment` — Query RWA risk score for a Casper address (on-chain + Groq enrichment)
+2. `compliance_check` — Verify if an address meets KYC/AML compliance requirements
+3. `rwa_oracle_query` — Get RWA attestation data from on-chain oracle
+4. `subscribe_rwa_feed` — x402-gated RWA data subscription
+5. `agent_reputation` — Query agent trust score for RWA attestations
 
 ---
 

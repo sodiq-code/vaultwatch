@@ -40,8 +40,8 @@ pub struct RiskPolicy {
     pub max_retry_count: u8,            // SelfCorrection max retries
     pub safety_rejection_threshold: u8, // SafetyGuard: reject if score > this (0–100)
     pub updated_at_block: u64,
-    // FIX #12: was String, now proper Address stored as string for serialisation
-    pub updated_by: String,
+    // FIX #12: proper Address type for updated_by
+    pub updated_by: Address,
 }
 
 // ─── Contract ──────────────────────────────────────────────────────────────
@@ -76,7 +76,7 @@ impl RiskPolicyManager {
             max_retry_count: 2,
             safety_rejection_threshold: 80,
             updated_at_block: 0,
-            updated_by: format!("{:?}", caller),
+            updated_by: caller,
         };
         self.current_policy.set(default_policy.clone());
         self.policy_history.set(&1u32, default_policy);
@@ -108,7 +108,7 @@ impl RiskPolicyManager {
             max_retry_count,
             safety_rejection_threshold,
             updated_at_block: block_height,
-            updated_by: format!("{:?}", caller),
+            updated_by: caller,
         };
 
         self.policy_history.set(&new_version, new_policy.clone());
@@ -148,7 +148,7 @@ impl RiskPolicyManager {
             max_retry_count: current.max_retry_count,
             safety_rejection_threshold: current.safety_rejection_threshold,
             updated_at_block: block_height,
-            updated_by: String::from("v2_rwa_upgrade"),
+            updated_by: caller,
         };
 
         self.policy_history.set(&new_version, v2_policy.clone());

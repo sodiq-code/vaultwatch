@@ -14,6 +14,8 @@ VaultWatch RWA is a production-grade, AI-native DeFi risk intelligence platform 
 [![Casper Testnet](https://img.shields.io/badge/casper-testnet%20live-orange.svg)](https://testnet.cspr.live/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-success.svg)](LICENSE)
 
+**🌐 Live Dashboard**: [https://dashboard-rho-amber-89.vercel.app](https://dashboard-rho-amber-89.vercel.app)
+
 ---
 
 ## Track 2+4 Hybrid Positioning
@@ -23,7 +25,7 @@ VaultWatch RWA uniquely bridges two hackathon tracks:
 | Track | Capability | Implementation |
 |-------|-----------|----------------|
 | **Track 2 — RWA Oracle Agents** | Verifiable on-chain agent identity | 7 AI agents write findings to 8 Odra contracts via `record_finding()`, `update_score()`, `record_decision()` — every action has a deploy hash |
-| **Track 4 — AI-Driven Compliance** | Compliance-gated access, KYC checks | `RiskPolicyManager` enforces RBAC (OWNER → ADMIN → OPERATOR); `upgrade_to_v2_rwa()` adds RWA-specific thresholds; RWA MCP exposes `rwa_compliance_check()` tool |
+| **Track 4 — AI-Driven Compliance** | Compliance-gated access, KYC checks | `RiskPolicyManager` enforces RBAC (OWNER → ADMIN → OPERATOR); `upgrade_to_v2_rwa()` adds RWA-specific thresholds; RWA MCP exposes `compliance_check()` tool |
 
 The hybrid creates a **compliance-gated RWA risk oracle**: agents with verifiable on-chain identity produce risk assessments that are only accessible after compliance verification and x402 payment.
 
@@ -34,8 +36,8 @@ The hybrid creates a **compliance-gated RWA risk oracle**: agents with verifiabl
 | Feature | How VaultWatch Uses It | File:Line Reference |
 |---------|----------------------|---------------------|
 | **Upgradable Smart Contracts** | `RiskPolicyManager.upgrade_to_v2_rwa()` demonstrates v1→v2 upgrade with state preservation | `contracts/src/risk_policy_manager.rs:129` |
-| **x402 Micropayment Protocol** | `SubscriberVault` implements pay-per-query via `@make-software/casper-x402` SDK | `contracts/src/subscriber_vault.rs:39`, `x402/vaultwatch-x402.ts` |
-| **MCP Server (Claude Desktop)** | 20-tool FastMCP server + 8-tool RWA MCP server for AI agent integration | `vaultwatch_mcp/server.py`, `vaultwatch_rwa_mcp/server.py` |
+| **x402 Micropayment Protocol** | `SubscriberVault` implements pay-per-query via `@make-software/casper-x402` SDK | `contracts/src/subscriber_vault.rs:71`, `x402/vaultwatch-x402.ts` |
+| **MCP Server (Claude Desktop)** | 20-tool FastMCP server + 5-tool RWA MCP server for AI agent integration | `vaultwatch_mcp/server.py`, `vaultwatch_rwa_mcp/server.py` |
 | **Native RBAC** | OWNER → ADMIN → OPERATOR hierarchy in `RiskPolicyManager` | `contracts/src/risk_policy_manager.rs:56-58` |
 | **Account/Contract Unification** | Deployer account `0203cd25...` is both the agent wallet and contract owner — verifiable agent identity | `transaction_hashes_live.json`, `proof/PROOF.md` |
 
@@ -61,9 +63,9 @@ The hybrid creates a **compliance-gated RWA risk oracle**: agents with verifiabl
                 │                                │
     ┌───────────▼──────────────────────────────▼──────────┐
     │              API & MCP Layer                         │
-    │  FastAPI REST (20 endpoints)                        │
+    │  FastAPI REST (9 endpoints, rate-limited + auth)     │
     │  FastMCP Server (20 tools) → casper-sentinel-mcp    │
-    │  RWA MCP Server (8 tools) → vaultwatch-rwa-mcp      │
+    │  RWA MCP Server (5 tools) → vaultwatch-rwa-mcp      │
     └───────────────────────┬─────────────────────────────┘
                             │
     ┌───────────────────────▼─────────────────────────────┐
@@ -77,7 +79,7 @@ The hybrid creates a **compliance-gated RWA risk oracle**: agents with verifiabl
 **8 contracts** — `contracts/src/*.rs`  
 **7 AI agents** — `agents/*.py`  
 **20 MCP tools** — `vaultwatch_mcp/server.py`  
-**8 RWA MCP tools** — `vaultwatch_rwa_mcp/server.py`  
+**5 RWA MCP tools** — `vaultwatch_rwa_mcp/server.py`  
 **x402 payment** — `x402/vaultwatch-x402.ts`
 
 ---
@@ -112,7 +114,7 @@ Architecture documentation: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 | ScannerAgent | `llama-3.1-8b-instant` | → AnomalyAgent queue | `agents/scanner_agent.py` |
 | AnomalyAgent | `llama-3.3-70b-versatile` | `RiskOracle.update_score()` | `agents/anomaly_agent.py` |
 | SelfCorrectionAgent | `llama-3.3-70b-versatile` | Re-runs low-confidence findings | `agents/self_correction_agent.py` |
-| RWAAgent | `llama-3.3-70b-versatile` | `AuditTrail.record_finding(rwa_enriched=true)` | `agents/rwa_agent.py` |
+| RWAAgent | `compound-beta` | `AuditTrail.record_finding(rwa_enriched=true)` | `agents/rwa_agent.py` |
 | SafetyGuard | `llama-prompt-guard-2-86m` | Blocks injection (<50ms) | `agents/safety_guard.py` |
 | AuditAgent | `llama-3.1-8b-instant` | `AuditTrail.record_finding()` | `agents/audit_agent.py` |
 | IntelAgent | `llama-3.1-8b-instant` | `_findings_store` → API → MCP | `agents/intel_agent.py` |
@@ -134,7 +136,8 @@ Server → Returns intelligence JSON
 
 **Implementation**: `x402/vaultwatch-x402.ts` — `VaultWatchX402` class with `buildPaymentRequest()`, `verifyPayment()`, `subscribe()`, `queryIntelligence()`  
 **Contracts**: `SubscriberVault.open_vault()` → escrow, `SubscriberVault.deduct()` → per-query  
-**Documentation**: [`docs/X402_INTEGRATION.md`](docs/X402_INTEGRATION.md)
+**Documentation**: [`docs/X402_INTEGRATION.md`](docs/X402_INTEGRATION.md)  
+**Demo script**: `scripts/demo_x402_subscribe.js`
 
 ---
 
@@ -171,7 +174,7 @@ npm install casper-sentinel-mcp
 
 Source: `vaultwatch_mcp/server.py`
 
-### RWA MCP (8 tools)
+### RWA MCP (5 tools)
 
 ```bash
 npm install vaultwatch-rwa-mcp
@@ -179,14 +182,11 @@ npm install vaultwatch-rwa-mcp
 
 | # | Tool | Purpose |
 |---|------|---------|
-| 1 | `rwa_collateral_health` | Live collateral ratio for RWA-backed assets |
-| 2 | `rwa_depeg_risk` | Stablecoin depeg probability |
-| 3 | `rwa_yield_analysis` | RWA vs DeFi yield comparison |
-| 4 | `rwa_attestation_verify` | Verify on-chain RWA attestation |
-| 5 | `rwa_portfolio_scan` | Full portfolio risk scan |
-| 6 | `rwa_compliance_check` | KYC/AML compliance flag check |
-| 7 | `rwa_oracle_feed` | Live RWA price oracle data |
-| 8 | `rwa_casper_registry` | List RWA assets on Casper |
+| 1 | `rwa_risk_assessment` | Query RWA risk score for a Casper address |
+| 2 | `compliance_check` | Verify if an address meets KYC/AML compliance requirements |
+| 3 | `rwa_oracle_query` | Get RWA attestation data from on-chain oracle |
+| 4 | `subscribe_rwa_feed` | x402-gated RWA data subscription |
+| 5 | `agent_reputation` | Query agent trust score for RWA attestations |
 
 Source: `vaultwatch_rwa_mcp/server.py`
 
@@ -225,20 +225,23 @@ python scripts/demo_rwa.py
 # 3. V2 upgrade demonstration (Casper native contract upgrade)
 python scripts/demo_upgrade_policy.py
 
-# 4. Dispute resolution demo
+# 4. x402 subscription payment demo
+node scripts/demo_x402_subscribe.js
+
+# 5. Dispute resolution demo
 python scripts/demo_dispute.py
 
-# 5. Verify all contract deploys
+# 6. Verify all contract deploys
 python3 scripts/verify_deploys.py --deploy-hashes transaction_hashes_live.json
 python3 scripts/verify_deploys.py --account 0203cd257525b180a32cab4efc0d9d9a365bf9bc1b8d2e76ebfb9186a4eeb23bace7
 
-# 6. Start API server
+# 7. Start API server
 uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
 
-# 7. Start MCP server
+# 8. Start MCP server
 python vaultwatch_mcp/server.py
 
-# 8. Run tests
+# 9. Run tests
 pytest tests/ -v
 ```
 
@@ -271,7 +274,7 @@ All claims are verifiable through these artifacts:
 | [`docs/REPUTATION_FORMULA.md`](docs/REPUTATION_FORMULA.md) | Hybrid Brier + escrow reputation formula |
 | [`docs/RED_TEAM_CHECKLIST.md`](docs/RED_TEAM_CHECKLIST.md) | Security hardening checklist |
 | [`CONTRACT_AUDIT.md`](CONTRACT_AUDIT.md) | Comprehensive red-team security audit |
-| [`DEPLOYMENT_GUIDE.md`](DEPLOYMENT_GUIDE.md) | Contract deployment and WASM compilation guide |
+| [`DEPLOYMENT_GUIDE.md`](DEPLOYMENT_GUIDE.md) | Contract deployment, WASM compilation, and CSPR.click wallet guide |
 | [`proof/PROOF.md`](proof/PROOF.md) | Verification guide with deploy hashes |
 
 ---
@@ -289,10 +292,10 @@ Every claim in this README pins to a specific source:
 | `record_decision`/`get_metrics` are AgentBehaviorIndex entry points | `contracts/src/agent_behavior_index.rs:39,94` |
 | `upgrade_to_v2_rwa` demonstrates Casper upgrade | `contracts/src/risk_policy_manager.rs:129` |
 | RBAC with grant_operator/grant_admin/revoke_operator | `contracts/src/risk_policy_manager.rs:180,191,202` |
-| `open_vault`/`deduct`/`top_up` are SubscriberVault entry points | `contracts/src/subscriber_vault.rs:39,66,93` |
+| `open_vault`/`deduct`/`top_up` are SubscriberVault entry points | `contracts/src/subscriber_vault.rs:71,113,152` |
 | `VaultWatchX402` class implements x402 | `x402/vaultwatch-x402.ts:120` |
 | 20 MCP tools in FastMCP server | `vaultwatch_mcp/server.py` |
-| 8 RWA MCP tools | `vaultwatch_rwa_mcp/server.py` |
+| 5 RWA MCP tools | `vaultwatch_rwa_mcp/server.py` |
 | Hybrid Brier + escrow reputation formula | `agents/reputation.py` |
 | FindingRecorded event emission | `contracts/src/audit_trail.rs:99` |
 | PolicyUpgraded event emission | `contracts/src/risk_policy_manager.rs:118` |
