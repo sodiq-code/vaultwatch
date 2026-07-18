@@ -1,13 +1,14 @@
 {
   "name": "vaultwatch-rwa-mcp",
   "version": "1.0.0",
-  "description": "VaultWatch RWA Intelligence MCP Server — Dedicated Real-World Asset risk tools for Claude Desktop and any MCP-compatible AI assistant",
+  "description": "VaultWatch RWA Intelligence MCP Server — 5 compliance-gated Real-World Asset risk tools for Claude Desktop and any MCP-compatible AI assistant. Part of the Casper ecosystem.",
   "main": "index.js",
   "bin": {
     "vaultwatch-rwa-mcp": "./bin/start.js"
   },
   "scripts": {
     "start": "python server.py",
+    "mcp:start": "python server.py",
     "test": "pytest tests/ -v"
   },
   "keywords": [
@@ -20,7 +21,12 @@
     "risk-intelligence",
     "real-world-assets",
     "stablecoin",
-    "vaultwatch"
+    "vaultwatch",
+    "compliance",
+    "kyc",
+    "x402",
+    "blockchain",
+    "oracle"
   ],
   "author": "VaultWatch Team",
   "license": "MIT",
@@ -30,6 +36,9 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.24.0"
+  },
+  "peerDependencies": {
+    "@make-software/casper-x402": ">=1.0.0"
   },
   "engines": {
     "node": ">=18.0.0"

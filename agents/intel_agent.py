@@ -24,7 +24,6 @@ from .audit_agent import OnChainRecord
 logger = logging.getLogger("vaultwatch.intel")
 tracer = trace.get_tracer("vaultwatch.intel_agent")
 
-groq_client = Groq(api_key=os.getenv("GROQ_API_KEY", "mock-key-for-testing"))
 
 # In-memory store for recent findings (production: use AuditTrail contract as source of truth)
 _findings_store: list[dict] = []
@@ -224,9 +223,9 @@ class IntelAgent:
             # Verify and deduct credit
             if casper_client:
                 has_credit = await casper_client.call_contract(
-                    contract="sentinel_credit",
-                    entry_point="deduct_query",
-                    args={"account_address": caller_address, "is_premium": is_premium},
+                    contract_hash=os.getenv("SENTINEL_CREDIT_HASH", ""),
+                    entry_point="deduct_credit",
+                    args={"account_address": caller_address, "query_type": "premium" if is_premium else "standard"},
                 )
                 if not has_credit:
                     span.set_attribute("intel.credit_denied", True)

@@ -1,13 +1,19 @@
 """
 VaultWatch Python SDK Client
 
+FIX #19: Corrected query paths:
+  - AgentBehaviorIndex: ["agent_scores", agent_id] → ["metrics", agent_name]
+  - SentinelRegistry: ["sentinels", address] → ["subscribers", address]
+  - SubscriberVault: ["vaults", address] → ["accounts", address]
+
 FIX #19: Added direct contract-query methods:
   - audit_trail.get_finding(id)
-  - audit_trail.finding_count()
   - risk_oracle.get_score(address)
-  - policy_manager.get_current_policy()
-  - sentinel_credit.get_balance(address)
-  - agent_behavior.get_score(agent_id)
+  - behavior_index.get_metrics(agent_name)
+  - sentinel_registry.get_subscriber(address)
+  - vault.get_balance(address)
+  - credit.get_balance(address)
+  - policy.get_current()
 """
 
 from __future__ import annotations
@@ -54,10 +60,10 @@ class VaultWatchClient:
         finding = await client.audit_trail.get_finding(0)
 
         # Get current risk policy
-        policy = await client.policy_manager.get_current_policy()
+        policy = await client.policy.get_current()
 
         # Get credit balance
-        balance = await client.sentinel_credit.get_balance("0x...")
+        balance = await client.credit.get_balance("0x...")
 
     """
 
@@ -74,15 +80,21 @@ class VaultWatchClient:
         self.hashes = {**DEFAULT_CONTRACT_HASHES, **(contract_hashes or {})}
         self.timeout = timeout
 
-        # Sub-clients for each contract
+        # Sub-clients for each contract — short aliases matching task spec
         self.audit_trail = AuditTrailClient(self)
         self.risk_oracle = RiskOracleClient(self)
-        self.policy_manager = RiskPolicyManagerClient(self)
-        self.sentinel_credit = SentinelCreditClient(self)
-        self.agent_behavior = AgentBehaviorClient(self)
+        self.policy = RiskPolicyManagerClient(self)
+        self.credit = SentinelCreditClient(self)
+        self.behavior_index = AgentBehaviorClient(self)
         self.sentinel_registry = SentinelRegistryClient(self)
         self.sentinel_alert_log = SentinelAlertLogClient(self)
-        self.subscriber_vault = SubscriberVaultClient(self)
+        self.vault = SubscriberVaultClient(self)
+
+        # Legacy aliases for backward compatibility
+        self.policy_manager = self.policy
+        self.sentinel_credit = self.credit
+        self.agent_behavior = self.behavior_index
+        self.subscriber_vault = self.vault
 
     async def _rpc(
         self, method: str, params: dict | list
@@ -102,12 +114,12 @@ class VaultWatchClient:
     async def _query_contract(
         self, contract_name: str, path: list
     ) -> Any:
-        """Query a named key path on a contract."""
+        """Query a named key path on a contract using query_global_state."""
         contract_hash = self.hashes.get(contract_name)
         if not contract_hash:
             raise VaultWatchRPCError(f"Unknown contract: {contract_name}")
         return await self._rpc(
-            "state_get_item",
+            "query_global_state",
             {"key": f"hash-{contract_hash}", "path": path},
         )
 
@@ -214,10 +226,10 @@ class RiskPolicyManagerClient:
     def __init__(self, sdk: VaultWatchClient):
         self._sdk = sdk
 
-    async def get_current_policy(self) -> dict:
+    async def get_current(self) -> dict:
         """Fetch the currently active RiskPolicy from chain.
 
-        FIX #19: Direct contract query method.
+        FIX #19: Direct contract query method (renamed from get_current_policy).
 
         Returns::
 
@@ -240,6 +252,11 @@ class RiskPolicyManagerClient:
             .get("parsed", {})
         )
         return parsed or {"version": 1, "source": "default"}
+
+    # Backward compat alias
+    async def get_current_policy(self) -> dict:
+        """Alias for get_current()."""
+        return await self.get_current()
 
     async def get_policy_version(self, version: int) -> dict:
         """Fetch a historical policy by version number."""
@@ -289,15 +306,23 @@ class AgentBehaviorClient:
     def __init__(self, sdk: VaultWatchClient):
         self._sdk = sdk
 
-    async def get_score(self, agent_id: str) -> dict:
-        """Get behavior score for a VaultWatch agent.
+    async def get_metrics(self, agent_name: str) -> dict:
+        """Get behavior metrics for a VaultWatch agent.
 
-        FIX #19: Direct contract query method.
+        FIX #19: Corrected query path from ["agent_scores", agent_id]
+        to ["metrics", agent_name].
         """
         result = await self._sdk._query_contract(
-            "AgentBehaviorIndex", ["agent_scores", agent_id]
+            "AgentBehaviorIndex", ["metrics", agent_name]
         )
-        return result or {"agent_id": agent_id, "score": None}
+        return result or {"agent_name": agent_name, "metrics": None}
+
+    async def get_score(self, agent_id: str) -> dict:
+        """Get behavior score for a VaultWatch agent (legacy alias).
+
+        FIX #19: Kept for backward compatibility, but uses corrected path.
+        """
+        return await self.get_metrics(agent_id)
 
 
 class SentinelRegistryClient:
@@ -306,17 +331,26 @@ class SentinelRegistryClient:
     def __init__(self, sdk: VaultWatchClient):
         self._sdk = sdk
 
-    async def is_registered(self, address: str) -> bool:
-        """Check if an address is a registered VaultWatch subscriber."""
+    async def get_subscriber(self, address: str) -> dict:
+        """Get subscriber info for an address.
+
+        FIX #19: Corrected query path from ["sentinels", address]
+        to ["subscribers", address]. Direct contract query method.
+        """
         result = await self._sdk._query_contract(
-            "SentinelRegistry", ["sentinels", address]
+            "SentinelRegistry", ["subscribers", address]
         )
         parsed = (
             result.get("stored_value", {})
             .get("CLValue", {})
             .get("parsed", {})
         )
-        return bool(parsed.get("active", False)) if parsed else False
+        return parsed or {"address": address, "active": False}
+
+    async def is_registered(self, address: str) -> bool:
+        """Check if an address is a registered VaultWatch subscriber."""
+        subscriber = await self.get_subscriber(address)
+        return bool(subscriber.get("active", False))
 
 
 class SentinelAlertLogClient:
@@ -351,9 +385,28 @@ class SubscriberVaultClient:
     def __init__(self, sdk: VaultWatchClient):
         self._sdk = sdk
 
-    async def get_vault(self, address: str) -> dict:
-        """Get vault info for a subscriber."""
+    async def get_balance(self, address: str) -> int:
+        """Get vault balance for a subscriber.
+
+        FIX #19: Corrected query path from ["vaults", address]
+        to ["accounts", address]. Direct contract query method.
+        """
         result = await self._sdk._query_contract(
-            "SubscriberVault", ["vaults", address]
+            "SubscriberVault", ["accounts", address]
+        )
+        parsed = (
+            result.get("stored_value", {})
+            .get("CLValue", {})
+            .get("parsed", {})
+        )
+        return int(parsed.get("balance", 0)) if parsed else 0
+
+    async def get_vault(self, address: str) -> dict:
+        """Get vault info for a subscriber (legacy method).
+
+        FIX #19: Uses corrected path ["accounts", address].
+        """
+        result = await self._sdk._query_contract(
+            "SubscriberVault", ["accounts", address]
         )
         return result or {}

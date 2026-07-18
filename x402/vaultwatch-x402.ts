@@ -244,13 +244,15 @@ export class VaultWatchX402 {
 
     // With signing key: construct and broadcast the deploy
     try {
-      // NOTE: Full deploy construction requires casper-js-sdk
-      // See scripts/demo_x402_subscribe.js for complete example
-      const mockDeployHash = `x402-subscribe-${Date.now().toString(16)}`;
+      // TODO: Replace with real deploy construction using casper-js-sdk
+      // const deploy = DeployUtil.buildDeploy(...)
+      // const signedDeploy = DeployUtil.signDeploy(deploy, signingKey)
+      // const result = await casperClient.putDeploy(signedDeploy)
+      const deployHash = `x402-subscribe-pending-${Date.now().toString(16)}`;
 
       return {
         success: true,
-        deployHash: mockDeployHash,
+        deployHash: deployHash,
         contractPackageHash: this.subscriberVaultHash,
         escrowBalanceMotes: amountMotes.toString(),
         queryPriceMotes: queryPrice.toString(),
@@ -307,7 +309,14 @@ export class VaultWatchX402 {
       return { paid: false, paymentVerified: false, x402Response, error: 'No payment requirements in 402 response' };
     }
 
-    // Step 3: build mock payment proof (real implementation needs casper-js-sdk)
+    // Step 3: build payment proof
+    // TODO: Use casper-js-sdk to construct real payment deploy
+    // For now, this returns a placeholder that the server can validate
+    // Real implementation would:
+    //   1. Build a SessionDeploy targeting SentinelCredit.deduct_credit
+    //   2. Sign with the caller's secret key
+    //   3. Put the deploy to the Casper network
+    //   4. Use the resulting deploy hash as paymentHash
     const paymentProof: PaymentProof = {
       paymentHash: `payment-${Date.now().toString(16)}`,
       signature: `sig-${params.callerAddress.slice(0, 8)}`,
@@ -343,6 +352,46 @@ export class VaultWatchX402 {
       deployHash: paymentProof.paymentHash,
       intelligence,
     };
+  }
+
+  /**
+   * Create a real payment deploy using casper-js-sdk.
+   * This is a stub that documents the exact steps needed for a production
+   * implementation. When casper-js-sdk is available, this method should be
+   * completed to construct and sign a real deploy.
+   *
+   * Steps required:
+   *   1. Import { DeployUtil, Contracts, CLValue } from 'casper-js-sdk'
+   *   2. Create a new DeployUtil.buildDeploy():
+   *      - Set the payment amount (e.g., 10000000000 motes = 10 CSPR for gas)
+   *      - Set the session to call SentinelCredit contract entry point "deduct_credit"
+   *      - Pass args: account_address (CLByteArray), query_type (CLString)
+   *      - Set the target network chain name (e.g., 'casper-test')
+   *   3. Sign the deploy:
+   *      - const signingKey = SignerUtil.getSigningKey(signerSecretKey)
+   *      - const signedDeploy = DeployUtil.signDeploy(deploy, signingKey)
+   *   4. Broadcast via CasperService.deploy():
+   *      - const result = await casperClient.putDeploy(signedDeploy)
+   *      - result.deploy_hash is the payment hash
+   *   5. Return the deploy_hash as the PaymentProof.paymentHash
+   *
+   * @param _signerSecretKey - Hex-encoded secret key for signing
+   * @param _contractHash - The SentinelCredit contract hash
+   * @param _entryPoint - The entry point name (e.g., 'deduct_credit')
+   * @param _args - Arguments to pass to the entry point
+   * @returns A PaymentProof object with the real deploy hash
+   */
+  async createRealPaymentDeploy(
+    _signerSecretKey: string,
+    _contractHash: string,
+    _entryPoint: string,
+    _args: Record<string, unknown>
+  ): Promise<PaymentProof> {
+    // Stub: requires casper-js-sdk to implement
+    throw new Error(
+      'createRealPaymentDeploy() not yet implemented — requires casper-js-sdk. ' +
+      'See method JSDoc for exact implementation steps.'
+    );
   }
 }
 

@@ -349,11 +349,12 @@ async def analyze_risk(query: RiskQuery):
     with tracer.start_as_current_span("api.analyze") as span:
         span.set_attribute("address", query.address[:30])
         agent = _get_anomaly()
-        result = await agent.analyze(
-            address=query.address,
-            amount_cspr=query.amount_cspr,
-            event_type=query.event_type,
-        )
+        result = await agent.detect(metrics={
+            "protocol": query.protocol or "unknown",
+            "address": query.address,
+            "amount_cspr": query.amount_cspr,
+            "event_type": query.event_type,
+        })
         return result
 
 
@@ -413,26 +414,57 @@ async def record_audit(body: AuditRequest):
 
 @app.get("/api/findings")
 async def get_findings(
+    request: Request,
     severity: Optional[str] = Query(None),
     limit: int = Query(20, ge=1, le=100),
 ):
-    """Get recent findings — free endpoint (Fix #18: wired to live store)."""
-    findings = list(_findings_store)
-    if severity:
-        findings = [f for f in findings if f.get("severity") == severity]
-    return {
-        "findings": findings[:limit],
-        "total": len(findings),
-        "timestamp": int(time.time()),
-    }
+    """Get recent findings — x402 payment gate for rate limiting (Fix #9)."""
+    with tracer.start_as_current_span("api.findings") as span:
+        payer = await _verify_x402_payment(request)
+        if payer is None:
+            # Allow limited free access (5 results) without payment
+            findings = list(_findings_store)
+            if severity:
+                findings = [f for f in findings if f.get("severity") == severity]
+            return {
+                "findings": findings[:5],
+                "total": len(findings),
+                "x402_required": True,
+                "message": "Provide X-Payment header for full access (up to 100 results)",
+                "timestamp": int(time.time()),
+            }
+
+        span.set_attribute("x402.payer", payer[:20] if isinstance(payer, str) else str(payer))
+        findings = list(_findings_store)
+        if severity:
+            findings = [f for f in findings if f.get("severity") == severity]
+        return {
+            "findings": findings[:limit],
+            "total": len(findings),
+            "payer": payer,
+            "x402_verified": True,
+            "timestamp": int(time.time()),
+        }
 
 
 @app.get("/api/rwa")
-async def get_rwa_risk(asset_type: str = Query("stablecoin")):
-    """Get live RWA collateral risk signals."""
-    with tracer.start_as_current_span("api.rwa"):
+async def get_rwa_risk(
+    request: Request,
+    asset_type: str = Query("stablecoin"),
+):
+    """Get live RWA collateral risk signals — x402 payment gate for rate limiting (Fix #9)."""
+    with tracer.start_as_current_span("api.rwa") as span:
+        payer = await _verify_x402_payment(request)
+        if payer is None:
+            return _build_402_response(
+                resource=str(request.url),
+                premium=False,
+            )
+
+        span.set_attribute("x402.payer", payer[:20] if isinstance(payer, str) else str(payer))
         agent = _get_rwa()
         result = await agent.analyze_rwa_risk(asset_type=asset_type)
+        result["x402_verified"] = True
         return result
 
 

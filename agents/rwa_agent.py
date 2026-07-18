@@ -192,12 +192,13 @@ class RWAAgent:
                     behavior_hash = os.getenv("AGENT_BEHAVIOR_INDEX_HASH", "")
                     attestation_tx = self._casper.call_contract(
                         contract_hash=behavior_hash,
-                        entry_point="record_score",
+                        entry_point="record_decision",
                         args={
-                            "agent_id": "RWAAgent",
-                            "finding_id": str(anomaly_result.timestamp),
+                            "agent_name": "RWAAgent",
                             "confidence": int(anomaly_result.confidence * 100),
-                            "rwa_enriched": True,
+                            "correction_applied": False,
+                            "safety_rejected": False,
+                            "block_height": anomaly_result.block_height,
                         },
                     )
                     logger.info("RWA attestation recorded: %s", attestation_tx)

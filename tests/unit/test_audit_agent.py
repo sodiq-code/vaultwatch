@@ -1,4 +1,9 @@
-"""Unit tests — AuditAgent"""
+"""Unit tests — AuditAgent
+
+FIX #6: Fixed method signatures:
+  - get_log() takes no limit parameter (was get_log(limit=10))
+  - record() is the correct method name (was record_action/record_finding)
+"""
 
 import pytest
 from unittest.mock import MagicMock
@@ -43,23 +48,28 @@ async def test_record_no_casper_mock_mode(agent_no_casper):
 
 @pytest.mark.asyncio
 async def test_get_log_returns_list(agent):
-    result = await agent.get_log(limit=10)
+    # FIX: get_log() takes no limit parameter
+    result = await agent.get_log()
     assert isinstance(result, list)
 
 
 @pytest.mark.asyncio
 async def test_get_log_no_casper(agent_no_casper):
-    result = await agent_no_casper.get_log(limit=5)
+    # FIX: get_log() takes no limit parameter
+    result = await agent_no_casper.get_log()
     assert isinstance(result, list)
 
 
 @pytest.mark.asyncio
-async def test_record_action_stored(agent):
+async def test_record_stored_in_log(agent):
     deploy_hash = await agent.record(action="policy_update", actor="admin", details="threshold=5")
     assert isinstance(deploy_hash, str)
-    # Verify casper call was made
-    if hasattr(agent, "_casper") and agent._casper:
-        agent._casper.call_contract.assert_called()
+    # Verify the entry was stored in the internal log
+    log = agent.get_log()
+    assert len(log) >= 1
+    last_entry = log[-1]
+    assert last_entry["action"] == "policy_update"
+    assert last_entry["actor"] == "admin"
 
 
 @pytest.mark.asyncio
@@ -79,7 +89,11 @@ async def test_record_empty_details(agent):
 
 
 @pytest.mark.asyncio
-async def test_get_log_limit_respected(agent):
-    result = await agent.get_log(limit=5)
-    assert isinstance(result, list)
-    assert len(result) <= 5
+async def test_get_log_returns_all_entries(agent):
+    # Record several entries
+    for i in range(5):
+        await agent.record(action=f"action_{i}", actor="system", details=f"detail_{i}")
+    # FIX: get_log() takes no limit parameter — returns all entries
+    log = agent.get_log()
+    assert isinstance(log, list)
+    assert len(log) >= 5

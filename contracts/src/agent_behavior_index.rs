@@ -5,8 +5,21 @@
 /// correction rates, and false positive history. Creates a live trust score
 /// for the AI system itself — providing transparent, verifiable accountability
 /// for every AI-driven decision on the Casper network.
+///
+/// FIX #11: Added Odra events (BehaviorRecorded)
 
 use odra::prelude::*;
+
+// ─── Events ────────────────────────────────────────────────────────────────
+
+#[odra::event]
+pub struct BehaviorRecorded {
+    pub agent_name: String,
+    pub confidence: u8,
+    pub trust_score: u8,
+}
+
+// ─── Data types ────────────────────────────────────────────────────────────
 
 #[odra::odra_type]
 pub struct AgentMetrics {
@@ -20,6 +33,8 @@ pub struct AgentMetrics {
     pub last_updated_block: u64,
     pub trust_score: u8,            // derived: (high_confidence - corrections) / total * 100
 }
+
+// ─── Contract ──────────────────────────────────────────────────────────────
 
 #[odra::module]
 pub struct AgentBehaviorIndex {
@@ -88,7 +103,16 @@ impl AgentBehaviorIndex {
         }
 
         m.last_updated_block = block_height;
+
+        // FIX #11: emit BehaviorRecorded event
+        let trust_score = m.trust_score;
         self.metrics.set(&agent_name, m);
+
+        self.env().emit_event(BehaviorRecorded {
+            agent_name,
+            confidence,
+            trust_score,
+        });
     }
 
     pub fn get_metrics(&self, agent_name: String) -> Option<AgentMetrics> {

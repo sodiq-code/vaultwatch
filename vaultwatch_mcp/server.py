@@ -375,17 +375,48 @@ async def get_protocol_reputation(protocol_address: str) -> dict:
     with tracer.start_as_current_span("mcp.get_protocol_reputation") as span:
         span.set_attribute("protocol", protocol_address[:20])
 
-        from agents.reputation import ReputationEngine
-
-        engine = ReputationEngine()
-        score = engine.compute(
-            protocol_address=protocol_address,
-            findings=list(_findings_store),
+        from agents.reputation import (
+            brier_score,
+            normalize_brier_to_trust,
+            escrow_trust,
+            hybrid_reputation,
+            AgentPrediction,
+            EscrowStake,
+            DEFAULT_W_BRIER,
+            DEFAULT_W_ESCROW,
         )
+
+        # Build synthetic predictions from findings store
+        predictions = []
+        for f in _findings_store:
+            confidence = f.get("confidence", 0.5)
+            # Heuristic: high-severity findings where risk materialized → outcome=1
+            severity = f.get("severity", "LOW")
+            outcome = 1.0 if severity in ("CRITICAL", "HIGH") else 0.0
+            predictions.append(AgentPrediction(
+                agent_name="VaultWatch",
+                predicted_probability=confidence,
+                outcome=outcome,
+            ))
+
+        # Build escrow stake from on-chain data (placeholder if no chain data)
+        stake = EscrowStake(
+            address=protocol_address,
+            escrowed_balance_motes=0,
+            total_deposited_motes=0,
+            total_spent_motes=0,
+            slash_count=0,
+            successful_queries=len(_findings_store),
+            disputed_queries=0,
+        )
+
+        result = hybrid_reputation(predictions, stake)
         return {
             "protocol": protocol_address,
-            "reputation_score": score,
-            "formula": "Brier(accuracy) × w1 + Escrow(stake) × w2",
+            "reputation_score": result["reputation_score"],
+            "tier": result["tier"],
+            "components": result["components"],
+            "formula": result["formula"],
             "docs": "docs/REPUTATION_FORMULA.md",
             "timestamp": int(time.time()),
         }
@@ -437,7 +468,7 @@ async def get_vault_status(subscriber_address: str) -> dict:
 
         vault_result = await casper_rpc_call(
             "state_get_item",
-            {"key": f"hash-{vault_hash}", "path": ["vaults", subscriber_address]},
+            {"key": f"hash-{vault_hash}", "path": ["accounts", subscriber_address]},
         )
         credit_result = await casper_rpc_call(
             "state_get_item",
@@ -533,7 +564,7 @@ async def reputation_query(address: str, include_brier: bool = True) -> dict:
 
         behavior_result = await casper_rpc_call(
             "state_get_item",
-            {"key": f"hash-{behavior_hash}", "path": ["agent_scores", address]},
+            {"key": f"hash-{behavior_hash}", "path": ["metrics", address]},
         )
         credit_result = await casper_rpc_call(
             "state_get_item",
@@ -542,10 +573,44 @@ async def reputation_query(address: str, include_brier: bool = True) -> dict:
 
         brier_score = 0.0
         escrow_stake = 0
+        placeholder = False
         if not behavior_result.get("error"):
-            brier_score = 0.82  # Placeholder; parse from CLValue in production
+            try:
+                parsed = behavior_result.get("parsed", behavior_result)
+                trust_raw = parsed.get("trust_score", None)
+                if trust_raw is None:
+                    # Try nested CLValue structure
+                    clvalue = behavior_result.get("stored_value", {}).get("CLValue", {})
+                    trust_raw = clvalue.get("parsed", {}).get("trust_score", None)
+                if trust_raw is not None:
+                    brier_score = float(trust_raw) / 100.0
+                else:
+                    raise ValueError("trust_score field not found")
+            except Exception as e:
+                import logging
+                logging.getLogger("vaultwatch.mcp_server").warning(
+                    "Failed to parse brier_score from behavior_result: %s, using fallback", e
+                )
+                brier_score = 0.82
+                placeholder = True
         if not credit_result.get("error"):
-            escrow_stake = 1000000000  # 1 CSPR placeholder
+            try:
+                parsed = credit_result.get("parsed", credit_result)
+                balance_raw = parsed.get("balance", None)
+                if balance_raw is None:
+                    clvalue = credit_result.get("stored_value", {}).get("CLValue", {})
+                    balance_raw = clvalue.get("parsed", {}).get("balance", None)
+                if balance_raw is not None:
+                    escrow_stake = int(balance_raw)
+                else:
+                    raise ValueError("balance field not found")
+            except Exception as e:
+                import logging
+                logging.getLogger("vaultwatch.mcp_server").warning(
+                    "Failed to parse escrow_stake from credit_result: %s, using fallback", e
+                )
+                escrow_stake = 1000000000  # 1 CSPR fallback
+                placeholder = True
 
         # Hybrid reputation formula
         w1, w2 = 0.6, 0.4
@@ -558,6 +623,7 @@ async def reputation_query(address: str, include_brier: bool = True) -> dict:
             "reputation_score": round(reputation, 4),
             "brier_accuracy": brier_score if include_brier else None,
             "escrow_stake_motes": escrow_stake,
+            "placeholder": placeholder,
             "formula": f"R = {w1}*Brier + {w2}*Escrow_normalized = {reputation:.4f}",
             "behavior_contract": behavior_hash,
             "credit_contract": credit_hash,
@@ -668,15 +734,55 @@ async def behavior_index_lookup(agent_id: Optional[str] = None, top_n: int = 5) 
         behavior_hash = CONTRACT_DEPLOY_HASHES["AgentBehaviorIndex"]
         deploy_info = await get_deploy_info(behavior_hash)
 
-        agents = [
-            {"id": "ScannerAgent", "model": "llama-3.1-8b-instant", "trust_score": 0.91},
-            {"id": "AnomalyAgent", "model": "llama-3.3-70b-versatile", "trust_score": 0.87},
-            {"id": "SelfCorrectionAgent", "model": "llama-3.3-70b-versatile", "trust_score": 0.89},
-            {"id": "RWAAgent", "model": "compound-beta", "trust_score": 0.84},
-            {"id": "SafetyGuard", "model": "llama-prompt-guard-2-86m", "trust_score": 0.95},
-            {"id": "AuditAgent", "model": "llama-3.1-8b-instant", "trust_score": 0.92},
-            {"id": "IntelAgent", "model": "llama-3.1-8b-instant", "trust_score": 0.88},
+        # Query AgentBehaviorIndex contract for each agent's trust score via RPC
+        agent_names = [
+            ("ScannerAgent", "llama-3.1-8b-instant"),
+            ("AnomalyAgent", "llama-3.3-70b-versatile"),
+            ("SelfCorrectionAgent", "llama-3.3-70b-versatile"),
+            ("RWAAgent", "compound-beta"),
+            ("SafetyGuard", "llama-prompt-guard-2-86m"),
+            ("AuditAgent", "llama-3.1-8b-instant"),
+            ("IntelAgent", "llama-3.1-8b-instant"),
         ]
+
+        # Hardcoded fallback values
+        fallback_scores = {
+            "ScannerAgent": 0.91,
+            "AnomalyAgent": 0.87,
+            "SelfCorrectionAgent": 0.89,
+            "RWAAgent": 0.84,
+            "SafetyGuard": 0.95,
+            "AuditAgent": 0.92,
+            "IntelAgent": 0.88,
+        }
+
+        agents = []
+        placeholder = False
+        for name, model in agent_names:
+            try:
+                rpc_result = await casper_rpc_call(
+                    "state_get_item",
+                    {"key": f"hash-{behavior_hash}", "path": ["metrics", name]},
+                )
+                if rpc_result.get("error"):
+                    raise ValueError(rpc_result["error"])
+                parsed = rpc_result.get("parsed", rpc_result)
+                trust_raw = parsed.get("trust_score", None)
+                if trust_raw is None:
+                    clvalue = rpc_result.get("stored_value", {}).get("CLValue", {})
+                    trust_raw = clvalue.get("parsed", {}).get("trust_score", None)
+                if trust_raw is not None:
+                    trust_score = float(trust_raw) / 100.0 if float(trust_raw) > 1.0 else float(trust_raw)
+                else:
+                    raise ValueError("trust_score field not found")
+                agents.append({"id": name, "model": model, "trust_score": trust_score})
+            except Exception as e:
+                import logging
+                logging.getLogger("vaultwatch.mcp_server").warning(
+                    "Failed to query trust_score for %s: %s, using fallback", name, e
+                )
+                agents.append({"id": name, "model": model, "trust_score": fallback_scores[name], "placeholder": True})
+                placeholder = True
 
         if agent_id:
             agents = [a for a in agents if a["id"] == agent_id]
@@ -685,6 +791,7 @@ async def behavior_index_lookup(agent_id: Optional[str] = None, top_n: int = 5) 
 
         return {
             "agents": agents,
+            "placeholder": placeholder,
             "behavior_contract": behavior_hash,
             "contract_verified": deploy_info.get("success", False),
             "explorer": f"https://testnet.cspr.live/deploy/{behavior_hash}",
