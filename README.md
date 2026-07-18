@@ -286,13 +286,13 @@ Every claim in this README pins to a specific source:
 | Claim | Reference |
 |-------|-----------|
 | `record_finding` is the AuditTrail entry point | `contracts/src/audit_trail.rs:68` |
-| `update_score` is the RiskOracle entry point | `contracts/src/risk_oracle.rs:33` |
+| `update_score` is the RiskOracle entry point | `contracts/src/risk_oracle.rs:49` |
 | `deposit`/`deduct_credit`/`withdraw` are SentinelCredit entry points | `contracts/src/sentinel_credit.rs:72,100,143` |
-| `register`/`deregister` are SentinelRegistry entry points | `contracts/src/sentinel_registry.rs:35,56` |
-| `record_decision`/`get_metrics` are AgentBehaviorIndex entry points | `contracts/src/agent_behavior_index.rs:39,94` |
+| `register`/`deregister` are SentinelRegistry entry points | `contracts/src/sentinel_registry.rs:55,83` |
+| `record_decision`/`get_metrics` are AgentBehaviorIndex entry points | `contracts/src/agent_behavior_index.rs:54,118` |
 | `upgrade_to_v2_rwa` demonstrates Casper upgrade | `contracts/src/risk_policy_manager.rs:129` |
 | RBAC with grant_operator/grant_admin/revoke_operator | `contracts/src/risk_policy_manager.rs:180,191,202` |
-| `open_vault`/`deduct`/`top_up` are SubscriberVault entry points | `contracts/src/subscriber_vault.rs:71,113,152` |
+| `open_vault`/`deduct`/`top_up` are SubscriberVault entry points | `contracts/src/subscriber_vault.rs:72,113,153` |
 | `VaultWatchX402` class implements x402 | `x402/vaultwatch-x402.ts:120` |
 | 20 MCP tools in FastMCP server | `vaultwatch_mcp/server.py` |
 | 5 RWA MCP tools | `vaultwatch_rwa_mcp/server.py` |
