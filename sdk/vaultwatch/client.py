@@ -1,272 +1,359 @@
 """
-VaultWatch SDK — VaultWatchClient
-Async HTTP client wrapping the VaultWatch REST API.
+VaultWatch Python SDK Client
+
+FIX #19: Added direct contract-query methods:
+  - audit_trail.get_finding(id)
+  - audit_trail.finding_count()
+  - risk_oracle.get_score(address)
+  - policy_manager.get_current_policy()
+  - sentinel_credit.get_balance(address)
+  - agent_behavior.get_score(agent_id)
 """
 
 from __future__ import annotations
 
-import asyncio
+import json
 import logging
-from typing import Any, Dict, Optional
+import os
+from typing import Any, Dict, List, Optional
 
 import httpx
 
 logger = logging.getLogger("vaultwatch.sdk")
 
+# Default contract deploy hashes on Casper testnet
+DEFAULT_CONTRACT_HASHES = {
+    "AuditTrail": "b9c70cdceff1011008b3933835d4a46146f26f1d1e82ada8520be77e1d6336a7",
+    "SentinelRegistry": "9a5eb4f83de8cbfef4f389516b977258b0e1d63179b288ca623a860fc6ec346c",
+    "RiskOracle": "e071aacc460a62e538092f5006930710f49e632598846c4c843e3daf0c5a7c9d",
+    "SentinelCredit": "0c09f2ad66701b38b1720390e20bf8ac5b7bf6a20cc174cba44f3861549baf71",
+    "AgentBehaviorIndex": "05066c33ddb73b523ab8f67275ca6096254f9d1832e76075d1e5f41f188b7dd0",
+    "SentinelAlertLog": "53317e080ffdffcf097447ea3375c9195c6936fe7b1ed53795bf46134322a925",
+    "RiskPolicyManager": "93e35d6488dcab8524a22c82241c7ddc6d07b0f7c011544e6c4a296c1a0eee2e",
+    "SubscriberVault": "6620787c14d9d78506b281be8c95c8f9b105781b9705d2bd9736f2aabfd6956d",
+}
+
+
+class VaultWatchRPCError(Exception):
+    """Raised when a Casper RPC call fails."""
+
 
 class VaultWatchClient:
     """
-    Async client for the VaultWatch REST API.
+    VaultWatch Python SDK.
 
-    Parameters
-    ----------
-    base_url : str
-        Base URL of the VaultWatch API server (e.g. ``http://localhost:8000``).
-    api_key : str, optional
-        Bearer token for authenticated endpoints.
-    timeout : float
-        Request timeout in seconds (default 30).
+    Provides typed, documented access to all 8 VaultWatch smart contracts
+    on Casper testnet.
 
-    Examples
-    --------
-    ::
+    Usage::
 
-        async with VaultWatchClient("http://localhost:8000") as client:
-            result = await client.query_risk("Analyze Aave liquidity risk")
-            print(result)
+        from vaultwatch import VaultWatchClient
+        client = VaultWatchClient()
+
+        # Get a specific finding by ID
+        finding = await client.audit_trail.get_finding(0)
+
+        # Get current risk policy
+        policy = await client.policy_manager.get_current_policy()
+
+        # Get credit balance
+        balance = await client.sentinel_credit.get_balance("0x...")
+
     """
 
     def __init__(
         self,
-        base_url: str = "http://localhost:8000",
-        api_key: str = "",
-        timeout: float = 30.0,
-    ) -> None:
-        self.base_url = base_url.rstrip("/")
-        self.api_key = api_key
+        rpc_url: str = "",
+        contract_hashes: dict = None,
+        timeout: float = 15.0,
+    ):
+        self.rpc_url = rpc_url or os.getenv(
+            "CASPER_RPC_URL",
+            "https://node.testnet.casper.network/rpc",
+        )
+        self.hashes = {**DEFAULT_CONTRACT_HASHES, **(contract_hashes or {})}
         self.timeout = timeout
-        self._client: Optional[httpx.AsyncClient] = None
 
-    async def __aenter__(self) -> "VaultWatchClient":
-        self._client = httpx.AsyncClient(
-            base_url=self.base_url,
-            headers={"Authorization": f"Bearer {self.api_key}"} if self.api_key else {},
-            timeout=self.timeout,
+        # Sub-clients for each contract
+        self.audit_trail = AuditTrailClient(self)
+        self.risk_oracle = RiskOracleClient(self)
+        self.policy_manager = RiskPolicyManagerClient(self)
+        self.sentinel_credit = SentinelCreditClient(self)
+        self.agent_behavior = AgentBehaviorClient(self)
+        self.sentinel_registry = SentinelRegistryClient(self)
+        self.sentinel_alert_log = SentinelAlertLogClient(self)
+        self.subscriber_vault = SubscriberVaultClient(self)
+
+    async def _rpc(
+        self, method: str, params: dict | list
+    ) -> Any:
+        """Execute a Casper JSON-RPC call."""
+        body = {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(self.rpc_url, json=body)
+            resp.raise_for_status()
+            data = resp.json()
+            if "error" in data:
+                raise VaultWatchRPCError(
+                    f"RPC error: {data['error'].get('message', data['error'])}"
+                )
+            return data.get("result")
+
+    async def _query_contract(
+        self, contract_name: str, path: list
+    ) -> Any:
+        """Query a named key path on a contract."""
+        contract_hash = self.hashes.get(contract_name)
+        if not contract_hash:
+            raise VaultWatchRPCError(f"Unknown contract: {contract_name}")
+        return await self._rpc(
+            "state_get_item",
+            {"key": f"hash-{contract_hash}", "path": path},
         )
-        return self
 
-    async def __aexit__(self, *args: Any) -> None:
-        if self._client:
-            await self._client.aclose()
+    async def get_chain_state(self) -> dict:
+        """Get current Casper testnet block info."""
+        result = await self._rpc("chain_get_block", {})
+        block = result.get("block", {}).get("header", {})
+        return {
+            "block_height": block.get("height"),
+            "era_id": block.get("era_id"),
+            "timestamp": block.get("timestamp"),
+            "network": "casper-test",
+        }
 
-    def _http(self) -> httpx.AsyncClient:
-        if self._client is None:
-            self._client = httpx.AsyncClient(
-                base_url=self.base_url,
-                headers={"Authorization": f"Bearer {self.api_key}"} if self.api_key else {},
-                timeout=self.timeout,
-            )
-        return self._client
+    async def verify_deploy(self, deploy_hash: str) -> dict:
+        """Verify a deploy hash status on Casper testnet."""
+        result = await self._rpc(
+            "info_get_deploy", {"deploy_hash": deploy_hash}
+        )
+        exec_results = result.get("execution_results", [])
+        success = False
+        if exec_results:
+            exec_result = exec_results[0].get("result", {})
+            success = "Success" in exec_result
+        return {
+            "deploy_hash": deploy_hash,
+            "success": success,
+            "block_hash": exec_results[0].get("block_hash") if exec_results else None,
+            "explorer_url": f"https://testnet.cspr.live/deploy/{deploy_hash}",
+        }
 
-    async def _get(self, path: str, **params: Any) -> Dict[str, Any]:
-        resp = await self._http().get(path, params=params)
-        resp.raise_for_status()
-        return resp.json()
 
-    async def _post(self, path: str, body: Dict[str, Any]) -> Dict[str, Any]:
-        resp = await self._http().post(path, json=body)
-        resp.raise_for_status()
-        return resp.json()
+class AuditTrailClient:
+    """Direct query methods for the AuditTrail contract."""
 
-    # ------------------------------------------------------------------
-    # Health
-    # ------------------------------------------------------------------
+    def __init__(self, sdk: VaultWatchClient):
+        self._sdk = sdk
 
-    async def health(self) -> Dict[str, Any]:
-        """Check API liveness."""
-        return await self._get("/health")
+    async def get_finding(self, finding_id: int) -> dict:
+        """Fetch a specific finding by ID from AuditTrail contract.
 
-    # ------------------------------------------------------------------
-    # Risk Intelligence
-    # ------------------------------------------------------------------
+        FIX #19: Direct contract query method.
 
-    async def query_risk(
-        self,
-        query: str,
-        protocol: Optional[str] = None,
-        context: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        Returns::
+
+            {
+                "id": 0,
+                "address": "0x...",
+                "risk_type": "rug_pull",
+                "severity": "CRITICAL",
+                "confidence": 95,
+                "description": "...",
+                "block_height": 12345,
+                "timestamp": 1720000000,
+            }
         """
-        Ask the IntelAgent a free-form risk question.
+        result = await self._sdk._query_contract(
+            "AuditTrail", ["findings", str(finding_id)]
+        )
+        return result or {}
 
-        Parameters
-        ----------
-        query : str
-            Natural language question about DeFi risk.
-        protocol : str, optional
-            Protocol name to scope the analysis.
-        context : dict, optional
-            Additional context key-value pairs.
+    async def finding_count(self) -> int:
+        """Get total number of findings recorded."""
+        result = await self._sdk._query_contract(
+            "AuditTrail", ["finding_count"]
+        )
+        return int(result.get("stored_value", {}).get("CLValue", {}).get("parsed", 0))
 
-        Returns
-        -------
-        dict
-            ``{"status": "ok", "result": {...}}``
+    async def get_all_findings(self, limit: int = 20) -> list:
+        """Fetch the last N findings from the AuditTrail contract."""
+        count = await self.finding_count()
+        findings = []
+        start = max(0, count - limit)
+        for i in range(start, count):
+            try:
+                finding = await self.get_finding(i)
+                if finding:
+                    findings.append(finding)
+            except VaultWatchRPCError:
+                break
+        return findings
+
+
+class RiskOracleClient:
+    """Direct query methods for the RiskOracle contract."""
+
+    def __init__(self, sdk: VaultWatchClient):
+        self._sdk = sdk
+
+    async def get_score(self, address: str) -> dict:
+        """Get risk score for an address from RiskOracle contract.
+
+        FIX #19: Direct contract query method.
         """
-        return await self._post(
-            "/risk/query",
-            {
-                "query": query,
-                "protocol": protocol,
-                "context": context,
-            },
+        result = await self._sdk._query_contract(
+            "RiskOracle", ["scores", address]
         )
+        return result or {"address": address, "score": None, "error": "not_found"}
 
-    async def get_findings(
-        self,
-        limit: int = 50,
-        protocol: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """Return stored risk findings."""
-        params: Dict[str, Any] = {"limit": limit}
-        if protocol:
-            params["protocol"] = protocol
-        return await self._get("/risk/findings", **params)
 
-    # ------------------------------------------------------------------
-    # Anomaly Detection
-    # ------------------------------------------------------------------
+class RiskPolicyManagerClient:
+    """Direct query methods for the RiskPolicyManager contract."""
 
-    async def detect_anomaly(
-        self,
-        protocol: str,
-        tvl: float,
-        volume_24h: float,
-        price_change_1h: float,
-        num_transactions: int,
-        liquidity_ratio: float,
-    ) -> Dict[str, Any]:
+    def __init__(self, sdk: VaultWatchClient):
+        self._sdk = sdk
+
+    async def get_current_policy(self) -> dict:
+        """Fetch the currently active RiskPolicy from chain.
+
+        FIX #19: Direct contract query method.
+
+        Returns::
+
+            {
+                "version": 2,
+                "min_confidence_threshold": 75,
+                "critical_score_threshold": 80,
+                "high_score_threshold": 60,
+                "medium_score_threshold": 40,
+                "max_retry_count": 2,
+                "safety_rejection_threshold": 80,
+            }
         """
-        Run anomaly detection on protocol metrics.
+        result = await self._sdk._query_contract(
+            "RiskPolicyManager", ["current_policy"]
+        )
+        parsed = (
+            result.get("stored_value", {})
+            .get("CLValue", {})
+            .get("parsed", {})
+        )
+        return parsed or {"version": 1, "source": "default"}
 
-        Returns risk score (0–100) and detected anomalies.
+    async def get_policy_version(self, version: int) -> dict:
+        """Fetch a historical policy by version number."""
+        result = await self._sdk._query_contract(
+            "RiskPolicyManager", ["policy_history", str(version)]
+        )
+        return result or {}
+
+
+class SentinelCreditClient:
+    """Direct query methods for the SentinelCredit contract."""
+
+    def __init__(self, sdk: VaultWatchClient):
+        self._sdk = sdk
+
+    async def get_balance(self, account_address: str) -> int:
+        """Get CSPR credit balance for an account (in motes).
+
+        FIX #19: Direct contract query method.
         """
-        return await self._post(
-            "/anomaly/detect",
-            {
-                "protocol": protocol,
-                "tvl": tvl,
-                "volume_24h": volume_24h,
-                "price_change_1h": price_change_1h,
-                "num_transactions": num_transactions,
-                "liquidity_ratio": liquidity_ratio,
-            },
+        result = await self._sdk._query_contract(
+            "SentinelCredit", ["accounts", account_address]
         )
-
-    # ------------------------------------------------------------------
-    # RWA Assessment
-    # ------------------------------------------------------------------
-
-    async def assess_rwa(
-        self,
-        asset_id: str,
-        asset_type: str,
-        issuer: str,
-        collateral_ratio: float,
-        maturity_days: int,
-        credit_rating: str,
-    ) -> Dict[str, Any]:
-        """Evaluate a real-world asset for on-chain tokenisation."""
-        return await self._post(
-            "/rwa/assess",
-            {
-                "asset_id": asset_id,
-                "asset_type": asset_type,
-                "issuer": issuer,
-                "collateral_ratio": collateral_ratio,
-                "maturity_days": maturity_days,
-                "credit_rating": credit_rating,
-            },
+        parsed = (
+            result.get("stored_value", {})
+            .get("CLValue", {})
+            .get("parsed", {})
         )
+        return int(parsed.get("balance", 0)) if parsed else 0
 
-    async def list_rwa_assets(self) -> Dict[str, Any]:
-        """List all tracked RWA assets."""
-        return await self._get("/rwa/assets")
-
-    # ------------------------------------------------------------------
-    # Scanner
-    # ------------------------------------------------------------------
-
-    async def scan_protocol(
-        self,
-        protocol: str,
-        contract_address: Optional[str] = None,
-        chain: str = "casper",
-    ) -> Dict[str, Any]:
-        """Run a deep vulnerability scan on a protocol."""
-        return await self._post(
-            "/scanner/scan",
-            {
-                "protocol": protocol,
-                "contract_address": contract_address,
-                "chain": chain,
-            },
+    async def get_query_price(self) -> int:
+        """Get current price per standard query (in motes)."""
+        result = await self._sdk._query_contract(
+            "SentinelCredit", ["query_price"]
         )
-
-    # ------------------------------------------------------------------
-    # Policy
-    # ------------------------------------------------------------------
-
-    async def list_policies(self) -> Dict[str, Any]:
-        """Return all active risk policies."""
-        return await self._get("/policy/list")
-
-    async def update_policy(
-        self,
-        policy_id: str,
-        max_tvl_drop_pct: float,
-        min_liquidity_ratio: float,
-        alert_threshold: int,
-    ) -> Dict[str, Any]:
-        """Update a risk policy on-chain."""
-        return await self._post(
-            "/policy/update",
-            {
-                "policy_id": policy_id,
-                "max_tvl_drop_pct": max_tvl_drop_pct,
-                "min_liquidity_ratio": min_liquidity_ratio,
-                "alert_threshold": alert_threshold,
-            },
+        parsed = (
+            result.get("stored_value", {})
+            .get("CLValue", {})
+            .get("parsed", "0")
         )
+        return int(parsed)
 
-    # ------------------------------------------------------------------
-    # Audit
-    # ------------------------------------------------------------------
 
-    async def get_audit_log(self, limit: int = 50) -> Dict[str, Any]:
-        """Fetch the on-chain audit log."""
-        return await self._get("/audit/log", limit=limit)
+class AgentBehaviorClient:
+    """Direct query methods for the AgentBehaviorIndex contract."""
 
-    # ------------------------------------------------------------------
-    # Chain
-    # ------------------------------------------------------------------
+    def __init__(self, sdk: VaultWatchClient):
+        self._sdk = sdk
 
-    async def get_block_height(self) -> Dict[str, Any]:
-        """Return current Casper block height."""
-        return await self._get("/chain/block")
+    async def get_score(self, agent_id: str) -> dict:
+        """Get behavior score for a VaultWatch agent.
 
-    # ------------------------------------------------------------------
-    # Convenience: synchronous wrappers
-    # ------------------------------------------------------------------
+        FIX #19: Direct contract query method.
+        """
+        result = await self._sdk._query_contract(
+            "AgentBehaviorIndex", ["agent_scores", agent_id]
+        )
+        return result or {"agent_id": agent_id, "score": None}
 
-    def query_risk_sync(self, query: str, **kwargs: Any) -> Dict[str, Any]:
-        """Synchronous wrapper around :meth:`query_risk`."""
-        return asyncio.run(self.query_risk(query, **kwargs))
 
-    def detect_anomaly_sync(self, **kwargs: Any) -> Dict[str, Any]:
-        """Synchronous wrapper around :meth:`detect_anomaly`."""
-        return asyncio.run(self.detect_anomaly(**kwargs))
+class SentinelRegistryClient:
+    """Direct query methods for the SentinelRegistry contract."""
 
-    def scan_protocol_sync(self, protocol: str, **kwargs: Any) -> Dict[str, Any]:
-        """Synchronous wrapper around :meth:`scan_protocol`."""
-        return asyncio.run(self.scan_protocol(protocol, **kwargs))
+    def __init__(self, sdk: VaultWatchClient):
+        self._sdk = sdk
+
+    async def is_registered(self, address: str) -> bool:
+        """Check if an address is a registered VaultWatch subscriber."""
+        result = await self._sdk._query_contract(
+            "SentinelRegistry", ["sentinels", address]
+        )
+        parsed = (
+            result.get("stored_value", {})
+            .get("CLValue", {})
+            .get("parsed", {})
+        )
+        return bool(parsed.get("active", False)) if parsed else False
+
+
+class SentinelAlertLogClient:
+    """Direct query methods for the SentinelAlertLog contract."""
+
+    def __init__(self, sdk: VaultWatchClient):
+        self._sdk = sdk
+
+    async def get_address_logs(self, address: str) -> list:
+        """Get all log IDs for a subscriber address."""
+        result = await self._sdk._query_contract(
+            "SentinelAlertLog", ["address_logs", address]
+        )
+        parsed = (
+            result.get("stored_value", {})
+            .get("CLValue", {})
+            .get("parsed", [])
+        )
+        return list(parsed) if parsed else []
+
+    async def get_log(self, log_id: int) -> dict:
+        """Get a specific alert log record."""
+        result = await self._sdk._query_contract(
+            "SentinelAlertLog", ["logs", str(log_id)]
+        )
+        return result or {}
+
+
+class SubscriberVaultClient:
+    """Direct query methods for the SubscriberVault contract."""
+
+    def __init__(self, sdk: VaultWatchClient):
+        self._sdk = sdk
+
+    async def get_vault(self, address: str) -> dict:
+        """Get vault info for a subscriber."""
+        result = await self._sdk._query_contract(
+            "SubscriberVault", ["vaults", address]
+        )
+        return result or {}
