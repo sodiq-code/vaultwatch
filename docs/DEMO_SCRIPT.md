@@ -55,8 +55,14 @@ curl -H 'X-Payment: {"scheme":"casper-x402","paymentHash":"..."}'      http://lo
 # Expected: HTTP/1.1 200 OK with intelligence findings
 ```
 
+```bash
+# Full scripted demo — runs the complete x402 subscribe flow in <60 seconds
+node scripts/demo_x402_subscribe.js
+# Expected: Opens vault → deducts credit → queries intelligence → shows x402 receipt
+```
+
 **Narration:**
-> "Intelligence is gated behind x402 micropayments. No payment → 402. With a valid x402 CSPR payment → instant access to risk intelligence. Every payment is verified on-chain against our SubscriberVault contract."
+> "Intelligence is gated behind x402 micropayments. No payment → 402. With a valid x402 CSPR payment → instant access to risk intelligence. Every payment is verified on-chain against our SubscriberVault contract. The demo_x402_subscribe.js script runs the full flow in under 60 seconds."
 
 ---
 
