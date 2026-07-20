@@ -30,4 +30,4 @@ pytest-asyncio>=0.23.0
 pytest-cov>=5.0.0
 
 # Linting / formatting
-ruff>=0.5.0
+ruff>=0.15.22
