@@ -33,15 +33,52 @@ mcp = FastMCP("VaultWatch")
 # === Casper RPC client for on-chain queries ===
 CASPER_RPC_URL = os.getenv("CASPER_RPC_URL", "https://node.testnet.casper.network/rpc")
 
+# ---------------------------------------------------------------------------
+# REAL on-chain contract hashes (verified via query_global_state on Account 1's
+# named keys — see worklog Task 1 + this Task 6). All hashes are 64 hex chars
+# (32 bytes), the standard Casper hash length. The previous values were
+# 45-char truncated/fake hashes (50 chars with the "hash-" prefix) that pointed
+# at NOTHING on-chain — every query_global_state call using them returned an
+# error, which the tools silently swallowed and returned mock/zero values.
+#
+# CONTRACT_PACKAGE_HASHES: the package hash (query_global_state with this key
+#   returns the ContractPackage: versions, access URef, disabled versions).
+#   Used by tools that inspect package-level metadata (e.g. upgrade status).
+#
+# CONTRACT_HASHES: the specific contract-version hash (query_global_state with
+#   this key returns the Contract: entry_points, named_keys, the "state" URef
+#   that backs Odra Var<T>/Mapping<T>). Used by tools that read contract state
+#   or call entry points.
+#
+# Source of truth:
+#   - Package hashes: Account 1 named keys (agent_behavior_index_package_hash,
+#     audit_trail_package_hash, ...) — queried live from node.testnet.casper.network.
+#   - Contract hashes: deploy_hashes_live.json (the installed-contract hashes,
+#     verified in worklog Task 1 as matching the on-chain packages' active version).
+# ---------------------------------------------------------------------------
 CONTRACT_PACKAGE_HASHES = {
-    "AgentBehaviorIndex": "hash-d888dc3696046633582f1355f9708dfbd5acde3528466",
-    "SubscriberVault": "hash-68c4b7cca84982833af3f9346a5a9ea337bfdcd20875b",
-    "RiskOracle": "hash-1a47fd766eb021aa83cc44b5a729920842253510936cb",
-    "SentinelCredit": "hash-47ea0c53777a68d79cf2f66b9171e4a1b588048c283b2",
-    "AuditTrail": "hash-7e653fc142ddd4f1759aec0c2f4fb0537eb167cfb9771",
-    "SentinelRegistry": "hash-d97d1f1ef30bf765fbf13aa11817fea409b67056dd59f",
-    "SentinelAlertLog": "hash-f75ce1bc111d185c39d7c81d5a18b093749643957b8c3",
-    "RiskPolicyManager": "hash-aaf7f48dbcdbd59996b9b181c7980bb6c5116a7c72005",
+    "AgentBehaviorIndex": "hash-d888dc3696046633582f1355f9708dfbd5acde3528466a562fa0601ad6eacbd2",
+    "SubscriberVault": "hash-68c4b7cca84982833af3f9346a5a9ea337bfdcd20875bd82f4c7ec7b1505d211",
+    "RiskOracle": "hash-1a47fd766eb021aa83cc44b5a729920842253510936cbe9a1545bf6dc7c2e974",
+    "SentinelCredit": "hash-47ea0c53777a68d79cf2f66b9171e4a1b588048c283b2b2504fc5ecfe1b686ae",
+    "AuditTrail": "hash-7e653fc142ddd4f1759aec0c2f4fb0537eb167cfb9771d12c37ae55f29c270fa",
+    "SentinelRegistry": "hash-d97d1f1ef30bf765fbf13aa11817fea409b67056dd59faf6de28c94ad85a5f82",
+    "SentinelAlertLog": "hash-f75ce1bc111d185c39d7c81d5a18b093749643957b8c3ba3309613401fb14b78",
+    "RiskPolicyManager": "hash-aaf7f48dbcdbd59996b9b181c7980bb6c5116a7c72005ce169b1619d94d7b2c4",
+}
+
+# Contract-version hashes (the actual deployed contract code). These are what
+# you pass to ContractCallBuilder.byHash() for entry-point calls and to
+# query_global_state for reading contract named keys / state.
+CONTRACT_HASHES = {
+    "AgentBehaviorIndex": "1a976fe839366c4399541055245695cf94626b3d99c0f3a6675ae761395d822b",
+    "SubscriberVault": "9a93db9c1f315f1ed34ee55e46f65ed28585f9529fb8427aedf937a6ea0d7bd0",
+    "RiskOracle": "234a34a71fb04625971373b06b73ac6dbc5f7d701f7e96621c752d73ccde80ff",
+    "SentinelCredit": "993d8947a6c8220539efaea87c7631c9fc45780c674406d48487bcf66fb1cbfb",
+    "AuditTrail": "cd1579001dcd923888baa9ea44b1df3b816de52ced44682a3042779d1d4d9932",
+    "SentinelRegistry": "9cce03a0e5d1aa3dab07da50afb4cb9eaba29973eb2b1e766cc6724a1e34e31e",
+    "SentinelAlertLog": "43f9b7df3f9f808db8b035c13ae0bac0b47335709abeafdc36e6a9bffe9b9322",
+    "RiskPolicyManager": "1027cb2a989b75d8b29b82cab60a8b12a892138a5704cdd4753a0862f65b1d85",
 }
 
 
@@ -62,8 +99,161 @@ async def casper_rpc_call(method: str, params: list) -> dict:
         return {"error": str(e)}
 
 
+# ---------------------------------------------------------------------------
+# Real on-chain read/write helpers (Casper 2.x)
+#
+# WHY we shell out to Node.js for WRITES: pycspr (Python) produces deploy
+# signatures that Casper 2.x rejects with "The deploy had an invalid approval"
+# (see worklog Task 1 — both pycspr 0.12.4 and 1.2.0 are incompatible). The
+# official casper-js-sdk v5 (Node.js) is the only sanctioned SDK that signs
+# Casper-2.x-compatible deploys. So ALL real WRITE deploys go through:
+#   - scripts/casper_call.cjs   (generic stored-contract call — any entry point)
+#   - x402/x402_helper.mjs      (x402 / SubscriberVault.open_vault specifically)
+# via asyncio.create_subprocess_exec. READS use the JSON-RPC query_global_state
+# method directly (no signing needed).
+# ---------------------------------------------------------------------------
+
+_VAULTWATCH_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_CASPER_CALL_HELPER = os.path.join(_VAULTWATCH_ROOT, "scripts", "casper_call.cjs")
+_X402_HELPER = os.path.join(_VAULTWATCH_ROOT, "x402", "x402_helper.mjs")
+_DEFAULT_SIGNER_PEM = os.path.join(_VAULTWATCH_ROOT, "secret_key.pem")
+
+
+async def _query_contract_state_real(contract_name: str, path: list) -> dict:
+    """Query a contract's named-key state via the REAL Casper JSON-RPC.
+
+    Uses query_global_state with the contract hash (not the package hash —
+    reading a contract's named keys / CLValues requires the contract-version
+    hash). Returns the raw RPC result dict, or {"error": ...} on failure.
+    """
+    contract_hash = CONTRACT_HASHES.get(contract_name, "")
+    if not contract_hash:
+        return {"error": f"unknown contract: {contract_name}"}
+
+    # Get a fresh state root hash for the latest block
+    srh_result = await casper_rpc_call("chain_get_state_root_hash", [])
+    srh = srh_result.get("state_root_hash") if isinstance(srh_result, dict) else None
+    if not srh:
+        return {"error": f"could not get state root hash: {srh_result}"}
+
+    key = f"hash-{contract_hash}" if not contract_hash.startswith("hash-") else contract_hash
+    return await casper_rpc_call(
+        "query_global_state",
+        [{"StateRootHash": srh}, key, path],
+    )
+
+
+async def _query_contract_exists_real(contract_name: str) -> dict:
+    """Verify a contract is deployed on-chain by querying its contract hash.
+
+    Returns {"exists": True, "contract_hash": ..., "entry_points": [...]} on
+    success, or {"exists": False, "error": ...} on failure. This is the
+    lightest real on-chain read that proves the contract is real and queryable.
+    """
+    contract_hash = CONTRACT_HASHES.get(contract_name, "")
+    if not contract_hash:
+        return {"exists": False, "error": f"unknown contract: {contract_name}"}
+
+    srh_result = await casper_rpc_call("chain_get_state_root_hash", [])
+    srh = srh_result.get("state_root_hash") if isinstance(srh_result, dict) else None
+    if not srh:
+        return {"exists": False, "error": f"no state root hash: {srh_result}"}
+
+    key = f"hash-{contract_hash}"
+    result = await casper_rpc_call("query_global_state", [{"StateRootHash": srh}, key, []])
+    if isinstance(result, dict) and result.get("error"):
+        return {"exists": False, "error": result["error"], "contract_hash": contract_hash}
+
+    stored_value = result.get("stored_value", {}) if isinstance(result, dict) else {}
+    contract = stored_value.get("Contract", {})
+    entry_points = [ep.get("name", "") for ep in contract.get("entry_points", [])]
+    return {
+        "exists": True,
+        "contract_hash": contract_hash,
+        "contract_package_hash": contract.get("contract_package_hash", ""),
+        "entry_points": entry_points,
+        "named_keys": [nk.get("name", "") for nk in contract.get("named_keys", [])],
+    }
+
+
+async def _submit_real_deploy(helper_path: str, request_payload: dict, command: str = None) -> dict:
+    """Shell out to a Node.js deploy helper (casper_call.cjs or x402_helper.mjs)
+    and return its parsed JSON response.
+
+    For casper_call.cjs: leave ``command`` as None (the payload is read from stdin).
+    For x402_helper.mjs: pass ``command`` (e.g. "submit-vault-payment") — it's
+    passed as a CLI arg and the payload is read from stdin (same pattern as
+    api/main.py's _x402_helper).
+
+    Returns {"success": bool, "deploy_hash": ..., ...} on success, or
+    {"success": False, "error": <reason>} on subprocess failure.
+    """
+    import asyncio as _asyncio
+    import json as _json
+
+    if not os.path.exists(helper_path):
+        return {"success": False, "error": f"helper not found: {helper_path}"}
+
+    # Build the argv: node <helper> [command]
+    argv = ["node", helper_path]
+    if command:
+        argv.append(command)
+
+    try:
+        proc = await _asyncio.create_subprocess_exec(
+            *argv,
+            cwd=_VAULTWATCH_ROOT,
+            stdin=_asyncio.subprocess.PIPE,
+            stdout=_asyncio.subprocess.PIPE,
+            stderr=_asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await proc.communicate(
+            _json.dumps(request_payload).encode("utf-8")
+        )
+        if proc.returncode != 0:
+            err = stderr.decode("utf-8", errors="replace").strip()
+            return {
+                "success": False,
+                "error": f"helper exited {proc.returncode}: {err[:500]}",
+            }
+        result = _json.loads(stdout.decode("utf-8"))
+        return result
+    except Exception as e:
+        return {"success": False, "error": f"subprocess error: {e}"}
+
+
+async def _submit_contract_call_real(
+    contract_name: str,
+    entry_point: str,
+    typed_args: dict,
+    payment_motes: int = 5_000_000_000,
+) -> dict:
+    """Submit a REAL stored-contract deploy via scripts/casper_call.cjs.
+
+    ``typed_args`` is a dict of {arg_name: {"type": "string|u8|u64|u512|bool",
+    "value": "..."}}. Returns the helper's JSON response.
+    """
+    contract_hash = CONTRACT_HASHES.get(contract_name, "")
+    if not contract_hash:
+        return {"success": False, "error": f"unknown contract: {contract_name}"}
+
+    payload = {
+        "contract_hash": contract_hash,
+        "entry_point": entry_point,
+        "args": typed_args,
+        "payment_motes": payment_motes,
+    }
+    if os.path.exists(_DEFAULT_SIGNER_PEM):
+        payload["signer_pem_path"] = _DEFAULT_SIGNER_PEM
+    if os.getenv("CASPER_RPC_URL"):
+        payload["rpc_url"] = os.environ["CASPER_RPC_URL"]
+    if os.getenv("VAULTWATCH_SIGNER_ALGO"):
+        payload["key_algorithm"] = os.environ["VAULTWATCH_SIGNER_ALGO"]
+
+    return await _submit_real_deploy(_CASPER_CALL_HELPER, payload)
+
+
 # ─── Tool 1: get_market_state ───────────────────────────────────────────────
-@mcp.tool()
 async def get_market_state() -> dict:
     """Get current Casper market state: CSPR price, DEX liquidity, network health."""
     with tracer.start_as_current_span("mcp.get_market_state"):
@@ -96,8 +286,10 @@ async def get_market_state() -> dict:
             }
 
 
+get_market_state_tool = mcp.tool()(get_market_state)
+
+
 # ─── Tool 2: detect_anomaly ─────────────────────────────────────────────────
-@mcp.tool()
 async def detect_anomaly(address: str, amount_cspr: float = 0.0, event_type: str = "token_transfer") -> dict:
     """
     Run anomaly classification on a Casper address or event.
@@ -135,8 +327,10 @@ async def detect_anomaly(address: str, amount_cspr: float = 0.0, event_type: str
         return result
 
 
+detect_anomaly_tool = mcp.tool()(detect_anomaly)
+
+
 # ─── Tool 3: get_rwa_risk ────────────────────────────────────────────────────
-@mcp.tool()
 async def get_rwa_risk(asset_type: str = "stablecoin") -> dict:
     """
     Get live RWA collateral health and real-world asset risk signals.
@@ -165,8 +359,10 @@ async def get_rwa_risk(asset_type: str = "stablecoin") -> dict:
         }
 
 
+get_rwa_risk_tool = mcp.tool()(get_rwa_risk)
+
+
 # ─── Tool 4: query_findings ──────────────────────────────────────────────────
-@mcp.tool()
 async def query_findings(severity: Optional[str] = None, limit: int = 10, risk_type: Optional[str] = None) -> dict:
     """
     Retrieve latest VaultWatch findings from on-chain audit trail.
@@ -186,8 +382,10 @@ async def query_findings(severity: Optional[str] = None, limit: int = 10, risk_t
         }
 
 
+query_findings_tool = mcp.tool()(query_findings)
+
+
 # ─── Tool 5: pay_for_intel ───────────────────────────────────────────────────
-@mcp.tool()
 async def pay_for_intel(caller_address: str, target_address: str, query_type: str = "standard") -> dict:
     """
     x402 pay-per-query: verify credit → deduct from SentinelCredit contract → serve premium finding.
@@ -200,8 +398,10 @@ async def pay_for_intel(caller_address: str, target_address: str, query_type: st
         return result
 
 
+pay_for_intel_tool = mcp.tool()(pay_for_intel)
+
+
 # ─── Tool 6: get_audit_trail ─────────────────────────────────────────────────
-@mcp.tool()
 async def get_audit_trail(address: str, limit: int = 5) -> dict:
     """
     Get on-chain audit log for any Casper address from AuditTrail contract.
@@ -218,8 +418,10 @@ async def get_audit_trail(address: str, limit: int = 5) -> dict:
     }
 
 
+get_audit_trail_tool = mcp.tool()(get_audit_trail)
+
+
 # ─── Tool 7: subscribe_alerts ────────────────────────────────────────────────
-@mcp.tool()
 async def subscribe_alerts(address: str, webhook_url: str, min_severity: str = "HIGH") -> dict:
     """
     Register address for VaultWatch push alerts on SentinelRegistry contract.
@@ -237,8 +439,10 @@ async def subscribe_alerts(address: str, webhook_url: str, min_severity: str = "
         }
 
 
+subscribe_alerts_tool = mcp.tool()(subscribe_alerts)
+
+
 # ─── Tool 8: get_agent_trace ─────────────────────────────────────────────────
-@mcp.tool()
 async def get_agent_trace(finding_id: int) -> dict:
     """
     Get OpenTelemetry trace for any VaultWatch agent execution.
@@ -276,17 +480,22 @@ async def get_agent_trace(finding_id: int) -> dict:
     }
 
 
+get_agent_trace_tool = mcp.tool()(get_agent_trace)
+
+
 # ─── Tool 9: get_risk_score ──────────────────────────────────────────────────
-@mcp.tool()
 async def get_risk_score(address: str) -> dict:
     """
     Get aggregate risk score for any Casper address from RiskOracle contract.
     Returns score 0–100, risk_type, confidence, and last_updated block.
     """
     with tracer.start_as_current_span("mcp.get_risk_score"):
-        package_hash = CONTRACT_PACKAGE_HASHES.get("RiskOracle", "")
-        on_chain_data = await casper_rpc_call("query_global_state", [{"StateIdentifier": "BlockHeight", "value": 0}, package_hash, ["scores", address]])
-        on_chain_error = on_chain_data.get("error", "")
+        # Read from the REAL RiskOracle contract (contract hash, not the
+        # package hash — reading a contract's named keys requires the
+        # contract-version hash).
+        on_chain_data = await _query_contract_state_real("RiskOracle", ["scores", address])
+        on_chain_error = on_chain_data.get("error", "") if isinstance(on_chain_data, dict) else ""
+        contract_hash = CONTRACT_HASHES.get("RiskOracle", "")
 
         score = 0
         risk_type = "none"
@@ -309,15 +518,18 @@ async def get_risk_score(address: str) -> dict:
             "confidence": confidence,
             "last_updated_block": 0,
             "contract": "RiskOracle",
-            "package_hash": package_hash,
+            "contract_hash": contract_hash,
+            "package_hash": CONTRACT_PACKAGE_HASHES.get("RiskOracle", ""),
             "high_risk": score >= 70,
             "data_source": "Casper Testnet RPC (real on-chain query)",
             "on_chain_verified": not bool(on_chain_error),
         }
 
 
+get_risk_score_tool = mcp.tool()(get_risk_score)
+
+
 # ─── Tool 10: stream_events ──────────────────────────────────────────────────
-@mcp.tool()
 async def stream_events(limit: int = 5) -> dict:
     """
     Get latest Casper SSE events from Sidecar stream.
@@ -332,8 +544,10 @@ async def stream_events(limit: int = 5) -> dict:
     }
 
 
+stream_events_tool = mcp.tool()(stream_events)
+
+
 # ─── Tool 11: get_agent_behavior ─────────────────────────────────────────────
-@mcp.tool()
 async def get_agent_behavior(agent_name: Optional[str] = None) -> dict:
     """
     Get agent performance metrics from AgentBehaviorIndex contract.
@@ -349,9 +563,11 @@ async def get_agent_behavior(agent_name: Optional[str] = None) -> dict:
         "AuditAgent",
         "IntelAgent",
     ]
+    # Query the REAL AgentBehaviorIndex contract (contract hash, not package).
+    on_chain_data = await _query_contract_state_real("AgentBehaviorIndex", ["metrics"])
+    on_chain_error = on_chain_data.get("error", "") if isinstance(on_chain_data, dict) else ""
+    contract_hash = CONTRACT_HASHES.get("AgentBehaviorIndex", "")
     package_hash = CONTRACT_PACKAGE_HASHES.get("AgentBehaviorIndex", "")
-    on_chain_data = await casper_rpc_call("query_global_state", [{"StateIdentifier": "BlockHeight", "value": 0}, package_hash, ["metrics"]])
-    on_chain_error = on_chain_data.get("error", "")
 
     result = {}
     for agent in agents:
@@ -364,6 +580,7 @@ async def get_agent_behavior(agent_name: Optional[str] = None) -> dict:
             "corrections_applied": 0,
             "safety_rejections": 0,
             "contract": "AgentBehaviorIndex",
+            "contract_hash": contract_hash,
             "package_hash": package_hash,
             "on_chain_verified": not bool(on_chain_error),
             "data_source": "Casper Testnet RPC (real on-chain query)",
@@ -376,8 +593,10 @@ async def get_agent_behavior(agent_name: Optional[str] = None) -> dict:
     }
 
 
+get_agent_behavior_tool = mcp.tool()(get_agent_behavior)
+
+
 # ─── Tool 12: upgrade_policy ─────────────────────────────────────────────────
-@mcp.tool()
 async def upgrade_policy(min_confidence: int = 75, critical_threshold: int = 80, high_threshold: int = 60) -> dict:
     """
     Hot-swap VaultWatch risk thresholds via RiskPolicyManager contract.
@@ -400,8 +619,10 @@ async def upgrade_policy(min_confidence: int = 75, critical_threshold: int = 80,
         }
 
 
+upgrade_policy_tool = mcp.tool()(upgrade_policy)
+
+
 # ─── Tool 13: get_alert_history ──────────────────────────────────────────────
-@mcp.tool()
 async def get_alert_history(address: str, limit: int = 10) -> dict:
     """
     Get historical alerts from SentinelAlertLog contract for an address.
@@ -417,8 +638,10 @@ async def get_alert_history(address: str, limit: int = 10) -> dict:
     }
 
 
+get_alert_history_tool = mcp.tool()(get_alert_history)
+
+
 # ─── Tool 14: register_subscriber ────────────────────────────────────────────
-@mcp.tool()
 async def register_subscriber(address: str, webhook_url: str, min_severity: str = "CRITICAL") -> dict:
     """
     Register address on SentinelRegistry contract for automated alerts.
@@ -433,8 +656,10 @@ async def register_subscriber(address: str, webhook_url: str, min_severity: str 
     }
 
 
+register_subscriber_tool = mcp.tool()(register_subscriber)
+
+
 # ─── Tool 15: get_subscriber_balance ─────────────────────────────────────────
-@mcp.tool()
 async def get_subscriber_balance(address: str) -> dict:
     """
     Check prepaid credit balance from SubscriberVault contract.
@@ -468,8 +693,16 @@ async def get_subscriber_balance(address: str) -> dict:
     }
 
 
+get_subscriber_balance_tool = mcp.tool()(get_subscriber_balance)
+
+
 # ─── Tool 16: agent_attestation  ───────────────────────
-@mcp.tool()
+# Implementation note: the raw async function keeps the public name
+# ``agent_attestation`` (so tests can call ``await srv.agent_attestation(...)``
+# directly — FastMCP's @mcp.tool() decorator returns a non-callable
+# FunctionTool). The MCP-registered tool object is held in
+# ``_agent_attestation_tool`` for the server runtime.
+
 async def agent_attestation(
     agent_name: str,
     decision_summary: str,
@@ -479,15 +712,15 @@ async def agent_attestation(
     """
     Attest an AI agent decision on-chain via AgentBehaviorIndex contract.
 
+    Submits a REAL ``AgentBehaviorIndex.record_decision()`` stored-contract
+    deploy to Casper testnet (via scripts/casper_call.cjs + casper-js-sdk v5,
+    because pycspr produces Casper-2.x-incompatible signatures — see worklog
+    Task 1). Returns the verified deploy hash + testnet.cspr.live link.
+
     This is VaultWatch's original primitive: every significant agent decision
     is cryptographically attested with a confidence score and evidence refs,
     then recorded on Casper. This creates an immutable, queryable audit trail
     of AI accountability — the foundation of the reputation formula.
-
-    Unlike Pantheon's "gods make predictions" model, VaultWatch attests the
-    DECISION PROCESS (confidence + evidence + correction history), not just
-    the outcome. This is what enables the Brier-score component of our
-    hybrid reputation formula.
 
     Args:
         agent_name: e.g. "AnomalyAgent", "RWAAgent"
@@ -499,37 +732,77 @@ async def agent_attestation(
         span.set_attribute("attestation.agent", agent_name)
         span.set_attribute("attestation.confidence", confidence)
 
-        attestation = {
-            "attestation_id": f"att_{int(time.time())}_{agent_name}",
+        confidence = max(0, min(100, int(confidence)))
+        attestation_id = f"att_{int(time.time())}_{agent_name}"
+        contract_hash = CONTRACT_HASHES.get("AgentBehaviorIndex", "")
+        package_hash = CONTRACT_PACKAGE_HASHES.get("AgentBehaviorIndex", "")
+
+        # record_decision signature (contracts/src/agent_behavior_index.rs):
+        #   record_decision(agent_name: String, confidence: u8,
+        #                   correction_applied: bool, safety_rejected: bool,
+        #                   block_height: u64)
+        typed_args = {
+            "agent_name": {"type": "string", "value": agent_name},
+            "confidence": {"type": "u8", "value": str(confidence)},
+            "correction_applied": {"type": "bool", "value": "false"},
+            "safety_rejected": {"type": "bool", "value": "false"},
+            "block_height": {"type": "u64", "value": "0"},
+        }
+
+        deploy_result = await _submit_contract_call_real(
+            "AgentBehaviorIndex", "record_decision", typed_args
+        )
+
+        success = bool(deploy_result.get("success"))
+        deploy_hash = deploy_result.get("deploy_hash", "")
+        block_hash = deploy_result.get("block_hash", "")
+        cost_motes = deploy_result.get("cost_motes", "0")
+        link = deploy_result.get("link", "")
+        err = deploy_result.get("error")
+
+        span.set_attribute("attestation.deploy_hash", deploy_hash or "")
+        span.set_attribute("attestation.on_chain_success", success)
+
+        return {
+            "attestation_id": attestation_id,
             "agent_name": agent_name,
             "decision_summary": decision_summary,
             "confidence": confidence,
             "evidence_refs": evidence_refs or [],
-            "contract": "AgentBehaviorIndex.record_decision()",
-            "status": "attested",
+            "contract": "AgentBehaviorIndex",
+            "entry_point": "record_decision",
+            "contract_hash": contract_hash,
+            "package_hash": package_hash,
+            "status": "attested_on_chain" if success else "attestation_failed",
+            "on_chain_verified": success,
+            "deploy_hash": deploy_hash,
+            "block_hash": block_hash,
+            "gas_cost_motes": cost_motes,
+            "explorer_url": link,
             "block_target": "casper-test",
             "timestamp": int(time.time()),
             "attestation_type": "AI_DECISION",
-            # What gets written on-chain:
             "on_chain_payload": {
                 "agent_name": agent_name,
                 "confidence": confidence,
                 "correction_applied": False,
                 "safety_rejected": False,
-                "block_height": "current",
             },
-            "explorer_url_template": "https://testnet.cspr.live/deploy/{deploy_hash}",
+            "error": err,
             "note": (
-                "This attestation is recorded via AgentBehaviorIndex.record_decision(). "
-                "It contributes to the agent's on-chain trust score and feeds the Brier "
-                "component of the hybrid reputation formula (see reputation_query tool)."
+                "This attestation is recorded via a REAL AgentBehaviorIndex.record_decision() "
+                "deploy on Casper testnet (casper-js-sdk v5). It contributes to the agent's "
+                "on-chain trust score and feeds the Brier component of the hybrid reputation "
+                "formula (see reputation_query tool)."
             ),
         }
-        return attestation
+
+
+_agent_attestation_tool = mcp.tool()(agent_attestation)
 
 
 # ─── Tool 17: reputation_query  ────────────────────────
-@mcp.tool()
+
 async def reputation_query(
     address: str,
     include_predictions: bool = True,
@@ -539,17 +812,15 @@ async def reputation_query(
     """
     Query the hybrid reputation score for any Casper address or agent.
 
+    Makes REAL on-chain RPC queries:
+      - For agents: query_global_state on AgentBehaviorIndex contract (metrics)
+      - For subscribers: query_global_state on SentinelCredit (balance) +
+        SubscriberVault (vault balance)
+
     This is VaultWatch's signature primitive — a SINGLE reputation number
     that combines:
       - Brier-scored AI agent accuracy (from AgentBehaviorIndex on-chain)
       - Escrow-derived economic trust (from SentinelCredit + SubscriberVault)
-
-    This hybrid approach is VaultWatch's original contribution: it combines
-    both signals in a single formula with tunable weights, reflecting that
-    AI accuracy is the core value but economic stake is the backstop.
-
-    The formula is published in docs/REPUTATION_FORMULA.md and accompanied
-    by a 12-check red-team checklist (docs/RED_TEAM_CHECKLIST.md).
 
     Args:
         address: Casper address OR agent name (e.g. "AnomalyAgent")
@@ -560,15 +831,14 @@ async def reputation_query(
     with tracer.start_as_current_span("mcp.reputation_query") as span:
         span.set_attribute("reputation.address", address[:20])
 
-        # Import the reputation engine
         sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
         from agents.reputation import (
             EscrowStake,
             reputation_for_agent,
             hybrid_reputation,
+            AgentPrediction,
         )
 
-        # If address looks like an agent name, use on-chain AgentBehaviorIndex
         agent_names = [
             "ScannerAgent",
             "AnomalyAgent",
@@ -578,55 +848,135 @@ async def reputation_query(
             "AuditAgent",
             "IntelAgent",
         ]
-        if address in agent_names:
-            # Pull from get_agent_behavior (already an existing tool) — synthetic here
-            # In production: call AgentBehaviorIndex.get_metrics(address) via pycspr
-            from vaultwatch_mcp.server import get_agent_behavior
 
-            behavior = await get_agent_behavior(address)
-            metrics = behavior.get("agents", {}).get(address, {})
+        # --- Real on-chain reads ---
+        # Query the AgentBehaviorIndex contract to verify it's real + read
+        # the agent's metrics (Odra Mapping<String, AgentMetrics> stored under
+        # the contract's "state" named key). For a fresh agent with no
+        # record_decision() calls, the metrics will be empty/None.
+        abi_result = await _query_contract_state_real(
+            "AgentBehaviorIndex", ["metrics", address]
+        )
+        # Use _query_contract_exists_real for the verified flag — it confirms
+        # the contract is deployed and queryable (the path-based read may
+        # return "not found" for a fresh address with no on-chain state yet,
+        # but the contract itself is real and verified).
+        abi_exists = await _query_contract_exists_real("AgentBehaviorIndex")
+        abi_verified = abi_exists.get("exists", False)
+        abi_metrics_raw = (
+            abi_result.get("stored_value", {}).get("CLValue", {}).get("parsed")
+            if isinstance(abi_result, dict) and not abi_result.get("error")
+            else None
+        )
+
+        # Query SentinelCredit for the address's balance (real RPC)
+        sc_result = await _query_contract_state_real(
+            "SentinelCredit", ["accounts", address]
+        )
+        sc_exists = await _query_contract_exists_real("SentinelCredit")
+        sc_verified = sc_exists.get("exists", False)
+
+        # Query SubscriberVault for the address's vault balance (real RPC)
+        sv_result = await _query_contract_state_real(
+            "SubscriberVault", ["accounts", address]
+        )
+        sv_exists = await _query_contract_exists_real("SubscriberVault")
+        sv_verified = sv_exists.get("exists", False)
+
+        span.set_attribute("reputation.abi_verified", abi_verified)
+        span.set_attribute("reputation.sc_verified", sc_verified)
+        span.set_attribute("reputation.sv_verified", sv_verified)
+
+        if address in agent_names:
+            # Parse real on-chain metrics if available; fall back to 0 when
+            # the agent has no record_decision() calls yet (fresh state).
+            real_decisions = 0
+            real_corrections = 0
+            real_safety = 0
+            real_avg_conf = 0
+            if isinstance(abi_metrics_raw, dict):
+                try:
+                    real_decisions = int(abi_metrics_raw.get("total_decisions", 0))
+                    real_corrections = int(abi_metrics_raw.get("corrections_applied", 0))
+                    real_safety = int(abi_metrics_raw.get("safety_rejections", 0))
+                    real_avg_conf = int(abi_metrics_raw.get("avg_confidence", 0))
+                except (ValueError, TypeError):
+                    pass
+
             agent_metrics = {
-                "total_decisions": metrics.get("total_decisions", len(_findings_store)),
-                "high_confidence_count": int(metrics.get("avg_confidence", 88) * metrics.get("total_decisions", 0) / 100),
-                "corrections_applied": metrics.get("corrections_applied", 0),
-                "safety_rejections": metrics.get("safety_rejections", 0),
-                "avg_confidence": metrics.get("avg_confidence", 88),
+                "total_decisions": real_decisions,
+                "high_confidence_count": int(real_avg_conf * real_decisions / 100) if real_decisions else 0,
+                "corrections_applied": real_corrections,
+                "safety_rejections": real_safety,
+                "avg_confidence": real_avg_conf,
             }
-            # Agents don't have escrow; use a default stake representing the protocol
             stake = EscrowStake(
                 address=address,
                 escrowed_balance_motes=50_000_000_000,  # 50 CSPR protocol stake
                 total_deposited_motes=50_000_000_000,
                 total_spent_motes=5_000_000_000,
                 slash_count=0,
-                successful_queries=metrics.get("total_decisions", 0),
+                successful_queries=real_decisions,
                 disputed_queries=0,
             )
             result = reputation_for_agent(address, agent_metrics, stake)
         else:
-            # Address is a subscriber — compute escrow-dominant reputation
-            # In production: query SentinelCredit + SubscriberVault via pycspr
+            # Subscriber — escrow-dominant reputation from REAL on-chain
+            # balances (SentinelCredit + SubscriberVault). When the address
+            # has no on-chain account yet, balances are 0 and the reputation
+            # reflects that (low trust for unknown addresses).
+            escrow_motes = 0
+            deposited_motes = 0
+            spent_motes = 0
+            for raw in (sc_result, sv_result):
+                if isinstance(raw, dict) and raw.get("error"):
+                    continue
+                try:
+                    sv = raw.get("stored_value", {}) if isinstance(raw, dict) else {}
+                    clv = sv.get("CLValue", {}).get("parsed", {})
+                    if isinstance(clv, dict):
+                        escrow_motes += int(clv.get("escrowed_balance", 0) or clv.get("balance", 0) or 0)
+                        deposited_motes += int(clv.get("total_deposits", 0) or clv.get("total_deposited", 0) or 0)
+                        spent_motes += int(clv.get("current_period_spent", 0) or clv.get("total_spent", 0) or 0)
+                except (ValueError, TypeError):
+                    pass
+
             stake = EscrowStake(
                 address=address,
-                escrowed_balance_motes=10_000_000_000,  # 10 CSPR
-                total_deposited_motes=15_000_000_000,
-                total_spent_motes=5_000_000_000,
+                escrowed_balance_motes=escrow_motes,
+                total_deposited_motes=deposited_motes,
+                total_spent_motes=spent_motes,
                 slash_count=0,
-                successful_queries=12,
+                successful_queries=max(0, deposited_motes // 1_000_000_000) if deposited_motes else 0,
                 disputed_queries=0,
             )
-            # Subscribers don't make predictions; use neutral Brier
-            from agents.reputation import AgentPrediction
-
             preds = [AgentPrediction(address, 0.5, 0.5)] if include_predictions else []
             result = hybrid_reputation(preds, stake, w_brier, w_escrow)
 
         result["query_address"] = address
+        result["on_chain_queries"] = {
+            "AgentBehaviorIndex": {
+                "contract_hash": CONTRACT_HASHES.get("AgentBehaviorIndex", ""),
+                "verified": abi_verified,
+            },
+            "SentinelCredit": {
+                "contract_hash": CONTRACT_HASHES.get("SentinelCredit", ""),
+                "verified": sc_verified,
+            },
+            "SubscriberVault": {
+                "contract_hash": CONTRACT_HASHES.get("SubscriberVault", ""),
+                "verified": sv_verified,
+            },
+        }
+        result["data_source"] = "Casper Testnet RPC (real on-chain query_global_state)"
         return result
 
 
+_reputation_query_tool = mcp.tool()(reputation_query)
+
+
 # ─── Tool 18: x402_subscribe  ──────────────────────────
-@mcp.tool()
+
 async def x402_subscribe(
     subscriber_address: str,
     plan: str = "standard",
@@ -636,15 +986,11 @@ async def x402_subscribe(
     """
     Subscribe to VaultWatch intelligence via the OFFICIAL x402 protocol.
 
-    Uses @make-software/casper-x402 SDK (not a home-rolled simulation).
-    Payment is escrowed in SubscriberVault contract; each subsequent
-    intelligence query deducts from the balance via the x402 payment flow.
-
-    This tool replaces the previous pay_for_intel stub, which simulated
-    x402 without the official SDK. The official SDK provides:
-      - Standardized 402 Payment Required response
-      - On-chain payment verification
-      - Facilitator-compatible payment protocol
+    Submits a REAL ``SubscriberVault.open_vault()`` deploy to Casper testnet
+    via the official @make-software/casper-x402 SDK (shells out to
+    x402/x402_helper.mjs — the same helper used by the FastAPI /x402/subscribe
+    route; see proof/PROOF.md §11 for the verified on-chain payment). Returns
+    the verified deploy hash + testnet.cspr.live link.
 
     Args:
         subscriber_address: Casper account opening the vault
@@ -659,9 +1005,51 @@ async def x402_subscribe(
 
         motes = int(payment_amount_cspr * 1_000_000_000)
         query_price = 1_000_000_000 if plan == "standard" else 5_000_000_000
+        contract_hash = CONTRACT_HASHES.get("SubscriberVault", "")
+        package_hash = CONTRACT_PACKAGE_HASHES.get("SubscriberVault", "")
+
+        # Build the x402 v2 PaymentRequired challenge (via the official SDK)
+        enc_payload = {
+            "resourceUrl": f"https://api.vaultwatch.io/intel/{subscriber_address}",
+            "description": f"VaultWatch {plan} subscription — {payment_amount_cspr:.2f} CSPR escrowed",
+            "plan": plan,
+            "amountMotes": str(motes),
+        }
+        enc_result = await _submit_real_deploy(
+            _X402_HELPER, enc_payload, command="encode-payment-required"
+        )
+
+        # Submit the REAL on-chain SubscriberVault.open_vault() deploy
+        submit_payload = {
+            "subscriberAddress": subscriber_address,
+            "amountMotes": motes,
+            "lockBlocks": lock_blocks,
+            "autoRenew": True,
+            "monthlySpendLimitMotes": "0",
+        }
+        if os.path.exists(_DEFAULT_SIGNER_PEM):
+            submit_payload["signerPemPath"] = _DEFAULT_SIGNER_PEM
+        if os.getenv("CASPER_RPC_URL"):
+            submit_payload["rpcUrl"] = os.environ["CASPER_RPC_URL"]
+        if os.getenv("VAULTWATCH_SIGNER_ALGO"):
+            submit_payload["keyAlgorithm"] = os.environ["VAULTWATCH_SIGNER_ALGO"]
+
+        submit_result = await _submit_real_deploy(
+            _X402_HELPER, submit_payload, command="submit-vault-payment"
+        )
+
+        success = bool(submit_result.get("success"))
+        deploy_hash = submit_result.get("deployHash", "")
+        block_hash = submit_result.get("blockHash", "")
+        gas_cost = submit_result.get("gasCostMotes", "0")
+        link = submit_result.get("link", "")
+        err = submit_result.get("error")
+
+        span.set_attribute("x402.deploy_hash", deploy_hash or "")
+        span.set_attribute("x402.on_chain_success", success)
 
         return {
-            "status": "subscription_initiated",
+            "status": "subscribed_on_chain" if success else "subscription_failed",
             "protocol": "x402-official",
             "sdk": "@make-software/casper-x402",
             "subscriber": subscriber_address,
@@ -669,57 +1057,56 @@ async def x402_subscribe(
             "escrow_deposit_motes": motes,
             "escrow_deposit_cspr": payment_amount_cspr,
             "query_price_motes": query_price,
-            "expected_queries": motes // query_price,
+            "expected_queries": motes // query_price if query_price else 0,
             "lock_blocks": lock_blocks,
-            "contracts": {
-                "vault": "SubscriberVault.open_vault()",
-                "credit": "SentinelCredit.deposit()",
-            },
-            "payment_flow": [
-                "1. Client requests intelligence query",
-                "2. VaultWatch returns HTTP 402 with x402 payment parameters",
-                "3. Client signs payment to SubscriberVault contract",
-                "4. On-chain payment verified by @make-software/casper-x402 facilitator",
-                "5. VaultWatch serves the intelligence finding",
-                "6. SubscriberVault.deduct() records the spend on-chain",
-            ],
-            "facilitator_url": os.getenv("X402_FACILITATOR_URL", "https://x402.testnet.casper.network"),
-            "sample_payment_tx_template": (
-                "casper-client put-deploy --chain-name casper-test "
-                "--session-path contracts/wasm/SubscriberVault.wasm "
-                "--payment-amount 150000000000 "
-                f"--session-arg 'subscriber_address:string={subscriber_address}' "
-                f"--session-arg 'initial_deposit:u512={motes}'"
-            ),
+            "contract": "SubscriberVault",
+            "entry_point": "open_vault",
+            "contract_hash": contract_hash,
+            "package_hash": package_hash,
+            "on_chain_verified": success,
+            "deploy_hash": deploy_hash,
+            "block_hash": block_hash,
+            "gas_cost_motes": gas_cost,
+            "explorer_url": link,
+            "payment_required_header": enc_result.get("paymentRequiredHeader", "") if isinstance(enc_result, dict) else "",
+            "error": err,
             "timestamp": int(time.time()),
         }
 
 
+_x402_subscribe_tool = mcp.tool()(x402_subscribe)
+
+
 # ─── Tool 19: policy_hotswap  ──────────────────────────
-@mcp.tool()
+
 async def policy_hotswap(
     new_min_confidence: int = 80,
     new_critical_threshold: int = 85,
     new_high_threshold: int = 65,
+    new_medium_threshold: int = 45,
+    max_retry_count: int = 2,
+    safety_rejection_threshold: int = 90,
     rollback_on_failure: bool = True,
     reason: str = "Policy tuning",
 ) -> dict:
     """
     Atomically hot-swap VaultWatch risk thresholds via RiskPolicyManager.
 
+    Submits a REAL ``RiskPolicyManager.upgrade_policy()`` deploy to Casper
+    testnet (via scripts/casper_call.cjs + casper-js-sdk v5). Also queries
+    the current on-chain policy first (real RPC) for the rollback snapshot.
+
     This is VaultWatch's live-governance primitive: change risk thresholds
     WITHOUT redeploying contracts. Agents read the updated policy every
-    decision cycle. Includes rollback safety — if the new policy causes
-    a spike in false positives within N decisions, it auto-reverts.
-
-    Differentiator: CTL and Pantheon require contract upgrades for policy
-    changes. VaultWatch's RiskPolicyManager stores thresholds as on-chain
-    Vars, updatable by the owner in a single transaction.
+    decision cycle.
 
     Args:
         new_min_confidence: minimum confidence to record a finding (0-100)
         new_critical_threshold: score threshold for CRITICAL severity
         new_high_threshold: score threshold for HIGH severity
+        new_medium_threshold: score threshold for MEDIUM severity
+        max_retry_count: SelfCorrection retry limit
+        safety_rejection_threshold: SafetyGuard block threshold
         rollback_on_failure: auto-revert if false-positive rate spikes
         reason: human-readable reason for the change (recorded on-chain)
     """
@@ -727,36 +1114,102 @@ async def policy_hotswap(
         span.set_attribute("policy.new_min_confidence", new_min_confidence)
         span.set_attribute("policy.rollback_enabled", rollback_on_failure)
 
-        # Capture previous policy for rollback
+        contract_hash = CONTRACT_HASHES.get("RiskPolicyManager", "")
+        package_hash = CONTRACT_PACKAGE_HASHES.get("RiskPolicyManager", "")
+
+        # 1. Query the REAL current policy on-chain (for rollback snapshot)
+        prev_result = await _query_contract_state_real(
+            "RiskPolicyManager", ["current_policy"]
+        )
         previous_policy = {
             "min_confidence_threshold": 75,
             "critical_score_threshold": 80,
             "high_score_threshold": 60,
+            "medium_score_threshold": 45,
         }
+        if isinstance(prev_result, dict) and not prev_result.get("error"):
+            try:
+                parsed = (
+                    prev_result.get("stored_value", {})
+                    .get("CLValue", {})
+                    .get("parsed", {})
+                )
+                if isinstance(parsed, dict):
+                    previous_policy = {
+                        "min_confidence_threshold": int(parsed.get("min_confidence_threshold", 75)),
+                        "critical_score_threshold": int(parsed.get("critical_score_threshold", 80)),
+                        "high_score_threshold": int(parsed.get("high_score_threshold", 60)),
+                        "medium_score_threshold": int(parsed.get("medium_score_threshold", 45)),
+                    }
+            except (ValueError, TypeError):
+                pass
+
+        # 2. Submit the REAL upgrade_policy() deploy
+        #    Signature (contracts/src/risk_policy_manager.rs):
+        #      upgrade_policy(min_confidence_threshold: u8,
+        #                     critical_score_threshold: u8,
+        #                     high_score_threshold: u8,
+        #                     medium_score_threshold: u8,
+        #                     max_retry_count: u8,
+        #                     safety_rejection_threshold: u8,
+        #                     block_height: u64,
+        #                     updated_by: String)
+        typed_args = {
+            "min_confidence_threshold": {"type": "u8", "value": str(new_min_confidence)},
+            "critical_score_threshold": {"type": "u8", "value": str(new_critical_threshold)},
+            "high_score_threshold": {"type": "u8", "value": str(new_high_threshold)},
+            "medium_score_threshold": {"type": "u8", "value": str(new_medium_threshold)},
+            "max_retry_count": {"type": "u8", "value": str(max_retry_count)},
+            "safety_rejection_threshold": {"type": "u8", "value": str(safety_rejection_threshold)},
+            "block_height": {"type": "u64", "value": "0"},
+            "updated_by": {"type": "string", "value": reason[:80]},
+        }
+        deploy_result = await _submit_contract_call_real(
+            "RiskPolicyManager", "upgrade_policy", typed_args
+        )
+
+        success = bool(deploy_result.get("success"))
+        deploy_hash = deploy_result.get("deploy_hash", "")
+        block_hash = deploy_result.get("block_hash", "")
+        cost_motes = deploy_result.get("cost_motes", "0")
+        link = deploy_result.get("link", "")
+        err = deploy_result.get("error")
+
+        span.set_attribute("policy.deploy_hash", deploy_hash or "")
+        span.set_attribute("policy.on_chain_success", success)
 
         return {
-            "status": "policy_swapped",
+            "status": "policy_swapped_on_chain" if success else "policy_swap_failed",
             "previous_policy": previous_policy,
             "new_policy": {
                 "min_confidence_threshold": new_min_confidence,
                 "critical_score_threshold": new_critical_threshold,
                 "high_score_threshold": new_high_threshold,
+                "medium_score_threshold": new_medium_threshold,
             },
             "reason": reason,
             "rollback_enabled": rollback_on_failure,
             "rollback_trigger": ("false_positive_rate > 30% within 50 decisions → auto-revert" if rollback_on_failure else "manual only"),
-            "contract": "RiskPolicyManager.set_threshold()",
+            "contract": "RiskPolicyManager",
+            "entry_point": "upgrade_policy",
+            "contract_hash": contract_hash,
+            "package_hash": package_hash,
+            "on_chain_verified": success,
+            "deploy_hash": deploy_hash,
+            "block_hash": block_hash,
+            "gas_cost_motes": cost_motes,
+            "explorer_url": link,
             "effective": "immediately — agents read policy every cycle",
             "atomic": True,
-            "verification_tx_template": (
-                f"RiskPolicyManager.set_threshold('min_confidence', {new_min_confidence}) → check via get_threshold('min_confidence')"
-            ),
+            "error": err,
             "timestamp": int(time.time()),
         }
 
 
+_policy_hotswap_tool = mcp.tool()(policy_hotswap)
+
+
 # ─── Tool 20: behavior_index_lookup  ───────────────────
-@mcp.tool()
 async def behavior_index_lookup(
     agent_names: Optional[list[str]] = None,
     sort_by: str = "trust_score",
@@ -835,6 +1288,9 @@ async def behavior_index_lookup(
             ),
             "timestamp": int(time.time()),
         }
+
+
+behavior_index_lookup_tool = mcp.tool()(behavior_index_lookup)
 
 
 if __name__ == "__main__":
