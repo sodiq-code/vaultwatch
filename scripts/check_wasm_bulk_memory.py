@@ -75,37 +75,193 @@ def read_section(data: bytes, offset: int) -> tuple[int, bytes, int]:
     return section_id, body, offset + section_size
 
 
-def scan_code_section_for_bulk_memory(code_section: bytes) -> list[str]:
-    """Scan the WASM code section (id 10) for bulk-memory opcodes.
+def _read_uleb(data: bytes, i: int) -> tuple[int, int]:
+    """Read unsigned LEB128."""
+    result = 0; shift = 0
+    while True:
+        b = data[i]; i += 1
+        result |= (b & 0x7F) << shift
+        shift += 7
+        if not (b & 0x80): break
+    return result, i
 
-    The code section contains N function bodies, each: size + locals + expr.
-    We walk the bytes looking for the 0xFC prefix (multi-byte opcodes used by
-    bulk-memory) followed by one of the bulk-memory sub-opcodes, plus the
-    standalone 0x0F (table.grow).
+
+def _read_sleb(data: bytes, i: int) -> tuple[int, int]:
+    """Read signed LEB128."""
+    result = 0; shift = 0
+    while True:
+        b = data[i]; i += 1
+        result |= (b & 0x7F) << shift
+        shift += 7
+        if not (b & 0x80):
+            if b & 0x40: result |= -(1 << shift)
+            break
+    return result, i
+
+
+def _skip_instruction(data: bytes, i: int) -> int:
+    """Return the index immediately after the instruction starting at ``i``.
+
+    Walks the WASM instruction stream opcode-by-opcode so that 0xFC 0x0A byte
+    sequences inside LEB128 immediates (e.g. i32.store offset=1404 encodes as
+    0x36 0x02 0xFC 0x0A) are NOT mistaken for real memory.copy instructions.
+
+    Raises ValueError on truly unknown opcodes (which would indicate either a
+    parser gap or a corrupt module).
+    """
+    op = data[i]; i += 1
+
+    # 0xFC-prefixed: bulk-memory + saturating trunc + reference-types
+    if op == 0xFC:
+        sub, i = _read_uleb(data, i)
+        if sub <= 0x07: return i                       # trunc_sat: no immediates
+        if sub == 0x08: _r, i = _read_uleb(data, i); i += 1; return i  # memory.init
+        if sub == 0x09: _r, i = _read_uleb(data, i); return i          # table.fill
+        if sub == 0x0A: _r, i = _read_uleb(data, i); _r, i = _read_uleb(data, i); return i  # memory.copy
+        if sub == 0x0B: _r, i = _read_uleb(data, i); return i          # memory.fill
+        if sub == 0x0C: _r, i = _read_uleb(data, i); _r, i = _read_uleb(data, i); return i  # table.copy
+        if sub == 0x0D: _r, i = _read_uleb(data, i); _r, i = _read_uleb(data, i); return i  # table.init
+        if sub == 0x0E: _r, i = _read_uleb(data, i); return i          # elem.drop
+        if sub == 0x0F: _r, i = _read_uleb(data, i); return i          # data.drop
+        if sub in (0x10, 0x11, 0x12, 0x13, 0x14): _r, i = _read_uleb(data, i); return i
+        raise ValueError(f"unknown 0xFC sub-opcode {sub}")
+
+    # 0xFD SIMD, 0xFE atomic, 0xFB exception handling
+    if op == 0xFD:
+        sub, i = _read_uleb(data, i)
+        raise ValueError(f"SIMD opcode 0xFD {sub} not supported")
+    if op == 0xFE:
+        sub, i = _read_uleb(data, i)
+        if sub <= 0x0E: _r, i = _read_uleb(data, i); _r, i = _read_uleb(data, i); return i
+        if sub in (0x30, 0x31): _r, i = _read_uleb(data, i); return i
+        if sub in (0x32, 0x33): i += 1; return i
+        raise ValueError(f"atomic opcode 0xFE {sub}")
+    if op == 0xFB:
+        sub, i = _read_uleb(data, i)
+        if sub == 0x00:  # try <blocktype>
+            bt = data[i]
+            if bt == 0x40 or (0x7C <= bt <= 0x7F): i += 1
+            else: _r, i = _read_sleb(data, i)
+            return i
+        if sub == 0x01: _r, i = _read_uleb(data, i); return i
+        if sub == 0x02: return i
+        if sub in (0x03, 0x04, 0x05, 0x06, 0x07): _r, i = _read_uleb(data, i); return i
+        raise ValueError(f"exception opcode 0xFB {sub}")
+
+    # No-immediate single-byte opcodes
+    if op in (0x00, 0x01, 0x05, 0x0B, 0x0F, 0x1A, 0x1B):
+        return i
+
+    # block / loop / if — blocktype immediate
+    if op in (0x02, 0x03, 0x04):
+        bt = data[i]
+        if bt == 0x40 or (0x7C <= bt <= 0x7F): i += 1
+        else: _r, i = _read_sleb(data, i)
+        return i
+
+    # br / br_if — labelidx
+    if op in (0x0C, 0x0D):
+        _r, i = _read_uleb(data, i); return i
+
+    # br_table — n labels + default
+    if op == 0x0E:
+        n, i = _read_uleb(data, i)
+        for _ in range(n + 1): _r, i = _read_uleb(data, i)
+        return i
+
+    # call — funcidx ; call_indirect — typeidx + tableidx
+    if op == 0x10:
+        _r, i = _read_uleb(data, i); return i
+    if op == 0x11:
+        _r, i = _read_uleb(data, i); _r, i = _read_uleb(data, i); return i
+
+    # select t
+    if op == 0x1C:
+        n, i = _read_uleb(data, i); i += n; return i
+
+    # local/global/table access (0x20-0x26)
+    if 0x20 <= op <= 0x26:
+        _r, i = _read_uleb(data, i); return i
+
+    # Memory load/store (0x28-0x3E) — align + offset
+    if 0x28 <= op <= 0x3E:
+        _r, i = _read_uleb(data, i); _r, i = _read_uleb(data, i); return i
+
+    # memory.size / memory.grow — 1 reserved byte
+    if op in (0x3F, 0x40):
+        i += 1; return i
+
+    # Constants
+    if op == 0x41: _r, i = _read_sleb(data, i); return i   # i32.const
+    if op == 0x42: _r, i = _read_sleb(data, i); return i   # i64.const
+    if op == 0x43: i += 4; return i                         # f32.const
+    if op == 0x44: i += 8; return i                         # f64.const
+
+    # Reference ops
+    if op == 0xD0: i += 1; return i                         # ref.null
+    if op == 0xD1: return i                                  # ref.is_null
+    if op == 0xD2: _r, i = _read_uleb(data, i); return i    # ref.func
+
+    # Numeric / comparison ops (0x45-0xC4): no immediates
+    if 0x45 <= op <= 0xC4:
+        return i
+
+    # 0xD3-0xD7: conservative no-immediate
+    if 0xD3 <= op <= 0xD7:
+        return i
+
+    raise ValueError(f"unknown opcode 0x{op:02x}")
+
+
+def scan_code_section_for_bulk_memory(code_section: bytes) -> list[str]:
+    """Scan the WASM code section (id 10) for REAL bulk-memory opcodes.
+
+    Walks the instruction stream opcode-by-opcode (not byte-by-byte) so that
+    0xFC 0x0A byte sequences inside LEB128 immediates are NOT flagged as
+    false positives. Only genuine ``memory.copy`` / ``memory.fill`` /
+    ``table.fill`` etc. instructions at instruction boundaries are flagged.
+
+    The code section contains N function bodies, each:
+    ``body_size:uleb + locals_vector + instruction_stream``.
+    The instruction stream ends with a single ``0x0B`` (end) byte.
     """
     findings: list[str] = []
     i = 0
-    n = len(code_section)
-    while i < n:
-        byte = code_section[i]
-        if byte == 0xFC:
-            # Multi-byte opcode: 0xFC followed by a LEB128 sub-opcode
-            if i + 1 < n:
-                sub = code_section[i + 1]
-                # Sub-opcodes < 128 are single-byte; we only care about the
-                # bulk-memory ones (0x09..0x0f)
-                key = 0x0FC00 + sub
-                if key in BULK_MEMORY_OPCODES:
-                    findings.append(f"0xFC 0x{sub:02x} ({BULK_MEMORY_OPCODES[key]}) at byte {i}")
-            i += 2
-            continue
-        # Note: we deliberately do NOT flag table.grow (0x0f) alone — Casper's
-        # wasmi accepts table.grow in some builds. The bulk-memory proposal
-        # proper is the 0xFC-prefixed family. If Casper rejects table.grow in
-        # your specific testnet version, uncomment the next 3 lines:
-        # if byte == TABLE_GROW:
-        #     findings.append(f"0x0f (table.grow) at byte {i}")
-        i += 1
+    func_count, i = _read_uleb(code_section, i)
+    for func_idx in range(func_count):
+        body_size, i = _read_uleb(code_section, i)
+        body_end = i + body_size
+        # Skip locals vector: count + [repeat:uleb + valtype:1byte]*
+        local_count, j = _read_uleb(code_section, i)
+        for _ in range(local_count):
+            _r, j = _read_uleb(code_section, j)
+            j += 1  # valtype byte
+        # Walk instruction stream
+        while j < body_end:
+            op = code_section[j]
+            if op == 0xFC:
+                sub_byte = code_section[j + 1] if j + 1 < body_end else 0xFF
+                if sub_byte < 0x80:
+                    key = 0x0FC00 + sub_byte
+                    if key in BULK_MEMORY_OPCODES:
+                        findings.append(
+                            f"0xFC 0x{sub_byte:02x} "
+                            f"({BULK_MEMORY_OPCODES[key]}) at byte {j} "
+                            f"(func #{func_idx})"
+                        )
+                # Skip the full instruction (sub-opcode + its immediates)
+                try:
+                    j = _skip_instruction(code_section, j)
+                except ValueError:
+                    # Unknown opcode — can't safely continue parsing this func.
+                    # Fall back to byte-scan for the rest of this function body.
+                    j += 2
+            else:
+                try:
+                    j = _skip_instruction(code_section, j)
+                except ValueError:
+                    j += 1
+        i = body_end
     return findings
 
 
