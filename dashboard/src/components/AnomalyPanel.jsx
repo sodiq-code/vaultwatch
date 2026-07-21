@@ -164,14 +164,23 @@ export default function AnomalyPanel({ api }) {
                     Detected Anomalies
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {result.anomalies.map((a, i) => (
-                      <span key={i} style={{
-                        background: '#3a1a1a', color: 'var(--danger)',
-                        borderRadius: 4, padding: '4px 10px', fontSize: 12, fontWeight: 600,
-                      }}>
-                        {a}
-                      </span>
-                    ))}
+                    {result.anomalies.map((a, i) => {
+                      // AnomalyAgent returns either a plain string or a
+                      // {metric, value, threshold, severity} object. Render
+                      // objects as a readable one-liner so React never tries
+                      // to render a raw object child (which throws error #31).
+                      const text = typeof a === 'string'
+                        ? a
+                        : `${a.metric}: ${a.value} (threshold ${a.threshold}, ${a.severity})`
+                      return (
+                        <span key={i} style={{
+                          background: '#3a1a1a', color: 'var(--danger)',
+                          borderRadius: 4, padding: '4px 10px', fontSize: 12, fontWeight: 600,
+                        }}>
+                          {text}
+                        </span>
+                      )
+                    })}
                   </div>
                 </div>
               ) : (
