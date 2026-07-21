@@ -20,7 +20,9 @@ from .anomaly_agent import AnomalyResult
 logger = logging.getLogger("vaultwatch.selfcorrection")
 tracer = trace.get_tracer("vaultwatch.selfcorrection_agent")
 
-groq_client = Groq(api_key=os.getenv("GROQ_API_KEY", "mock-key-for-testing"))
+# No module-level Groq client — injected per-instance via the constructor
+# (``groq_client=...``) or built from ``groq_api_key``. Tests inject a mock
+# client and exercise the real ``_retry_with_context`` production path.
 
 
 @dataclass
@@ -39,12 +41,17 @@ class SelfCorrectionAgent:
         output_queue: asyncio.Queue = None,
         policy_reader=None,
         groq_api_key: str = "",
+        groq_client=None,
     ):
         self.input_queue = input_queue or asyncio.Queue()
         self.output_queue = output_queue or asyncio.Queue()
         self.policy_reader = policy_reader
         self._groq_key = groq_api_key or os.getenv("GROQ_API_KEY", "")
-        self._client = Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
+        # Inject a pre-built client (tests / DI) or construct one from the key.
+        if groq_client is not None:
+            self._client = groq_client
+        else:
+            self._client = Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
 
     async def _call_groq(self, prompt: str) -> dict:
         if not self._client:
@@ -174,7 +181,14 @@ class SelfCorrectionAgent:
         with tracer.start_as_current_span("selfcorrection.retry") as span:
             span.set_attribute("correction.attempt", attempt)
 
-            response = groq_client.chat.completions.create(
+            # Fail-safe: with no model client configured, return the result
+            # unchanged so the retry loop terminates gracefully (the evaluate
+            # loop will SKIP the finding on persistently-low confidence).
+            if self._client is None:
+                span.set_attribute("correction.retry", "skipped_no_client")
+                return result
+
+            response = self._client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
                 messages=[
                     {

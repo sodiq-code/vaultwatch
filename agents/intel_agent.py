@@ -24,7 +24,9 @@ from .audit_agent import OnChainRecord
 logger = logging.getLogger("vaultwatch.intel")
 tracer = trace.get_tracer("vaultwatch.intel_agent")
 
-groq_client = Groq(api_key=os.getenv("GROQ_API_KEY", "mock-key-for-testing"))
+# No module-level Groq client — injected per-instance via the constructor
+# (``groq_client=...``) or built from ``groq_api_key``. The module-level
+# client previously here was dead code (every method already used self._client).
 
 # In-memory store for recent findings (production: use AuditTrail contract as source of truth)
 _findings_store: list[dict] = []
@@ -53,13 +55,18 @@ class IntelAgent:
         input_queue: asyncio.Queue = None,
         casper_client=None,
         groq_api_key: str = "",
+        groq_client=None,
     ):
         self.input_queue = input_queue or asyncio.Queue()
         self.casper_client = casper_client
         self.alert_count = 0
         self._groq_key = groq_api_key or os.getenv("GROQ_API_KEY", "")
         self._model = "compound-beta"
-        self._client = Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
+        # Inject a pre-built client (tests / DI) or construct one from the key.
+        if groq_client is not None:
+            self._client = groq_client
+        else:
+            self._client = Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
 
     async def _call_groq(self, prompt: str) -> dict:
         if not self._client:

@@ -76,6 +76,20 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+# ---------------------------------------------------------------------------
+# Security middleware — API-key auth + per-IP rate limiting.
+# Both are env-gated (disabled by default for dev/test; production sets
+# VAULTWATCH_API_KEY + RATE_LIMIT_PER_MINUTE). See api/security.py.
+#
+# Added BEFORE CORS so CORS is the outermost middleware (Starlette runs the
+# last-added middleware first). This guarantees every response — including
+# 401/429 short-circuits from Auth/RateLimit — carries CORS headers, so the
+# browser-based dashboard can read error responses.
+# ---------------------------------------------------------------------------
+from api.security import AuthMiddleware, RateLimitMiddleware  # noqa: E402
+
+app.add_middleware(AuthMiddleware)
+app.add_middleware(RateLimitMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

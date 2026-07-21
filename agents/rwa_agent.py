@@ -18,7 +18,9 @@ from .anomaly_agent import AnomalyResult
 logger = logging.getLogger("vaultwatch.rwa")
 tracer = trace.get_tracer("vaultwatch.rwa_agent")
 
-groq_client = Groq(api_key=os.getenv("GROQ_API_KEY", "mock-key-for-testing"))
+# No module-level Groq client — injected per-instance via the constructor
+# (``groq_client=...``) or built from ``groq_api_key``. Tests inject a mock
+# client and exercise the real ``_enrich`` production path.
 
 
 @dataclass
@@ -39,11 +41,16 @@ class RWAAgent:
         input_queue: asyncio.Queue = None,
         output_queue: asyncio.Queue = None,
         groq_api_key: str = "",
+        groq_client=None,
     ):
         self.input_queue = input_queue or asyncio.Queue()
         self.output_queue = output_queue or asyncio.Queue()
         self._groq_key = groq_api_key or os.getenv("GROQ_API_KEY", "")
-        self._client = Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
+        # Inject a pre-built client (tests / DI) or construct one from the key.
+        if groq_client is not None:
+            self._client = groq_client
+        else:
+            self._client = Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
         self._assets: list = []
 
     async def _call_groq(self, prompt: str) -> dict:
@@ -135,7 +142,22 @@ class RWAAgent:
             # Build targeted RWA query based on risk type
             query = self._build_rwa_query(result)
 
-            response = groq_client.chat.completions.create(
+            # Fail-safe: with no model client configured, return an un-enriched
+            # finding so the pipeline continues (downstream agents handle it).
+            if self._client is None:
+                span.set_attribute("rwa.enrich", "skipped_no_client")
+                return EnrichedFinding(
+                    base=result,
+                    rwa_context="RWA enrichment unavailable — no Groq client configured",
+                    collateral_signals=[],
+                    yield_data="",
+                    depeg_alerts=[],
+                    enriched=False,
+                    rwa_sources_count=0,
+                    enrichment_model="groq/compound",
+                )
+
+            response = self._client.chat.completions.create(
                 model="compound-beta",  # groq/compound with live web search
                 messages=[
                     {

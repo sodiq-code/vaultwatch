@@ -19,7 +19,9 @@ from .scanner_agent import RawEvent
 logger = logging.getLogger("vaultwatch.anomaly")
 tracer = trace.get_tracer("vaultwatch.anomaly_agent")
 
-groq_client = Groq(api_key=os.getenv("GROQ_API_KEY", "mock-key-for-testing"))
+# No module-level Groq client — injected per-instance via the constructor
+# (``groq_client=...``) or built from ``groq_api_key``. Tests inject a mock
+# client and exercise the real ``_classify`` production path.
 
 RISK_TYPES = [
     "rug_pull",
@@ -66,12 +68,17 @@ class AnomalyAgent:
         input_queue: asyncio.Queue = None,
         output_queue: asyncio.Queue = None,
         groq_api_key: str = "",
+        groq_client=None,
     ):
         self.input_queue = input_queue or asyncio.Queue()
         self.output_queue = output_queue or asyncio.Queue()
         self.decision_count = 0
         self._groq_key = groq_api_key or os.getenv("GROQ_API_KEY", "")
-        self._client = Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
+        # Inject a pre-built client (tests / DI) or construct one from the key.
+        if groq_client is not None:
+            self._client = groq_client
+        else:
+            self._client = Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
 
     async def _call_groq(self, prompt: str) -> dict:
         if not self._client:
@@ -148,7 +155,23 @@ class AnomalyAgent:
 
             prompt = self._build_prompt(event)
 
-            response = groq_client.chat.completions.create(
+            # Fail-safe: with no model client configured, return a medium-
+            # confidence result for manual review instead of raising.
+            if self._client is None:
+                span.set_attribute("anomaly.classify", "skipped_no_client")
+                return AnomalyResult(
+                    event=event,
+                    risk_type="anomalous_flow",
+                    severity="MEDIUM",
+                    confidence=0.5,
+                    reasoning="No Groq client configured — manual review required",
+                    raw_response="",
+                    model_used="llama-3.3-70b-versatile (unavailable)",
+                    tokens_used=0,
+                    latency_ms=int(time.time() * 1000) - start_ms,
+                )
+
+            response = self._client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
                 messages=[
                     {

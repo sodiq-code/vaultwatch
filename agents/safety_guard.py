@@ -36,11 +36,17 @@ class SafetyResult:
 class SafetyGuard:
     """Synchronous inline guard — called directly, not a queue consumer"""
 
-    def __init__(self, policy_reader=None, groq_api_key: str = ""):
+    def __init__(self, policy_reader=None, groq_api_key: str = "", groq_client=None):
         self.policy_reader = policy_reader
         self.rejection_threshold = 0.80
         self._groq_key = groq_api_key or os.getenv("GROQ_API_KEY", "")
-        self._client = Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
+        # Inject a pre-built client (tests / DI) or construct one from the key.
+        # When neither is supplied, self._client is None and validate() is
+        # fail-closed (rejects unverified findings).
+        if groq_client is not None:
+            self._client = groq_client
+        else:
+            self._client = Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
 
     async def _call_groq(self, prompt: str) -> dict:
         if not self._client:

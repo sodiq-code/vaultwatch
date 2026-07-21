@@ -23,7 +23,10 @@ CSPR_CLOUD_URL = os.getenv("CSPR_CLOUD_API_URL", "https://api.testnet.cspr.cloud
 CSPR_CLOUD_KEY = os.getenv("CSPR_CLOUD_API_KEY", "")
 SCAN_INTERVAL = int(os.getenv("SCAN_INTERVAL_SECONDS", "60"))
 
-groq_client = Groq(api_key=os.getenv("GROQ_API_KEY", "mock-key-for-testing"))
+# No module-level Groq client — the client is injected per-instance via the
+# constructor (``groq_client=...``) or built from ``groq_api_key``. This keeps
+# the agent deterministic + testable: tests inject a mock client and exercise
+# the real production code path (``_llm_filter``) instead of patching a global.
 
 
 @dataclass
@@ -38,12 +41,23 @@ class RawEvent:
 
 
 class ScannerAgent:
-    def __init__(self, event_queue: asyncio.Queue = None, groq_api_key: str = ""):
+    def __init__(
+        self,
+        event_queue: asyncio.Queue = None,
+        groq_api_key: str = "",
+        groq_client=None,
+    ):
         self.queue = event_queue or asyncio.Queue()
         self.last_block = 0
         self.scan_count = 0
         self._groq_key = groq_api_key or os.getenv("GROQ_API_KEY", "")
-        self._client = Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
+        # Inject a pre-built client (tests / DI) or construct one from the key.
+        # When neither is supplied, ``self._client`` is None and the LLM-backed
+        # methods degrade gracefully (no-key fallbacks).
+        if groq_client is not None:
+            self._client = groq_client
+        else:
+            self._client = Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
 
     async def _call_groq(self, prompt: str) -> dict:
         """Call Groq for protocol scan analysis."""
@@ -211,7 +225,15 @@ class ScannerAgent:
             ]
 
             try:
-                response = groq_client.chat.completions.create(
+                # Fail-safe: with no model client configured, skip filtering and
+                # pass all events through (the pipeline's anomaly layer will
+                # classify them). Never raise — _llm_filter is best-effort.
+                if self._client is None:
+                    span.set_attribute("scanner.llm_filter", "skipped_no_client")
+                    logger.debug("LLM filter skipped — no Groq client configured")
+                    return events
+
+                response = self._client.chat.completions.create(
                     model="llama-3.1-8b-instant",
                     messages=[
                         {

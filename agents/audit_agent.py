@@ -25,7 +25,9 @@ from .safety_guard import SafetyResult
 logger = logging.getLogger("vaultwatch.audit")
 tracer = trace.get_tracer("vaultwatch.audit_agent")
 
-groq_client = Groq(api_key=os.getenv("GROQ_API_KEY", "mock-key-for-testing"))
+# No module-level Groq client — injected per-instance via the constructor
+# (``groq_client=...``) or built from ``GROQ_API_KEY``. Tests inject a mock
+# client and exercise the real ``_format_description`` production path.
 
 
 def _parse_finding_count(state: object) -> Optional[int]:
@@ -82,6 +84,8 @@ class AuditAgent:
         input_queue: asyncio.Queue = None,
         output_queue: asyncio.Queue = None,
         casper_client=None,
+        groq_api_key: str = "",
+        groq_client=None,
     ):
         self.input_queue = input_queue or asyncio.Queue()
         self.output_queue = output_queue or asyncio.Queue()
@@ -89,6 +93,15 @@ class AuditAgent:
         self._log: list = []
         # Legacy compat
         self.casper_client = casper_client
+        # Groq client for _format_description (LLM-formatted on-chain text).
+        # Injected via constructor (tests / DI) or built from groq_api_key /
+        # GROQ_API_KEY. When neither is supplied, _format_description falls
+        # back to a static template string — on-chain writes still succeed.
+        if groq_client is not None:
+            self._client = groq_client
+        else:
+            _key = groq_api_key or os.getenv("GROQ_API_KEY", "")
+            self._client = Groq(api_key=_key or "mock-key") if _key else None
 
     async def record(self, action: str, actor: str, details: str = "") -> str:
         """Record an audit entry on-chain (or mock). Returns deploy hash.
@@ -287,7 +300,14 @@ class AuditAgent:
         """Use fast LLM to format a concise on-chain description"""
         base = finding.base
         try:
-            response = groq_client.chat.completions.create(
+            # Fail-safe: with no model client configured, use the static
+            # template — the on-chain write must never block on LLM availability.
+            if self._client is None:
+                return (
+                    f"{base.risk_type} | {base.severity} | "
+                    f"{base.confidence:.0%} confidence | {base.event.address[:20]}"
+                )
+            response = self._client.chat.completions.create(
                 model="llama-3.1-8b-instant",
                 messages=[
                     {
