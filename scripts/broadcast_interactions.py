@@ -19,7 +19,10 @@ Entry-point mapping (actual Odra contract signatures, verified against source):
   SentinelRegistry    -> register(address, webhook_url, min_severity, timestamp)
   SentinelCredit      -> deposit(account_address, amount)
   AgentBehaviorIndex  -> record_decision(agent_name, confidence, correction_applied, safety_rejected, block_height)
-  RiskPolicyManager   -> upgrade_policy(min_confidence_threshold, critical_score_threshold, high_score_threshold, medium_score_threshold, max_retry_count, safety_rejection_threshold, block_height, updated_by)
+  RiskPolicyManager   -> upgrade_policy(min_confidence_threshold, critical_score_threshold,
+                                          high_score_threshold, medium_score_threshold,
+                                          max_retry_count, safety_rejection_threshold,
+                                          block_height, updated_by)
   SubscriberVault     -> open_vault(subscriber_address, initial_deposit, lock_blocks, auto_renew, monthly_spend_limit, current_block)
 
 Usage:
@@ -89,7 +92,9 @@ INTERACTIONS = [
             ["risk_type", "String", "price_manipulation"],
             ["severity", "String", "HIGH"],
             ["confidence", "U8", 92],
-            ["description", "String", "AI-detected 22% price drop in 1h on CasperSwap DEX pair CSPR/USDT. Anomaly agent classified as high-risk flash crash pattern."],
+            ["description", "String",
+             "AI-detected 22% price drop in 1h on CasperSwap DEX pair CSPR/USDT. "
+             "Anomaly agent classified as high-risk flash crash pattern."],
             ["rwa_enriched", "Bool", False],
             ["agent_model", "String", "llama-3.3-70b-versatile"],
             ["block_height", "U64", 0],
@@ -105,7 +110,9 @@ INTERACTIONS = [
             ["risk_type", "String", "collateral_drain"],
             ["severity", "String", "MEDIUM"],
             ["confidence", "U8", 78],
-            ["description", "String", "RWA agent detected unusual collateral withdrawal pattern from tokenized treasury vault. Volume exceeds 3-sigma threshold."],
+            ["description", "String",
+             "RWA agent detected unusual collateral withdrawal pattern from "
+             "tokenized treasury vault. Volume exceeds 3-sigma threshold."],
             ["rwa_enriched", "Bool", True],
             ["agent_model", "String", "llama-3.3-70b-versatile"],
             ["block_height", "U64", 0],

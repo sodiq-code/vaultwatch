@@ -129,12 +129,12 @@ def execute_upgrade(rpc_url: str) -> dict:
         "package_hash_key_name": RPM_PACKAGE_KEY_NAME,
         "rpc_url": rpc_url,
     }
-    log(f"Deploying v2 Wasm as session code (add_contract_version)...")
+    log("Deploying v2 Wasm as session code (add_contract_version)...")
     log(f"  v1 package hash: {RPM_PACKAGE_HASH}")
     log(f"  v2 wasm: {V2_WASM.name} ({V2_WASM.stat().st_size} bytes)")
     result = run_node_helper(UPGRADE_HELPER, request)
     if result.get("success"):
-        log(f"  ✅ UPGRADE VERIFIED SUCCESS on-chain")
+        log("  ✅ UPGRADE VERIFIED SUCCESS on-chain")
         log(f"     deploy:  {result['deploy_hash']}")
         log(f"     block:   {result['block_hash']}")
         log(f"     cost:    {int(result['cost_motes'])/1e9:.4f} CSPR")
@@ -248,7 +248,7 @@ def verify(rpc_url: str, upgrade_result: dict | None) -> dict:
     if upgrade_result is not None and v2_contract_hash:
         # Check 4: get_policy_with_reasoning (v2-only) — success proves new EP works
         # AND that v2 reads v1's shared state (get_or_revert would fail otherwise).
-        log(f"Check 4 — calling get_policy_with_reasoning on v2...")
+        log("Check 4 — calling get_policy_with_reasoning on v2...")
         r4 = call_entrypoint(rpc_url, v2_contract_hash, "get_policy_with_reasoning", [])
         log(f"  -> success={r4.get('success')} cost={r4.get('cost_motes')}")
         report["checks"]["call_get_policy_with_reasoning_on_v2"] = {
@@ -260,7 +260,7 @@ def verify(rpc_url: str, upgrade_result: dict | None) -> dict:
         }
 
         # Check 5: get_current_policy on v2 — v1 entry point still works on the superset.
-        log(f"Check 5 — calling get_current_policy on v2 (v1 entry point on upgraded package)...")
+        log("Check 5 — calling get_current_policy on v2 (v1 entry point on upgraded package)...")
         r5 = call_entrypoint(rpc_url, v2_contract_hash, "get_current_policy", [])
         log(f"  -> success={r5.get('success')} cost={r5.get('cost_motes')}")
         report["checks"]["call_get_current_policy_on_v2"] = {

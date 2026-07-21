@@ -29,7 +29,9 @@ DEFAULT_AUTH = os.getenv("CSPR_CLOUD_API_KEY", "")
 EXPECTED_ENTRY_POINTS = {
     "AuditTrail": ["init", "record_finding", "get_finding", "get_count", "transfer_ownership"],
     "RiskOracle": ["init", "update_score", "get_risk_score", "is_high_risk", "transfer_ownership"],
-    "SentinelCredit": ["init", "deposit", "deduct_query", "get_balance", "get_account", "get_query_price", "get_premium_price", "get_total_revenue", "set_prices", "transfer_ownership"],
+    "SentinelCredit": ["init", "deposit", "deduct_query", "get_balance", "get_account",
+                       "get_query_price", "get_premium_price", "get_total_revenue",
+                       "set_prices", "transfer_ownership"],
     "SentinelRegistry": ["init", "register", "deregister", "increment_alert_count", "get_subscriber", "is_active", "get_count", "transfer_ownership"],
     "SentinelAlertLog": ["init", "log_alert", "get_log", "get_address_log_ids", "get_total_count"],
     "AgentBehaviorIndex": ["init", "record_decision", "get_metrics", "get_trust_score", "get_agent_count"],

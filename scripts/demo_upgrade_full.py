@@ -218,12 +218,12 @@ def step_install_v1(rpc_url: str) -> dict:
         "package_hash_key_name": PACKAGE_HASH_KEY_NAME,
         "rpc_url": rpc_url,
     }
-    log(f"Step 1 — INSTALL v1 RiskPolicyManager (fresh, upgradable package)...")
+    log("Step 1 — INSTALL v1 RiskPolicyManager (fresh, upgradable package)...")
     log(f"  v1 wasm: {V1_WASM.name} ({V1_WASM.stat().st_size} bytes)")
     log(f"  payment: {INSTALL_PAYMENT_MOTES/1e9:.0f} CSPR")
     result = run_node_helper(INSTALL_HELPER, request, timeout=300)
     if result.get("success"):
-        log(f"  ✅ v1 INSTALL VERIFIED SUCCESS on-chain")
+        log("  ✅ v1 INSTALL VERIFIED SUCCESS on-chain")
         log(f"     deploy:  {result['deploy_hash']}")
         log(f"     block:   {result['block_hash']}")
         log(f"     cost:    {int(result['cost_motes'])/1e9:.4f} CSPR")
@@ -264,13 +264,13 @@ def step_upgrade_v2(rpc_url: str, package_hash: str) -> dict:
         "package_hash_key_name": PACKAGE_HASH_KEY_NAME,
         "rpc_url": rpc_url,
     }
-    log(f"Step 4 — UPGRADE to v2 via add_contract_version()...")
+    log("Step 4 — UPGRADE to v2 via add_contract_version()...")
     log(f"  v1 package hash: {package_hash}")
     log(f"  v2 wasm: {V2_WASM.name} ({V2_WASM.stat().st_size} bytes)")
     log(f"  payment: {UPGRADE_PAYMENT_MOTES/1e9:.0f} CSPR")
     result = run_node_helper(UPGRADE_HELPER, request, timeout=300)
     if result.get("success"):
-        log(f"  ✅ v2 UPGRADE VERIFIED SUCCESS on-chain")
+        log("  ✅ v2 UPGRADE VERIFIED SUCCESS on-chain")
         log(f"     deploy:  {result['deploy_hash']}")
         log(f"     block:   {result['block_hash']}")
         log(f"     cost:    {int(result['cost_motes'])/1e9:.4f} CSPR")
