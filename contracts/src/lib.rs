@@ -1,6 +1,27 @@
 #![cfg_attr(not(test), no_std)]
 #![cfg_attr(not(test), no_main)]
 
+use odra::prelude::OdraError;
+
+/// Constructs a user error with the given code that compiles on BOTH the
+/// wasm32 deployment target and the host (cargo test) target.
+///
+/// Odra 2.9.0 cfg-gates the `ExecutionError::User` variant: it is
+/// `User(u16)` on wasm32 but `User(UserError { code, message })` on host,
+/// where `UserError` has private fields. `OdraError::user(...)` is the public
+/// cfg-gated constructor that works on both targets, so all contracts route
+/// their user-error reverts through this helper to stay portable.
+pub fn user_err(code: u16) -> OdraError {
+    #[cfg(target_arch = "wasm32")]
+    {
+        OdraError::user(code)
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        OdraError::user(code, "user error")
+    }
+}
+
 pub mod audit_trail;
 pub mod risk_oracle;
 pub mod sentinel_credit;

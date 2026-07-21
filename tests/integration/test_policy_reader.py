@@ -64,7 +64,8 @@ def test_compute_dict_address_distinct_per_index():
 
 
 def test_parse_risk_policy_bytes_round_trip():
-    """parse_risk_policy_bytes must correctly decode a serialised RiskPolicy."""
+    """parse_risk_policy_bytes must correctly decode a serialised RiskPolicy
+    with a legacy String ``updated_by`` (the currently-deployed v1 format)."""
     # Build a minimal RiskPolicy bytesrepr: version=2, thresholds, block, updated_by
     updated_by = b"admin"
     data = (
@@ -85,6 +86,48 @@ def test_parse_risk_policy_bytes_round_trip():
     assert policy["updated_at_block"] == 1500000
     assert policy["updated_by"] == "admin"
     assert policy["source"] == "on-chain"
+
+
+def test_parse_risk_policy_bytes_address_updated_by():
+    """parse_risk_policy_bytes must decode the NEW Address-typed ``updated_by``
+    (Casper Key: 1-byte tag + 32-byte hash) emitted by the updated Rust source.
+
+    Tag 0 = Key::Account → ``account-hash-<64 hex>``.
+    Tag 1 = Key::Hash     → ``hash-<64 hex>``.
+    """
+    account_hash_bytes = bytes.fromhex(
+        "3b4ffcfb21411ced5fc1560c3f6ffed86f4885e5ea05cde49d90962a48a14d95"
+    )
+    # Address::Account → Key tag 0 + 32-byte account hash
+    data = (
+        struct.pack("<I", 5)  # version: u32
+        + bytes([70, 85, 65, 45, 2, 88])  # 6 u8 thresholds
+        + struct.pack("<Q", 2000000)  # updated_at_block: u64
+        + bytes([0])  # Key tag 0 = Account
+        + account_hash_bytes  # 32-byte AccountHash
+    )
+    policy = parse_risk_policy_bytes(data)
+    assert policy["version"] == 5
+    assert policy["min_confidence_threshold"] == 70
+    assert policy["safety_rejection_threshold"] == 88
+    assert policy["updated_at_block"] == 2000000
+    assert policy["updated_by"] == "account-hash-" + account_hash_bytes.hex()
+    assert policy["source"] == "on-chain"
+
+    # Address::Contract → Key tag 1 + 32-byte package hash
+    pkg_hash_bytes = bytes.fromhex(
+        "7ba9daac84bebee8111c186588f21ebca35550b6cf1244e71768bd871938be6a"
+    )
+    data2 = (
+        struct.pack("<I", 6)
+        + bytes([70, 85, 65, 45, 2, 88])
+        + struct.pack("<Q", 2000001)
+        + bytes([1])  # Key tag 1 = Hash
+        + pkg_hash_bytes
+    )
+    policy2 = parse_risk_policy_bytes(data2)
+    assert policy2["version"] == 6
+    assert policy2["updated_by"] == "hash-" + pkg_hash_bytes.hex()
 
 
 def test_parse_risk_policy_bytes_too_short_raises():

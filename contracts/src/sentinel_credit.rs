@@ -8,6 +8,17 @@ use odra::casper_types::U512;
 
 use odra::prelude::*;
 
+/// Event emitted whenever CSPR credits are deposited into an account.
+///
+/// Subscribers / the revenue dashboard listen to this event to track live
+/// credit inflows without polling `get_balance`.
+#[odra::event]
+pub struct CreditDeposited {
+    pub account_address: String,
+    pub amount: U512,
+    pub new_balance: U512,
+}
+
 #[odra::odra_type]
 pub struct CreditAccount {
     pub owner: String,
@@ -17,7 +28,7 @@ pub struct CreditAccount {
     pub query_count: u64,
 }
 
-#[odra::module]
+#[odra::module(events = [CreditDeposited])]
 pub struct SentinelCredit {
     accounts: Mapping<String, CreditAccount>,
     query_price: Var<U512>,   // price per standard query in motes
@@ -50,7 +61,7 @@ impl SentinelCredit {
         self.assert_owner();
         let attached = self.env().attached_value();
         if attached != amount {
-            self.env().revert(ExecutionError::User(2));
+            self.env().revert(crate::user_err(2));
         }
         let mut account = self.accounts.get(&account_address).unwrap_or(CreditAccount {
             owner: account_address.clone(),
@@ -61,7 +72,15 @@ impl SentinelCredit {
         });
         account.balance += amount;
         account.total_deposited += amount;
+        let new_balance = account.balance;
         self.accounts.set(&account_address, account);
+
+        // Emit the on-chain event so subscribers / revenue dashboard are notified.
+        self.env().emit_event(CreditDeposited {
+            account_address,
+            amount,
+            new_balance,
+        });
     }
 
     /// Withdraw CSPR credits from an account — transfers real CSPR from the
@@ -75,7 +94,7 @@ impl SentinelCredit {
         match self.accounts.get(&account_address) {
             Some(mut account) => {
                 if account.balance < amount {
-                    self.env().revert(ExecutionError::User(3));
+                    self.env().revert(crate::user_err(3));
                 }
                 account.balance -= amount;
                 self.accounts.set(&account_address, account);
@@ -83,7 +102,7 @@ impl SentinelCredit {
                 let caller = self.env().caller();
                 self.env().transfer_tokens(&caller, &amount);
             }
-            None => self.env().revert(ExecutionError::User(4)),
+            None => self.env().revert(crate::user_err(4)),
         }
     }
 
@@ -155,9 +174,9 @@ impl SentinelCredit {
 
     fn assert_owner(&self) {
         let caller = self.env().caller();
-        let owner = self.owner.get_or_revert_with(ExecutionError::User(1));
+        let owner = self.owner.get_or_revert_with(crate::user_err(1));
         if caller != owner {
-            self.env().revert(ExecutionError::User(1));
+            self.env().revert(crate::user_err(1));
         }
     }
 }
@@ -170,7 +189,7 @@ mod tests {
     #[test]
     fn test_deposit_and_balance() {
         let env = odra_test::env();
-        let mut contract = SentinelCreditHostRef::deploy(&env, InitArgs {
+        let mut contract = SentinelCredit::deploy(&env, SentinelCreditInitArgs {
             query_price: U512::from(1_000_000u64),
             premium_price: U512::from(5_000_000u64),
         });
@@ -184,7 +203,7 @@ mod tests {
     #[test]
     fn test_deposit_increases_contract_balance() {
         let env = odra_test::env();
-        let mut contract = SentinelCreditHostRef::deploy(&env, InitArgs {
+        let mut contract = SentinelCredit::deploy(&env, SentinelCreditInitArgs {
             query_price: U512::from(1_000_000u64),
             premium_price: U512::from(5_000_000u64),
         });
@@ -200,7 +219,7 @@ mod tests {
     #[test]
     fn test_deduct_query_success() {
         let env = odra_test::env();
-        let mut contract = SentinelCreditHostRef::deploy(&env, InitArgs {
+        let mut contract = SentinelCredit::deploy(&env, SentinelCreditInitArgs {
             query_price: U512::from(1_000_000u64),
             premium_price: U512::from(5_000_000u64),
         });
@@ -215,7 +234,7 @@ mod tests {
     #[test]
     fn test_deduct_query_insufficient_credit() {
         let env = odra_test::env();
-        let mut contract = SentinelCreditHostRef::deploy(&env, InitArgs {
+        let mut contract = SentinelCredit::deploy(&env, SentinelCreditInitArgs {
             query_price: U512::from(1_000_000u64),
             premium_price: U512::from(5_000_000u64),
         });
@@ -226,7 +245,7 @@ mod tests {
     #[test]
     fn test_withdraw_transfers_real_cspr() {
         let env = odra_test::env();
-        let mut contract = SentinelCreditHostRef::deploy(&env, InitArgs {
+        let mut contract = SentinelCredit::deploy(&env, SentinelCreditInitArgs {
             query_price: U512::from(1_000_000u64),
             premium_price: U512::from(5_000_000u64),
         });
@@ -246,7 +265,7 @@ mod tests {
     #[test]
     fn test_withdraw_insufficient_balance_reverts() {
         let env = odra_test::env();
-        let mut contract = SentinelCreditHostRef::deploy(&env, InitArgs {
+        let mut contract = SentinelCredit::deploy(&env, SentinelCreditInitArgs {
             query_price: U512::from(1_000_000u64),
             premium_price: U512::from(5_000_000u64),
         });
@@ -264,7 +283,7 @@ mod tests {
     #[test]
     fn test_withdraw_nonexistent_account_reverts() {
         let env = odra_test::env();
-        let mut contract = SentinelCreditHostRef::deploy(&env, InitArgs {
+        let mut contract = SentinelCredit::deploy(&env, SentinelCreditInitArgs {
             query_price: U512::from(1_000_000u64),
             premium_price: U512::from(5_000_000u64),
         });

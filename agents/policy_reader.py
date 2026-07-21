@@ -28,7 +28,12 @@ the ``bytesrepr``-serialised ``RiskPolicy`` struct:
     version: u32 (4 LE) | min_confidence_threshold: u8 | critical_score_threshold: u8
     high_score_threshold: u8 | medium_score_threshold: u8 | max_retry_count: u8
     safety_rejection_threshold: u8 | updated_at_block: u64 (8 LE)
-    updated_by: String (u32 LE length ++ UTF-8)
+    updated_by: Address (Key: 1-byte tag ++ 32-byte hash)  [new source]
+      — or —
+    updated_by: String (u32 LE length ++ UTF-8)            [live testnet v1]
+
+The parser auto-detects the ``updated_by`` format so it works against both the
+currently-deployed (String) contract and a redeployed (Address) contract.
 
 All reads are free ``query_global_state`` JSON-RPC calls — no gas, no signing.
 On any error the reader falls back to the contract's default policy
@@ -155,15 +160,68 @@ def _get_state_uref_addr(contract_hash: str) -> bytes:
 # ---------------------------------------------------------------------------
 # RiskPolicy CLValue parser
 # ---------------------------------------------------------------------------
+
+# Casper Key tag values (from casper-types Key enum). Address maps to Account
+# (tag 0) or Hash (tag 1) — the only two variants an Odra Address can produce.
+_KEY_TAG_ACCOUNT = 0
+_KEY_TAG_HASH = 1
+_KEY_PAYLOAD_LEN = 32  # AccountHash / HashAddr are both 32 bytes
+
+
+def _parse_updated_by(remaining: bytes) -> str:
+    """Decode the polymorphic ``updated_by`` tail of a serialised RiskPolicy.
+
+    Auto-detects whether the tail is an Odra ``Address`` (Casper Key: 1-byte tag
+    + 32-byte hash = 33 bytes) or a legacy ``String`` (u32 LE length + UTF-8)
+    and returns a human-readable formatted string in either case:
+
+      * Address::Account → ``"account-hash-<64 hex>"``
+      * Address::Contract → ``"hash-<64 hex>"``
+      * String → the original UTF-8 label (e.g. ``"admin"``)
+    """
+    # Address (Key) case: exactly 33 bytes, tag ∈ {0=Account, 1=Hash}.
+    if len(remaining) == 1 + _KEY_PAYLOAD_LEN and remaining[0] in (
+        _KEY_TAG_ACCOUNT,
+        _KEY_TAG_HASH,
+    ):
+        tag = remaining[0]
+        hash_hex = remaining[1 : 1 + _KEY_PAYLOAD_LEN].hex()
+        if tag == _KEY_TAG_ACCOUNT:
+            return f"account-hash-{hash_hex}"
+        return f"hash-{hash_hex}"
+
+    # Legacy String case: u32 LE length prefix ++ UTF-8 bytes.
+    if len(remaining) < 4:
+        # Too short even for an empty string — return what we have.
+        return remaining.decode("utf-8", errors="replace")
+    str_len = struct.unpack_from("<I", remaining, 0)[0]
+    raw = remaining[4 : 4 + str_len]
+    return raw.decode("utf-8", errors="replace")
+
+
 def parse_risk_policy_bytes(data: bytes) -> Dict[str, Any]:
     """Parse the ``bytesrepr``-serialised ``RiskPolicy`` struct bytes.
 
     Field layout (Casper bytesrepr, little-endian):
       version: u32 | min_confidence_threshold: u8 | critical_score_threshold: u8
       high_score_threshold: u8 | medium_score_threshold: u8 | max_retry_count: u8
-      safety_rejection_threshold: u8 | updated_at_block: u64 | updated_by: String
+      safety_rejection_threshold: u8 | updated_at_block: u64 | updated_by: <variant>
+
+    The ``updated_by`` field is type-polymorphic across contract versions:
+
+      * **Currently-deployed v1** (String): ``u32 LE length ++ UTF-8 bytes`` — a
+        free-form human-readable label (e.g. ``"admin"``).
+      * **New source v1/v2** (Address → Casper Key): ``1 byte tag ++ 32 byte
+        hash`` — a real account/contract hash. Tag 0 = ``Key::Account`` (formats
+        as ``account-hash-<64 hex>``); tag 1 = ``Key::Hash`` (formats as
+        ``hash-<64 hex>``). This is the idiomatic Odra ``Address`` type that
+        enables on-chain accountability for every policy change.
+
+    The parser auto-detects which format is present so it works against BOTH the
+    live testnet contract (String) and a redeployed contract (Address) without
+    code changes.
     """
-    if len(data) < 18:  # 4 + 1*6 + 8 = 18 bytes minimum (before the String)
+    if len(data) < 18:  # 4 + 1*6 + 8 = 18 bytes minimum (before updated_by)
         raise ValueError(f"RiskPolicy bytes too short: {len(data)} bytes")
     offset = 0
     version = struct.unpack_from("<I", data, offset)[0]
@@ -182,10 +240,9 @@ def parse_risk_policy_bytes(data: bytes) -> Dict[str, Any]:
     offset += 1
     updated_at_block = struct.unpack_from("<Q", data, offset)[0]
     offset += 8
-    # String: u32 LE length ++ UTF-8 bytes
-    str_len = struct.unpack_from("<I", data, offset)[0]
-    offset += 4
-    updated_by = data[offset : offset + str_len].decode("utf-8", errors="replace")
+
+    remaining = data[offset:]
+    updated_by = _parse_updated_by(remaining)
     return {
         "version": version,
         "min_confidence_threshold": min_conf,

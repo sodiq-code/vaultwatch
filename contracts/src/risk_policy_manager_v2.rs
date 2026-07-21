@@ -41,10 +41,11 @@
 //! ```
 
 use odra::prelude::*;
-// Reuse v1's RiskPolicy so the serialized layout is byte-identical (state shared).
-// `crate::` prefix required (Rust 2018 edition); the odra_type struct is not gated
-// by odra_module, so it remains available when building v2 only.
-pub use crate::risk_policy_manager::RiskPolicy;
+// Reuse v1's RiskPolicy AND PolicyUpgraded event so the serialized layout is
+// byte-identical (state shared) and the event schema is identical across v1/v2.
+// `crate::` prefix required (Rust 2018 edition); the odra_type/event structs are
+// not gated by odra_module, so they remain available when building v2 only.
+pub use crate::risk_policy_manager::{PolicyUpgraded, RiskPolicy};
 
 /// Return type of the v2-only `get_policy_with_reasoning` entry point.
 ///
@@ -57,7 +58,7 @@ pub struct PolicyWithReasoning {
     pub reasoning: String,
 }
 
-#[odra::module]
+#[odra::module(events = [PolicyUpgraded])]
 pub struct RiskPolicyManagerV2 {
     // --- SAME fields, SAME order as v1 (shared `state` dictionary keys) ---
     current_policy: Var<RiskPolicy>,
@@ -70,7 +71,8 @@ impl RiskPolicyManagerV2 {
     /// Constructor — only invoked on a *fresh* install (never on upgrade).
     /// Mirrors v1's `init` so a standalone v2 deploy is self-consistent.
     pub fn init(&mut self) {
-        self.owner.set(self.env().caller());
+        let caller = self.env().caller();
+        self.owner.set(caller);
         let default_policy = RiskPolicy {
             version: 1,
             min_confidence_threshold: 75,
@@ -80,7 +82,7 @@ impl RiskPolicyManagerV2 {
             max_retry_count: 2,
             safety_rejection_threshold: 80,
             updated_at_block: 0,
-            updated_by: "genesis".to_string(),
+            updated_by: caller,
         };
         self.current_policy.set(default_policy.clone());
         self.policy_history.set(&1u32, default_policy);
@@ -105,12 +107,12 @@ impl RiskPolicyManagerV2 {
         max_retry_count: u8,
         safety_rejection_threshold: u8,
         block_height: u64,
-        updated_by: String,
+        updated_by: Address,
     ) {
         self.assert_owner();
         let current_version = self
             .current_policy
-            .get_or_revert_with(ExecutionError::User(1))
+            .get_or_revert_with(crate::user_err(1))
             .version;
         let new_version = current_version + 1;
 
@@ -127,13 +129,24 @@ impl RiskPolicyManagerV2 {
         };
 
         self.current_policy.set(new_policy.clone());
-        self.policy_history.set(&new_version, new_policy);
+        self.policy_history.set(&new_version, new_policy.clone());
+
+        // Emit the same PolicyUpgraded event as v1 so off-chain indexers see a
+        // uniform event stream regardless of which contract version is active.
+        self.env().emit_event(PolicyUpgraded {
+            version: new_version,
+            updated_by,
+            updated_at_block: block_height,
+            min_confidence_threshold,
+            critical_score_threshold,
+            safety_rejection_threshold,
+        });
     }
 
     /// Get active policy — agents call this every decision cycle (identical to v1).
     pub fn get_current_policy(&self) -> RiskPolicy {
         self.current_policy
-            .get_or_revert_with(ExecutionError::User(1))
+            .get_or_revert_with(crate::user_err(1))
     }
 
     /// Get a historical policy version (identical to v1).
@@ -144,7 +157,7 @@ impl RiskPolicyManagerV2 {
     /// Get current version number (identical to v1).
     pub fn get_current_version(&self) -> u32 {
         self.current_policy
-            .get_or_revert_with(ExecutionError::User(1))
+            .get_or_revert_with(crate::user_err(1))
             .version
     }
 
@@ -165,7 +178,7 @@ impl RiskPolicyManagerV2 {
     pub fn get_policy_with_reasoning(&self) -> PolicyWithReasoning {
         let policy = self
             .current_policy
-            .get_or_revert_with(ExecutionError::User(1));
+            .get_or_revert_with(crate::user_err(1));
 
         let reasoning = build_reasoning(&policy);
 
@@ -174,9 +187,9 @@ impl RiskPolicyManagerV2 {
 
     fn assert_owner(&self) {
         let caller = self.env().caller();
-        let owner = self.owner.get_or_revert_with(ExecutionError::User(1));
+        let owner = self.owner.get_or_revert_with(crate::user_err(1));
         if caller != owner {
-            self.env().revert(ExecutionError::User(1));
+            self.env().revert(crate::user_err(1));
         }
     }
 }
@@ -205,7 +218,7 @@ fn build_reasoning(p: &RiskPolicy) -> String {
     s.push_str(" retries). SafetyGuard rejects findings scoring above ");
     s.push_str(&u8_to_string(p.safety_rejection_threshold));
     s.push_str("/100. Last updated by ");
-    s.push_str(&p.updated_by);
+    s.push_str(&p.updated_by.to_string());
     s.push_str(" at block ");
     s.push_str(&u64_to_string(p.updated_at_block));
     s.push('.');
@@ -268,7 +281,7 @@ fn u64_to_string(v: u64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use odra::host::{Deployer, HostRef};
+    use odra::host::{Deployer, NoArgs};
 
     fn sample_policy() -> RiskPolicy {
         RiskPolicy {
@@ -280,14 +293,18 @@ mod tests {
             max_retry_count: 2,
             safety_rejection_threshold: 90,
             updated_at_block: 1_500_000,
-            updated_by: "admin".to_string(),
+            // Use the zero account-hash as a stand-in; the reasoning string
+            // only needs a stable formatted representation.
+            updated_by: Address::new(
+                "account-hash-0000000000000000000000000000000000000000000000000000000000000000"
+            ).unwrap(),
         }
     }
 
     #[test]
     fn v2_init_sets_default_policy_like_v1() {
         let env = odra_test::env();
-        let contract = RiskPolicyManagerV2HostRef::deploy(&env, NoArgs);
+        let contract = RiskPolicyManagerV2::deploy(&env, NoArgs);
         let policy = contract.get_current_policy();
         assert_eq!(policy.version, 1);
         assert_eq!(policy.min_confidence_threshold, 75);
@@ -297,24 +314,27 @@ mod tests {
     #[test]
     fn v2_get_policy_with_reasoning_returns_active_policy_and_text() {
         let env = odra_test::env();
-        let mut contract = RiskPolicyManagerV2HostRef::deploy(&env, NoArgs);
+        let mut contract = RiskPolicyManagerV2::deploy(&env, NoArgs);
+        let admin = env.get_account(1);
         // Hot-swap to a known policy.
-        contract.upgrade_policy(70, 85, 65, 45, 2, 90, 1_500_000, "admin".to_string());
+        contract.upgrade_policy(70, 85, 65, 45, 2, 90, 1_500_000, admin);
 
         let result = contract.get_policy_with_reasoning();
         assert_eq!(result.policy.version, 2); // init=1, then +1
         assert_eq!(result.policy.critical_score_threshold, 85);
         assert!(result.reasoning.contains("CRITICAL >85/100"));
         assert!(result.reasoning.contains("SelfCorrection triggers below 70/100"));
-        assert!(result.reasoning.contains("admin"));
+        // The reasoning includes the admin's account-hash formatted string.
+        assert!(result.reasoning.contains("account-hash-"));
         assert!(result.reasoning.contains("1500000"));
     }
 
     #[test]
     fn v2_preserves_v1_entry_points() {
         let env = odra_test::env();
-        let mut contract = RiskPolicyManagerV2HostRef::deploy(&env, NoArgs);
-        contract.upgrade_policy(60, 70, 50, 30, 3, 85, 42, "ops".to_string());
+        let mut contract = RiskPolicyManagerV2::deploy(&env, NoArgs);
+        let ops = env.get_account(2);
+        contract.upgrade_policy(60, 70, 50, 30, 3, 85, 42, ops);
         assert_eq!(contract.get_current_version(), 2);
         let v1 = contract.get_policy_version(1).unwrap();
         assert_eq!(v1.min_confidence_threshold, 75);
@@ -330,5 +350,15 @@ mod tests {
         assert!(r.contains("MEDIUM >45/100"));
         assert!(r.contains("max 2 retries"));
         assert!(r.contains("above 90/100"));
+    }
+
+    #[test]
+    fn v2_upgrade_policy_emits_policy_upgraded_event() {
+        let env = odra_test::env();
+        let mut contract = RiskPolicyManagerV2::deploy(&env, NoArgs);
+        let admin = env.get_account(3);
+        contract.upgrade_policy(66, 76, 56, 36, 2, 88, 777777, admin);
+        let events = env.events(&contract);
+        assert_eq!(events.len(), 1, "v2 upgrade_policy must emit exactly one PolicyUpgraded event");
     }
 }

@@ -7,6 +7,18 @@
 
 use odra::prelude::*;
 
+/// Event emitted whenever a new subscriber registers for push alerts.
+///
+/// The IntelAgent / dashboard listens to this event to maintain a live view
+/// of the subscriber registry without polling `get_count`.
+#[odra::event]
+pub struct SentinelRegistered {
+    pub address: String,
+    pub webhook_url: String,
+    pub min_severity: String,
+    pub registered_at: u64,
+}
+
 #[odra::odra_type]
 pub struct Subscriber {
     pub address: String,
@@ -17,7 +29,7 @@ pub struct Subscriber {
     pub alert_count: u64,
 }
 
-#[odra::module]
+#[odra::module(events = [SentinelRegistered])]
 pub struct SentinelRegistry {
     subscribers: Mapping<String, Subscriber>,
     subscriber_count: Var<u64>,
@@ -41,8 +53,8 @@ impl SentinelRegistry {
     ) {
         let sub = Subscriber {
             address: address.clone(),
-            webhook_url,
-            min_severity,
+            webhook_url: webhook_url.clone(),
+            min_severity: min_severity.clone(),
             active: true,
             registered_at: timestamp,
             alert_count: 0,
@@ -50,6 +62,14 @@ impl SentinelRegistry {
         self.subscribers.set(&address, sub);
         let count = self.subscriber_count.get_or_default() + 1;
         self.subscriber_count.set(count);
+
+        // Emit the on-chain event so the IntelAgent / dashboard are notified.
+        self.env().emit_event(SentinelRegistered {
+            address,
+            webhook_url,
+            min_severity,
+            registered_at: timestamp,
+        });
     }
 
     /// Deactivate a subscriber
@@ -97,9 +117,9 @@ impl SentinelRegistry {
 
     fn assert_owner(&self) {
         let caller = self.env().caller();
-        let owner = self.owner.get_or_revert_with(ExecutionError::User(1));
+        let owner = self.owner.get_or_revert_with(crate::user_err(1));
         if caller != owner {
-            self.env().revert(ExecutionError::User(1));
+            self.env().revert(crate::user_err(1));
         }
     }
 }

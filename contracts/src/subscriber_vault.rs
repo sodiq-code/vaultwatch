@@ -8,6 +8,20 @@ use odra::casper_types::U512;
 
 use odra::prelude::*;
 
+/// Event emitted whenever a new subscriber vault is opened with an initial
+/// escrow deposit.
+///
+/// The revenue / vault dashboard listens to this event to track live escrow
+/// inflows and new subscription onboarding.
+#[odra::event]
+pub struct VaultOpened {
+    pub subscriber_address: String,
+    pub initial_deposit: U512,
+    pub locked_until_block: u64,
+    pub auto_renew: bool,
+    pub created_at_block: u64,
+}
+
 #[odra::odra_type]
 pub struct VaultAccount {
     pub owner_address: String,
@@ -21,7 +35,7 @@ pub struct VaultAccount {
     pub created_at_block: u64,
 }
 
-#[odra::module]
+#[odra::module(events = [VaultOpened])]
 pub struct SubscriberVault {
     accounts: Mapping<String, VaultAccount>,
     vault_owner: Var<Address>,
@@ -56,7 +70,7 @@ impl SubscriberVault {
         self.assert_vault_owner();
         let attached = self.env().attached_value();
         if attached != initial_deposit {
-            self.env().revert(ExecutionError::User(2));
+            self.env().revert(crate::user_err(2));
         }
         let account = VaultAccount {
             owner_address: subscriber_address.clone(),
@@ -72,6 +86,15 @@ impl SubscriberVault {
         self.accounts.set(&subscriber_address, account);
         let locked = self.total_locked.get_or_default() + initial_deposit;
         self.total_locked.set(locked);
+
+        // Emit the on-chain event so the vault / revenue dashboard is notified.
+        self.env().emit_event(VaultOpened {
+            subscriber_address,
+            initial_deposit,
+            locked_until_block: if lock_blocks > 0 { current_block + lock_blocks } else { 0 },
+            auto_renew,
+            created_at_block: current_block,
+        });
     }
 
     /// Withdraw CSPR from a vault — transfers real CSPR from the contract's
@@ -88,10 +111,10 @@ impl SubscriberVault {
             Some(mut account) => {
                 // Check lock period
                 if account.locked_until_block > 0 && current_block < account.locked_until_block {
-                    self.env().revert(ExecutionError::User(5));
+                    self.env().revert(crate::user_err(5));
                 }
                 if account.escrowed_balance < amount {
-                    self.env().revert(ExecutionError::User(3));
+                    self.env().revert(crate::user_err(3));
                 }
                 account.escrowed_balance -= amount;
                 account.total_withdrawals += amount;
@@ -103,7 +126,7 @@ impl SubscriberVault {
                 let caller = self.env().caller();
                 self.env().transfer_tokens(&caller, &amount);
             }
-            None => self.env().revert(ExecutionError::User(4)),
+            None => self.env().revert(crate::user_err(4)),
         }
     }
 
@@ -148,7 +171,7 @@ impl SubscriberVault {
         self.assert_vault_owner();
         let attached = self.env().attached_value();
         if attached != amount {
-            self.env().revert(ExecutionError::User(2));
+            self.env().revert(crate::user_err(2));
         }
         match self.accounts.get(&subscriber_address) {
             Some(mut account) => {
@@ -179,9 +202,9 @@ impl SubscriberVault {
 
     fn assert_vault_owner(&self) {
         let caller = self.env().caller();
-        let owner = self.vault_owner.get_or_revert_with(ExecutionError::User(1));
+        let owner = self.vault_owner.get_or_revert_with(crate::user_err(1));
         if caller != owner {
-            self.env().revert(ExecutionError::User(1));
+            self.env().revert(crate::user_err(1));
         }
     }
 }
@@ -189,12 +212,12 @@ impl SubscriberVault {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use odra::host::{Deployer, HostRef};
+    use odra::host::{Deployer, HostRef, NoArgs};
 
     #[test]
     fn test_open_vault_and_balance() {
         let env = odra_test::env();
-        let mut contract = SubscriberVaultHostRef::deploy(&env, NoArgs);
+        let mut contract = SubscriberVault::deploy(&env, NoArgs);
         // open_vault is now payable — attach 50 CSPR via with_tokens
         contract
             .with_tokens(U512::from(50_000_000u64))
@@ -211,7 +234,7 @@ mod tests {
     #[test]
     fn test_open_vault_increases_contract_balance() {
         let env = odra_test::env();
-        let mut contract = SubscriberVaultHostRef::deploy(&env, NoArgs);
+        let mut contract = SubscriberVault::deploy(&env, NoArgs);
         assert_eq!(contract.get_contract_balance(), U512::zero());
         // Payable open_vault transfers real CSPR to the contract's main purse
         contract
@@ -229,7 +252,7 @@ mod tests {
     #[test]
     fn test_deduct_from_vault() {
         let env = odra_test::env();
-        let mut contract = SubscriberVaultHostRef::deploy(&env, NoArgs);
+        let mut contract = SubscriberVault::deploy(&env, NoArgs);
         contract
             .with_tokens(U512::from(50_000_000u64))
             .open_vault("casper1proto".to_string(), U512::from(50_000_000u64), 0, true, U512::zero(), 1500000);
@@ -241,7 +264,7 @@ mod tests {
     #[test]
     fn test_withdraw_transfers_real_cspr() {
         let env = odra_test::env();
-        let mut contract = SubscriberVaultHostRef::deploy(&env, NoArgs);
+        let mut contract = SubscriberVault::deploy(&env, NoArgs);
         // Open vault with 50 CSPR (payable)
         contract
             .with_tokens(U512::from(50_000_000u64))
@@ -258,7 +281,7 @@ mod tests {
     #[test]
     fn test_withdraw_insufficient_balance_reverts() {
         let env = odra_test::env();
-        let mut contract = SubscriberVaultHostRef::deploy(&env, NoArgs);
+        let mut contract = SubscriberVault::deploy(&env, NoArgs);
         contract
             .with_tokens(U512::from(10_000_000u64))
             .open_vault("casper1proto".to_string(), U512::from(10_000_000u64), 0, true, U512::zero(), 1500000);
@@ -272,7 +295,7 @@ mod tests {
     #[test]
     fn test_withdraw_locked_vault_reverts() {
         let env = odra_test::env();
-        let mut contract = SubscriberVaultHostRef::deploy(&env, NoArgs);
+        let mut contract = SubscriberVault::deploy(&env, NoArgs);
         // Open vault locked for 1000 blocks starting at block 1500000
         contract
             .with_tokens(U512::from(10_000_000u64))
@@ -287,7 +310,7 @@ mod tests {
     #[test]
     fn test_withdraw_after_lock_expires_succeeds() {
         let env = odra_test::env();
-        let mut contract = SubscriberVaultHostRef::deploy(&env, NoArgs);
+        let mut contract = SubscriberVault::deploy(&env, NoArgs);
         // Open vault locked for 1000 blocks starting at block 1500000
         contract
             .with_tokens(U512::from(10_000_000u64))

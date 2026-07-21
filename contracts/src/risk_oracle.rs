@@ -7,6 +7,21 @@
 
 use odra::prelude::*;
 
+/// Event emitted whenever a risk score is updated for an address.
+///
+/// Casper DeFi protocols can subscribe to this event to react to risk-score
+/// changes in real time (e.g. trigger a collateral top-up when a counterparty
+/// crosses a threshold) without polling `get_risk_score`.
+#[odra::event]
+pub struct ScoreUpdated {
+    pub address: String,
+    pub score: u8,
+    pub risk_type: String,
+    pub confidence: u8,
+    pub last_updated: u64,
+    pub finding_id: u64,
+}
+
 #[odra::odra_type]
 pub struct RiskScore {
     pub address: String,
@@ -17,7 +32,7 @@ pub struct RiskScore {
     pub finding_id: u64,     // reference back to AuditTrail
 }
 
-#[odra::module]
+#[odra::module(events = [ScoreUpdated])]
 pub struct RiskOracle {
     scores: Mapping<String, RiskScore>,
     owner: Var<Address>,
@@ -43,12 +58,22 @@ impl RiskOracle {
         let record = RiskScore {
             address: address.clone(),
             score,
-            risk_type,
+            risk_type: risk_type.clone(),
             confidence,
             last_updated: block_height,
             finding_id,
         };
         self.scores.set(&address, record);
+
+        // Emit the on-chain event so subscribing protocols are notified.
+        self.env().emit_event(ScoreUpdated {
+            address,
+            score,
+            risk_type,
+            confidence,
+            last_updated: block_height,
+            finding_id,
+        });
     }
 
     /// Query risk score for any address — public, no auth required
@@ -71,9 +96,9 @@ impl RiskOracle {
 
     fn assert_owner(&self) {
         let caller = self.env().caller();
-        let owner = self.owner.get_or_revert_with(ExecutionError::User(1));
+        let owner = self.owner.get_or_revert_with(crate::user_err(1));
         if caller != owner {
-            self.env().revert(ExecutionError::User(1));
+            self.env().revert(crate::user_err(1));
         }
     }
 }
@@ -81,12 +106,12 @@ impl RiskOracle {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use odra::host::{Deployer, HostRef};
+    use odra::host::{Deployer, NoArgs};
 
     #[test]
     fn test_update_and_query_score() {
         let env = odra_test::env();
-        let mut contract = RiskOracleHostRef::deploy(&env, NoArgs);
+        let mut contract = RiskOracle::deploy(&env, NoArgs);
 
         contract.update_score("casper1xyz".to_string(), 87, "whale_concentration".to_string(), 92, 1500000, 1);
 
@@ -99,7 +124,7 @@ mod tests {
     #[test]
     fn test_is_high_risk() {
         let env = odra_test::env();
-        let mut contract = RiskOracleHostRef::deploy(&env, NoArgs);
+        let mut contract = RiskOracle::deploy(&env, NoArgs);
         contract.update_score("casper1abc".to_string(), 75, "depeg".to_string(), 88, 1500001, 2);
         assert!(contract.is_high_risk("casper1abc".to_string(), 70));
         assert!(!contract.is_high_risk("casper1abc".to_string(), 80));
@@ -108,7 +133,7 @@ mod tests {
     #[test]
     fn test_unknown_address_returns_none() {
         let env = odra_test::env();
-        let contract = RiskOracleHostRef::deploy(&env, NoArgs);
+        let contract = RiskOracle::deploy(&env, NoArgs);
         assert!(contract.get_risk_score("casper1unknown".to_string()).is_none());
     }
 }

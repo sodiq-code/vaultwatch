@@ -8,6 +8,19 @@
 
 use odra::prelude::*;
 
+/// Event emitted whenever an agent's decision outcome is recorded on-chain.
+///
+/// The accountability dashboard subscribes to this event to display a live
+/// feed of agent decisions and their trust-score impact.
+#[odra::event]
+pub struct BehaviorRecorded {
+    pub agent_name: String,
+    pub confidence: u8,
+    pub correction_applied: bool,
+    pub safety_rejected: bool,
+    pub block_height: u64,
+}
+
 #[odra::odra_type]
 pub struct AgentMetrics {
     pub agent_name: String,
@@ -21,7 +34,7 @@ pub struct AgentMetrics {
     pub trust_score: u8,            // derived: (high_confidence - corrections) / total * 100
 }
 
-#[odra::module]
+#[odra::module(events = [BehaviorRecorded])]
 pub struct AgentBehaviorIndex {
     metrics: Mapping<String, AgentMetrics>,
     agent_count: Var<u64>,
@@ -89,6 +102,15 @@ impl AgentBehaviorIndex {
 
         m.last_updated_block = block_height;
         self.metrics.set(&agent_name, m);
+
+        // Emit the on-chain event so the accountability dashboard is notified.
+        self.env().emit_event(BehaviorRecorded {
+            agent_name,
+            confidence,
+            correction_applied,
+            safety_rejected,
+            block_height,
+        });
     }
 
     pub fn get_metrics(&self, agent_name: String) -> Option<AgentMetrics> {
@@ -108,9 +130,9 @@ impl AgentBehaviorIndex {
 
     fn assert_owner(&self) {
         let caller = self.env().caller();
-        let owner = self.owner.get_or_revert_with(ExecutionError::User(1));
+        let owner = self.owner.get_or_revert_with(crate::user_err(1));
         if caller != owner {
-            self.env().revert(ExecutionError::User(1));
+            self.env().revert(crate::user_err(1));
         }
     }
 }
@@ -118,12 +140,12 @@ impl AgentBehaviorIndex {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use odra::host::{Deployer, HostRef};
+    use odra::host::{Deployer, NoArgs};
 
     #[test]
     fn test_record_and_trust_score() {
         let env = odra_test::env();
-        let mut contract = AgentBehaviorIndexHostRef::deploy(&env, NoArgs);
+        let mut contract = AgentBehaviorIndex::deploy(&env, NoArgs);
 
         contract.record_decision("AnomalyAgent".to_string(), 91, false, false, 1500000);
         contract.record_decision("AnomalyAgent".to_string(), 88, false, false, 1500001);
@@ -138,7 +160,7 @@ mod tests {
     #[test]
     fn test_new_agent_registered_on_first_decision() {
         let env = odra_test::env();
-        let mut contract = AgentBehaviorIndexHostRef::deploy(&env, NoArgs);
+        let mut contract = AgentBehaviorIndex::deploy(&env, NoArgs);
         assert_eq!(contract.get_agent_count(), 0);
         contract.record_decision("ScannerAgent".to_string(), 95, false, false, 100);
         assert_eq!(contract.get_agent_count(), 1);

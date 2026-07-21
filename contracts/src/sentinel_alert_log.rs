@@ -3,14 +3,30 @@
 ///
 /// Every alert pushed to a subscriber is logged here immutably.
 /// Compliance-grade: any protocol can prove "we received a CRITICAL alert
-/// at block X from VaultWatch" 
+/// at block X from VaultWatch"
 
 use odra::prelude::*;
+
+/// Event emitted whenever an alert is logged on-chain.
+///
+/// Off-chain subscribers / dashboards listen to this event for real-time
+/// notification of new alerts — no polling of `get_total_count` required.
+#[odra::event]
+pub struct AlertLogged {
+    pub log_id: u64,
+    pub subscriber_address: Address,
+    pub finding_id: u64,
+    pub severity: String,
+    pub block_height: u64,
+}
 
 #[odra::odra_type]
 pub struct AlertRecord {
     pub log_id: u64,
-    pub subscriber_address: String,
+    /// Subscriber's on-chain identity — typed as `Address` (Casper Key) so it
+    /// is a real account/contract hash, not a free-form string. This enables
+    /// deterministic per-subscriber indexing and cross-contract lookups.
+    pub subscriber_address: Address,
     pub finding_id: u64,
     pub severity: String,
     pub risk_type: String,
@@ -19,12 +35,12 @@ pub struct AlertRecord {
     pub delivered: bool,
 }
 
-#[odra::module]
+#[odra::module(events = [AlertLogged])]
 pub struct SentinelAlertLog {
     logs: Mapping<u64, AlertRecord>,
     log_count: Var<u64>,
     // address → list of log IDs (stored as comma-separated string for simplicity)
-    address_logs: Mapping<String, String>,
+    address_logs: Mapping<Address, String>,
     owner: Var<Address>,
 }
 
@@ -38,7 +54,7 @@ impl SentinelAlertLog {
     /// Log a delivered alert — only VaultWatch agent wallet
     pub fn log_alert(
         &mut self,
-        subscriber_address: String,
+        subscriber_address: Address,
         finding_id: u64,
         severity: String,
         risk_type: String,
@@ -52,7 +68,7 @@ impl SentinelAlertLog {
             log_id,
             subscriber_address: subscriber_address.clone(),
             finding_id,
-            severity,
+            severity: severity.clone(),
             risk_type,
             block_height,
             timestamp,
@@ -70,6 +86,15 @@ impl SentinelAlertLog {
         };
         self.address_logs.set(&subscriber_address, updated);
 
+        // Emit the on-chain event so off-chain indexers/dashboard are notified.
+        self.env().emit_event(AlertLogged {
+            log_id,
+            subscriber_address,
+            finding_id,
+            severity,
+            block_height,
+        });
+
         log_id
     }
 
@@ -77,7 +102,7 @@ impl SentinelAlertLog {
         self.logs.get(&log_id).unwrap_or_revert(self)
     }
 
-    pub fn get_address_log_ids(&self, address: String) -> String {
+    pub fn get_address_log_ids(&self, address: Address) -> String {
         self.address_logs.get(&address).unwrap_or_default()
     }
 
@@ -87,9 +112,9 @@ impl SentinelAlertLog {
 
     fn assert_owner(&self) {
         let caller = self.env().caller();
-        let owner = self.owner.get_or_revert_with(ExecutionError::User(1));
+        let owner = self.owner.get_or_revert_with(crate::user_err(1));
         if caller != owner {
-            self.env().revert(ExecutionError::User(1));
+            self.env().revert(crate::user_err(1));
         }
     }
 }
@@ -97,32 +122,49 @@ impl SentinelAlertLog {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use odra::host::{Deployer, HostRef};
+    use odra::host::{Deployer, NoArgs};
 
     #[test]
     fn test_log_and_retrieve_alert() {
         let env = odra_test::env();
-        let mut contract = SentinelAlertLogHostRef::deploy(&env, NoArgs);
+        let mut contract = SentinelAlertLog::deploy(&env, NoArgs);
+        let sub = env.get_account(1);
 
         let id = contract.log_alert(
-            "casper1sub".to_string(), 1, "CRITICAL".to_string(),
+            sub, 1, "CRITICAL".to_string(),
             "whale_dump".to_string(), 1500000, 1750000000, true
         );
         assert_eq!(id, 1);
         let log = contract.get_log(1);
         assert_eq!(log.severity, "CRITICAL");
         assert!(log.delivered);
+        assert_eq!(log.subscriber_address, sub);
     }
 
     #[test]
     fn test_address_log_index() {
         let env = odra_test::env();
-        let mut contract = SentinelAlertLogHostRef::deploy(&env, NoArgs);
+        let mut contract = SentinelAlertLog::deploy(&env, NoArgs);
+        let sub = env.get_account(1);
 
-        contract.log_alert("casper1sub".to_string(), 1, "CRITICAL".to_string(), "whale_dump".to_string(), 100, 200, true);
-        contract.log_alert("casper1sub".to_string(), 2, "HIGH".to_string(), "depeg".to_string(), 101, 201, true);
+        contract.log_alert(sub, 1, "CRITICAL".to_string(), "whale_dump".to_string(), 100, 200, true);
+        contract.log_alert(sub, 2, "HIGH".to_string(), "depeg".to_string(), 101, 201, true);
 
-        let ids = contract.get_address_log_ids("casper1sub".to_string());
+        let ids = contract.get_address_log_ids(sub);
         assert_eq!(ids, "1,2");
+    }
+
+    #[test]
+    fn test_log_alert_emits_alert_logged_event() {
+        let env = odra_test::env();
+        let mut contract = SentinelAlertLog::deploy(&env, NoArgs);
+        let sub = env.get_account(2);
+
+        contract.log_alert(
+            sub, 7, "HIGH".to_string(), "depeg".to_string(), 1234, 1700000000, true
+        );
+
+        let events = env.events(&contract);
+        assert_eq!(events.len(), 1, "log_alert must emit exactly one AlertLogged event");
     }
 }

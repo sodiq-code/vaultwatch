@@ -7,6 +7,21 @@
 
 use odra::prelude::*;
 
+/// Event emitted whenever a new finding is immutably recorded on-chain.
+///
+/// Dashboards and compliance indexers subscribe to this event to surface
+/// new risk findings in real time without polling `get_count`.
+#[odra::event]
+pub struct FindingRecorded {
+    pub id: u64,
+    pub address: String,
+    pub risk_type: String,
+    pub severity: String,
+    pub confidence: u8,
+    pub block_height: u64,
+    pub rwa_enriched: bool,
+}
+
 /// A single immutable finding record
 #[odra::odra_type]
 pub struct Finding {
@@ -23,7 +38,7 @@ pub struct Finding {
     pub tx_hash: String,
 }
 
-#[odra::module]
+#[odra::module(events = [FindingRecorded])]
 pub struct AuditTrail {
     findings: Mapping<u64, Finding>,
     finding_count: Var<u64>,
@@ -66,8 +81,19 @@ impl AuditTrail {
             timestamp,
             tx_hash: String::new(), // filled by client after deploy
         };
-        self.findings.set(&id, finding);
+        self.findings.set(&id, finding.clone());
         self.finding_count.set(id);
+
+        // Emit the on-chain event so off-chain indexers are notified.
+        self.env().emit_event(FindingRecorded {
+            id,
+            address: finding.address,
+            risk_type: finding.risk_type,
+            severity: finding.severity,
+            confidence: finding.confidence,
+            block_height: finding.block_height,
+            rwa_enriched: finding.rwa_enriched,
+        });
         id
     }
 
@@ -89,9 +115,9 @@ impl AuditTrail {
 
     fn assert_owner(&self) {
         let caller = self.env().caller();
-        let owner = self.owner.get_or_revert_with(ExecutionError::User(1));
+        let owner = self.owner.get_or_revert_with(crate::user_err(1));
         if caller != owner {
-            self.env().revert(ExecutionError::User(1));
+            self.env().revert(crate::user_err(1));
         }
     }
 }
@@ -99,12 +125,12 @@ impl AuditTrail {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use odra::host::{Deployer, HostRef};
+    use odra::host::{Deployer, NoArgs};
 
     #[test]
     fn test_record_and_retrieve_finding() {
         let env = odra_test::env();
-        let mut contract = AuditTrailHostRef::deploy(&env, NoArgs);
+        let mut contract = AuditTrail::deploy(&env, NoArgs);
 
         let id = contract.record_finding(
             "casper1abc".to_string(),
@@ -128,7 +154,7 @@ mod tests {
     #[test]
     fn test_count_increments() {
         let env = odra_test::env();
-        let mut contract = AuditTrailHostRef::deploy(&env, NoArgs);
+        let mut contract = AuditTrail::deploy(&env, NoArgs);
         assert_eq!(contract.get_count(), 0);
         contract.record_finding("addr".to_string(), "depeg".to_string(), "HIGH".to_string(), 80, "desc".to_string(), true, "llama-3.1-8b".to_string(), 100u64, 200u64);
         assert_eq!(contract.get_count(), 1);

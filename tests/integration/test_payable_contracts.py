@@ -295,29 +295,32 @@ def test_subscriber_vault_uses_odra_payment_api():
 def test_sentinel_credit_has_payment_error_codes():
     """SentinelCredit must have error codes for payment failures."""
     src = (CONTRACTS_SRC / "sentinel_credit.rs").read_text()
+    # The contracts route user errors through the crate::user_err(code) helper
+    # (a thin wrapper over OdraError::user that compiles on both wasm32 and
+    # host targets). The error CODES are what matter semantically.
     # Error code 2 = attached_value != amount
-    assert "ExecutionError::User(2)" in src, (
-        "Must revert with User(2) when attached_value != amount."
+    assert "user_err(2)" in src, (
+        "Must revert with user_err(2) when attached_value != amount."
     )
     # Error code 3 = insufficient balance for withdraw
-    assert "ExecutionError::User(3)" in src, (
-        "Must revert with User(3) when withdraw amount > balance."
+    assert "user_err(3)" in src, (
+        "Must revert with user_err(3) when withdraw amount > balance."
     )
     # Error code 4 = account not found
-    assert "ExecutionError::User(4)" in src, (
-        "Must revert with User(4) when account doesn't exist."
+    assert "user_err(4)" in src, (
+        "Must revert with user_err(4) when account doesn't exist."
     )
 
 
 def test_subscriber_vault_has_payment_error_codes():
     """SubscriberVault must have error codes for payment + lock failures."""
     src = (CONTRACTS_SRC / "subscriber_vault.rs").read_text()
-    assert "ExecutionError::User(2)" in src, (
-        "Must revert with User(2) when attached_value != initial_deposit."
+    assert "user_err(2)" in src, (
+        "Must revert with user_err(2) when attached_value != initial_deposit."
     )
-    assert "ExecutionError::User(3)" in src, (
-        "Must revert with User(3) when withdraw amount > balance."
+    assert "user_err(3)" in src, (
+        "Must revert with user_err(3) when withdraw amount > balance."
     )
-    assert "ExecutionError::User(5)" in src, (
-        "Must revert with User(5) when vault is still locked."
+    assert "user_err(5)" in src, (
+        "Must revert with user_err(5) when vault is still locked."
     )
