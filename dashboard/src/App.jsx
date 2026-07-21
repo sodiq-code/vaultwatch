@@ -13,55 +13,55 @@ import {
   fetchCSPRPrice,
   fetchNetworkInfo,
   getLiveBlockHeight,
+  updateBlockHeight,
   LIVE_FINDINGS,
+  refreshLiveFindings,
+  fetchSpans,
+  fetchAuditLog,
+  writeAuditEntry,
   CONTRACT_HASHES,
 } from './liveApi.js'
 
 // Bundle all API functions into one object passed to panels
+// FIX #18: All methods now call real FastAPI backend endpoints
 export const liveApi = {
   riskQuery:    liveRiskQuery,
   detectAnomaly: liveDetectAnomaly,
   assessRWA:    liveAssessRWA,
   health:       liveHealth,
-  getFindings:  async (limit = 20) => ({
-    findings: LIVE_FINDINGS.slice(0, limit),
-    total: LIVE_FINDINGS.length,
-  }),
-  getBlock: async () => ({
-    block_height: getLiveBlockHeight(),
-    network: 'casper-test',
-    timestamp: new Date().toISOString(),
-  }),
-  getSpans: async () => ({
-    spans: [
-      { name: 'ScannerAgent.scan',               duration_ms: 312.4,  status: 'OK' },
-      { name: 'AnomalyAgent.classify',            duration_ms: 891.2,  status: 'OK' },
-      { name: 'SelfCorrectionAgent.evaluate',     duration_ms: 743.1,  status: 'OK' },
-      { name: 'SafetyGuard.check',                duration_ms: 42.8,   status: 'OK' },
-      { name: 'AuditAgent.write_to_chain',        duration_ms: 1204.7, status: 'OK' },
-      { name: 'IntelAgent.dispatch_alert',        duration_ms: 287.3,  status: 'OK' },
-      { name: 'RWAAgent.assess_via_compound',     duration_ms: 1847.6, status: 'OK' },
-    ]
-  }),
-  getAuditLog: async () => ({
-    entries: [
-      { id: 1,  action: 'scan_complete',       actor: 'ScannerAgent',         details: 'Scanned CasperSwap — 3 anomalies found' },
-      { id: 2,  action: 'finding_written',     actor: 'AuditAgent',           details: 'F-2026-001 written to AuditTrail contract on Casper testnet' },
-      { id: 3,  action: 'risk_score_updated',  actor: 'AuditAgent',           details: 'RiskOracle updated — CasperSwap score: 87/100' },
-      { id: 4,  action: 'alert_dispatched',    actor: 'IntelAgent',           details: 'CRITICAL alert sent to 3 subscribers via SentinelAlertLog' },
-      { id: 5,  action: 'self_correction',     actor: 'SelfCorrectionAgent',  details: 'Low-confidence finding (0.62) re-evaluated → SKIP' },
-      { id: 6,  action: 'rwa_assessed',        actor: 'RWAAgent',             details: 'US T-Bill 2026-001 assessed via Groq Compound — APPROVED' },
-      { id: 7,  action: 'policy_updated',      actor: 'RiskPolicyManager',    details: 'Risk threshold updated: 0.75 → 0.60 on testnet' },
-      { id: 8,  action: 'x402_payment',        actor: 'IntelAgent',           details: 'x402 query paid — 0.5 CSPR deducted from SubscriberVault' },
-      { id: 9,  action: 'behavior_indexed',    actor: 'AgentBehaviorIndex',   details: 'Agent confidence avg: 0.86, corrections: 2/15 (13.3%)' },
-      { id: 10, action: 'safety_blocked',      actor: 'SafetyGuard',          details: 'Prompt injection attempt blocked in <42ms' },
-    ],
-    total: 10,
-  }),
-  writeAudit: async ({ action, actor, details }) => {
-    const hash = Array.from({ length: 64 }, () => '0123456789abcdef'[Math.floor(Math.random() * 16)]).join('')
-    return { success: true, deploy_hash: hash, block_height: getLiveBlockHeight(), contract: 'AuditTrail' }
+
+  // FIX #18: getFindings fetches from /api/findings instead of hardcoded LIVE_FINDINGS
+  getFindings:  async (limit = 20) => {
+    const findings = await refreshLiveFindings(null, limit);
+    return { findings, total: findings.length };
   },
+
+  getBlock: async () => {
+    const net = await fetchNetworkInfo();
+    const height = net?.block_height ?? getLiveBlockHeight();
+    if (net?.block_height) updateBlockHeight(net.block_height);
+    return {
+      block_height: height,
+      network: net?.network || 'casper-test',
+      timestamp: new Date().toISOString(),
+    };
+  },
+
+  // FIX #18: getSpans fetches from /api/spans instead of hardcoded data
+  getSpans: async () => {
+    return await fetchSpans();
+  },
+
+  // FIX #18: getAuditLog fetches from /api/audit instead of hardcoded data
+  getAuditLog: async () => {
+    return await fetchAuditLog();
+  },
+
+  // FIX #18: writeAudit calls POST /api/audit instead of generating fake hash
+  writeAudit: async ({ action, actor, details }) => {
+    return await writeAuditEntry({ action, actor, details });
+  },
+
   deployHashes: CONTRACT_HASHES,
 }
 
@@ -99,7 +99,7 @@ function Ticker({ findings }) {
             </span>
             {' '}
             <span style={{ color: '#94a3b8' }}>{f.protocol}: </span>
-            <span style={{ color: '#e2e8f0' }}>{f.summary.slice(0, 80)}…</span>
+            <span style={{ color: '#e2e8f0' }}>{(f.summary || '').slice(0, 80)}…</span>
           </span>
         ))}
       </div>
@@ -113,16 +113,24 @@ export default function App() {
   const [blockHeight, setBlockHeight] = useState(getLiveBlockHeight())
   const [network, setNetwork]       = useState(null)
   const [groqOnline, setGroqOnline] = useState(null)
+  const [tickerFindings, setTickerFindings] = useState([])
 
   const refresh = useCallback(async () => {
-    const [price, health, net] = await Promise.allSettled([
+    const [price, health, net, findings] = await Promise.allSettled([
       fetchCSPRPrice(),
       liveHealth(),
       fetchNetworkInfo(),
+      refreshLiveFindings(null, 10),
     ])
     if (price.status === 'fulfilled')   setCSPR(price.value)
     if (health.status === 'fulfilled')  setGroqOnline(health.value.groq_connected)
-    if (net.status === 'fulfilled' && net.value) setNetwork(net.value)
+    if (net.status === 'fulfilled' && net.value) {
+      setNetwork(net.value)
+      if (net.value.block_height) updateBlockHeight(net.value.block_height)
+    }
+    if (findings.status === 'fulfilled' && findings.value) {
+      setTickerFindings(findings.value)
+    }
     setBlockHeight(getLiveBlockHeight())
   }, [])
 
@@ -171,7 +179,7 @@ export default function App() {
           }}>
             ● LIVE
           </span>
-          <Ticker findings={LIVE_FINDINGS} />
+          <Ticker findings={tickerFindings} />
           <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexShrink: 0, fontSize: 11 }}>
             {cspr?.usd != null && (
               <span style={{ color: changeColor, fontWeight: 700 }}>

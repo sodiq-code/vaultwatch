@@ -19,7 +19,6 @@ from .scanner_agent import RawEvent
 logger = logging.getLogger("vaultwatch.anomaly")
 tracer = trace.get_tracer("vaultwatch.anomaly_agent")
 
-groq_client = Groq(api_key=os.getenv("GROQ_API_KEY", "mock-key-for-testing"))
 
 RISK_TYPES = [
     "rug_pull",
@@ -148,7 +147,21 @@ class AnomalyAgent:
 
             prompt = self._build_prompt(event)
 
-            response = groq_client.chat.completions.create(
+            if self._client is None:
+                logger.warning("No Groq client available, returning default AnomalyResult with medium confidence")
+                return AnomalyResult(
+                    event=event,
+                    risk_type="anomalous_flow",
+                    severity="MEDIUM",
+                    confidence=0.5,
+                    reasoning="No LLM client available — default medium confidence",
+                    raw_response="",
+                    model_used="none",
+                    tokens_used=0,
+                    latency_ms=0,
+                )
+
+            response = self._client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
                 messages=[
                     {

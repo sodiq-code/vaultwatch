@@ -4,8 +4,22 @@
 /// Any protocol on Casper can call get_risk_score(address) to retrieve the
 /// current VaultWatch risk assessment. This is the integration hook — one
 /// contract call, live risk intelligence, no account required.
+///
+/// FIX #11: Added Odra events (ScoreUpdated)
 
 use odra::prelude::*;
+
+// ─── Events ────────────────────────────────────────────────────────────────
+
+#[odra::event]
+pub struct ScoreUpdated {
+    pub address: String,
+    pub old_score: u8,
+    pub new_score: u8,
+    pub risk_type: String,
+}
+
+// ─── Data types ────────────────────────────────────────────────────────────
 
 #[odra::odra_type]
 pub struct RiskScore {
@@ -16,6 +30,8 @@ pub struct RiskScore {
     pub last_updated: u64,   // block height
     pub finding_id: u64,     // reference back to AuditTrail
 }
+
+// ─── Contract ──────────────────────────────────────────────────────────────
 
 #[odra::module]
 pub struct RiskOracle {
@@ -40,15 +56,30 @@ impl RiskOracle {
         finding_id: u64,
     ) {
         self.assert_owner();
+
+        // FIX #11: capture old_score for event emission
+        let old_score = match self.scores.get(&address) {
+            Some(existing) => existing.score,
+            None => 0u8,
+        };
+
         let record = RiskScore {
             address: address.clone(),
             score,
-            risk_type,
+            risk_type: risk_type.clone(),
             confidence,
             last_updated: block_height,
             finding_id,
         };
         self.scores.set(&address, record);
+
+        // FIX #11: emit ScoreUpdated event
+        self.env().emit_event(ScoreUpdated {
+            address,
+            old_score,
+            new_score: score,
+            risk_type,
+        });
     }
 
     /// Query risk score for any address — public, no auth required
