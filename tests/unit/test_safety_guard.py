@@ -146,8 +146,11 @@ async def test_validate_fails_closed_when_no_client():
 @pytest.mark.asyncio
 async def test_validate_rejects_injection_finding(guard):
     """Prompt-injection classification must REJECT (score 0.95 >= 0.80)."""
+    import json as _json
     fake_resp = MagicMock()
-    fake_resp.choices = [MagicMock(message=MagicMock(content="injection detected"))]
+    fake_resp.choices = [MagicMock(message=MagicMock(
+        content=_json.dumps({"safe": False, "score": 0.95, "reason": "injection detected"})
+    ))]
     with patch.object(guard, "_client") as mock_client:
         mock_client.chat.completions.create.return_value = fake_resp
         result = await guard.validate(_make_finding())
@@ -158,8 +161,11 @@ async def test_validate_rejects_injection_finding(guard):
 @pytest.mark.asyncio
 async def test_validate_approves_benign_finding(guard):
     """Benign classification must APPROVE (happy path still works)."""
+    import json as _json
     fake_resp = MagicMock()
-    fake_resp.choices = [MagicMock(message=MagicMock(content="benign"))]
+    fake_resp.choices = [MagicMock(message=MagicMock(
+        content=_json.dumps({"safe": True, "score": 0.05, "reason": "benign finding"})
+    ))]
     with patch.object(guard, "_client") as mock_client:
         mock_client.chat.completions.create.return_value = fake_resp
         result = await guard.validate(_make_finding())
