@@ -7,6 +7,7 @@ Each produces a valid on-chain TX hash proving network activity.
 
 from __future__ import annotations
 import json
+import os
 import sys
 import time
 import logging
@@ -26,7 +27,7 @@ ROOT = Path(__file__).parent.parent
 KEY_PATH = ROOT / "secret_key.pem"
 RPC_URL = "https://node.testnet.cspr.cloud/rpc"
 RPC_HEADERS = {
-    "Authorization": "019ef63a-5ffc-7657-8627-d7436d9f0e8c",
+    "Authorization": os.getenv("CSPR_CLOUD_API_KEY", ""),
     "Content-Type": "application/json",
 }
 CHAIN_NAME = "casper-test"
