@@ -264,7 +264,16 @@ export async function liveAssessRWA(asset) {
 }
 
 // ─── Live: Recent Findings ────────────────────────────────────────────────────
-export const LIVE_FINDINGS = [
+//
+// SEED_FINDINGS is a FALLBACK used only when the FastAPI proxy
+// (/api/chain/findings) is unreachable or the on-chain AuditTrail contract
+// has no findings yet. The dashboard now fetches REAL on-chain findings via
+// fetchLiveFindings() (see below) — this constant exists purely so the UI
+// keeps rendering during proxy outages / cold starts.
+//
+// LIVE_FINDINGS is kept as a backward-compatible alias for any component that
+// still imports it directly; new code should call fetchLiveFindings().
+export const SEED_FINDINGS = [
   {
     id: 'F-2026-001',
     protocol: 'CasperSwap',
@@ -276,6 +285,7 @@ export const LIVE_FINDINGS = [
     contract_hash: CONTRACT_HASHES.AuditTrail,
     timestamp: Date.now() - 120_000,
     agent: 'ScannerAgent → AnomalyAgent → AuditAgent',
+    source: 'seed',
   },
   {
     id: 'F-2026-002',
@@ -288,6 +298,7 @@ export const LIVE_FINDINGS = [
     contract_hash: CONTRACT_HASHES.RiskOracle,
     timestamp: Date.now() - 360_000,
     agent: 'AnomalyAgent → SelfCorrectionAgent',
+    source: 'seed',
   },
   {
     id: 'F-2026-003',
@@ -300,6 +311,7 @@ export const LIVE_FINDINGS = [
     contract_hash: CONTRACT_HASHES.SentinelAlertLog,
     timestamp: Date.now() - 720_000,
     agent: 'ScannerAgent → AnomalyAgent',
+    source: 'seed',
   },
   {
     id: 'F-2026-004',
@@ -312,6 +324,7 @@ export const LIVE_FINDINGS = [
     contract_hash: CONTRACT_HASHES.RiskOracle,
     timestamp: Date.now() - 1_200_000,
     agent: 'ScannerAgent',
+    source: 'seed',
   },
   {
     id: 'F-2026-005',
@@ -324,8 +337,103 @@ export const LIVE_FINDINGS = [
     contract_hash: CONTRACT_HASHES.AgentBehaviorIndex,
     timestamp: Date.now() - 1_800_000,
     agent: 'IntelAgent',
+    source: 'seed',
   },
 ]
+
+// Backward-compatible alias — the dashboard's Ticker + LiveFeed previously
+// imported LIVE_FINDINGS directly. Components are migrated to fetch from
+// chain via fetchLiveFindings(); this alias keeps any stragglers working.
+export const LIVE_FINDINGS = SEED_FINDINGS
+
+// Cache for the most recent successful chain read so multiple components
+// (Ticker + LiveFeed) don't fire redundant requests within the same window.
+let _liveFindingsCache = null
+let _liveFindingsFetchedAt = 0
+const LIVE_FINDINGS_TTL_MS = 15_000
+
+/**
+ * Fetch the latest on-chain findings from AuditTrail via the FastAPI proxy
+ * (/api/chain/findings). The proxy performs the real query_global_state RPC
+ * against the Casper testnet node — the browser never talks to the node
+ * directly and never needs any API key.
+ *
+ * Falls back to SEED_FINDINGS when the proxy is unreachable or returns no
+ * findings, so the dashboard always has something to render.
+ *
+ * @param {number} [limit=20]  max findings to return
+ * @param {object} [opts]      { force?: boolean } — bypass the 15s cache
+ * @returns {Promise<{findings: Array, total: number, source: string}>}
+ */
+export async function fetchLiveFindings(limit = 20, opts = {}) {
+  const now = Date.now()
+  if (!opts.force && _liveFindingsCache && now - _liveFindingsFetchedAt < LIVE_FINDINGS_TTL_MS) {
+    return {
+      findings: _liveFindingsCache.slice(0, limit),
+      total: _liveFindingsCache.length,
+      source: 'cache',
+    }
+  }
+  try {
+    const r = await fetch(`${API_BASE}/chain/findings?limit=${limit}`, {
+      signal: AbortSignal.timeout(8000),
+      headers: { Accept: 'application/json' },
+    })
+    if (r.ok) {
+      const d = await r.json()
+      const findings = Array.isArray(d?.findings) ? d.findings : []
+      if (findings.length > 0) {
+        _liveFindingsCache = findings
+        _liveFindingsFetchedAt = now
+        return { findings, total: d.count ?? findings.length, source: d.source || 'on-chain' }
+      }
+      // Proxy reachable but chain empty → fall through to seed.
+    }
+  } catch {
+    // Proxy unreachable → fall through to seed.
+  }
+  return {
+    findings: SEED_FINDINGS.slice(0, limit),
+    total: SEED_FINDINGS.length,
+    source: 'seed',
+  }
+}
+
+/**
+ * Fetch a single on-chain finding by numeric ID from AuditTrail via the proxy.
+ * @param {number} id
+ * @returns {Promise<object|null>} finding or null on 404 / error
+ */
+export async function fetchFinding(id) {
+  try {
+    const r = await fetch(`${API_BASE}/chain/finding/${id}`, {
+      signal: AbortSignal.timeout(8000),
+      headers: { Accept: 'application/json' },
+    })
+    if (r.ok) return r.json()
+  } catch {
+    // fall through
+  }
+  return null
+}
+
+/**
+ * Fetch the on-chain risk score for an address from RiskOracle via the proxy.
+ * @param {string} address  Casper account-hash string (e.g. "account-hash-…")
+ * @returns {Promise<object|null>} risk score or null on 404 / error
+ */
+export async function fetchRiskScore(address) {
+  try {
+    const r = await fetch(`${API_BASE}/chain/risk-score/${encodeURIComponent(address)}`, {
+      signal: AbortSignal.timeout(8000),
+      headers: { Accept: 'application/json' },
+    })
+    if (r.ok) return r.json()
+  } catch {
+    // fall through
+  }
+  return null
+}
 
 // ─── Health check (proxied server-side via /api/agent/health) ───────────────
 export async function liveHealth() {

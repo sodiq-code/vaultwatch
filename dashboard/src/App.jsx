@@ -13,7 +13,8 @@ import {
   fetchCSPRPrice,
   fetchNetworkInfo,
   getLiveBlockHeight,
-  LIVE_FINDINGS,
+  fetchLiveFindings,
+  SEED_FINDINGS,
   CONTRACT_HASHES,
 } from './liveApi.js'
 
@@ -23,10 +24,13 @@ export const liveApi = {
   detectAnomaly: liveDetectAnomaly,
   assessRWA:    liveAssessRWA,
   health:       liveHealth,
-  getFindings:  async (limit = 20) => ({
-    findings: LIVE_FINDINGS.slice(0, limit),
-    total: LIVE_FINDINGS.length,
-  }),
+  // Fetch REAL on-chain findings from AuditTrail via the FastAPI proxy
+  // (/api/chain/findings). Falls back to SEED_FINDINGS when the proxy or
+  // testnet RPC is unreachable so the dashboard always renders.
+  getFindings:  async (limit = 20) => {
+    const r = await fetchLiveFindings(limit)
+    return { findings: r.findings, total: r.total, source: r.source }
+  },
   getBlock: async () => ({
     block_height: getLiveBlockHeight(),
     network: 'casper-test',
@@ -113,16 +117,25 @@ export default function App() {
   const [blockHeight, setBlockHeight] = useState(getLiveBlockHeight())
   const [network, setNetwork]       = useState(null)
   const [groqOnline, setGroqOnline] = useState(null)
+  // Live on-chain findings fetched via the FastAPI proxy (/api/chain/findings).
+  // Seeded with SEED_FINDINGS so the Ticker renders immediately on first paint;
+  // replaced by real chain data (or the in-memory fallback) once the proxy
+  // responds.
+  const [liveFindings, setLiveFindings] = useState(SEED_FINDINGS)
 
   const refresh = useCallback(async () => {
-    const [price, health, net] = await Promise.allSettled([
+    const [price, health, net, findings] = await Promise.allSettled([
       fetchCSPRPrice(),
       liveHealth(),
       fetchNetworkInfo(),
+      fetchLiveFindings(20),
     ])
     if (price.status === 'fulfilled')   setCSPR(price.value)
     if (health.status === 'fulfilled')  setGroqOnline(health.value.groq_connected)
     if (net.status === 'fulfilled' && net.value) setNetwork(net.value)
+    if (findings.status === 'fulfilled' && findings.value?.findings?.length) {
+      setLiveFindings(findings.value.findings)
+    }
     setBlockHeight(getLiveBlockHeight())
   }, [])
 
@@ -171,7 +184,7 @@ export default function App() {
           }}>
             ● LIVE
           </span>
-          <Ticker findings={LIVE_FINDINGS} />
+          <Ticker findings={liveFindings} />
           <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexShrink: 0, fontSize: 11 }}>
             {cspr?.usd != null && (
               <span style={{ color: changeColor, fontWeight: 700 }}>

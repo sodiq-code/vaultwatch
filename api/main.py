@@ -688,6 +688,166 @@ async def get_block_height() -> Dict[str, Any]:
 
 
 # ===========================================================================
+# /chain/* — direct on-chain contract reads (AuditTrail + RiskOracle)
+# ===========================================================================
+#
+# These endpoints perform REAL ``query_global_state`` JSON-RPC reads against
+# the public Casper testnet node (no auth, no gas, no signing) via
+# ``api/casper_rpc.py``. They expose the AuditTrail + RiskOracle contract
+# state to:
+#
+#   * the browser dashboard — replacing the hardcoded ``LIVE_FINDINGS``
+#     constant with live chain data fetched through this FastAPI proxy
+#     (Critical Fix: dashboard no longer ships a stale, hand-written list;
+#     it shows what is actually on-chain);
+#   * the VaultWatch Python SDK — ``client.audit_trail.get_finding(id)`` and
+#     ``client.risk_oracle.get_score(address)`` hit these endpoints directly.
+#
+# Every endpoint is **chain-first with graceful fallback**:
+#   * On success → returns on-chain data with ``"source": "on-chain"``.
+#   * On RPC failure / empty chain → falls back to the in-memory
+#     ``_findings_store`` (findings the live agent pipeline recorded this
+#     session) or returns a clear ``404`` for single-item lookups.
+#
+# This keeps the dashboard + SDK functional even when the testnet RPC is
+# unreachable (e.g. sandbox CI), while serving genuine on-chain state whenever
+# the node is available.
+
+from api import casper_rpc  # noqa: E402
+
+
+def _finding_to_dashboard_shape(f: Dict[str, Any]) -> Dict[str, Any]:
+    """Map a parsed on-chain ``Finding`` (or in-memory finding) into the
+    dashboard's ``LIVE_FINDINGS`` shape so the UI consumes one consistent
+    schema regardless of source.
+    """
+    # In-memory findings from _findings_store already carry dashboard fields.
+    if "summary" in f and "protocol" in f:
+        return f
+    confidence = f.get("confidence", 0)
+    return {
+        "id": f"F-{f.get('id', 0)}",
+        "numeric_id": f.get("id"),
+        "protocol": f.get("address", "unknown")[:18] or "unknown",
+        "summary": f.get("description") or f.get("risk_type", "finding"),
+        "severity": f.get("severity", "MEDIUM"),
+        "risk_type": f.get("risk_type", "unknown"),
+        "confidence": (confidence / 100.0) if confidence <= 100 else confidence,
+        "contract": "AuditTrail",
+        "contract_hash": casper_rpc._audit_trail_hash(),
+        "timestamp": f.get("timestamp", 0) * 1000 if f.get("timestamp", 0) < 10**12 else f.get("timestamp", 0),
+        "agent": f.get("agent_model", "VaultWatchAgent"),
+        "tx_hash": f.get("tx_hash", ""),
+        "block_height": f.get("block_height"),
+        "source": f.get("source", "on-chain"),
+    }
+
+
+@app.get("/chain/finding-count", tags=["Chain"])
+async def chain_finding_count() -> Dict[str, Any]:
+    """Return the total number of findings recorded on AuditTrail.
+
+    Reads ``AuditTrail.finding_count`` (a ``Var<u64>``) directly from chain.
+    Falls back to the in-memory ``_findings_store`` length when the RPC is
+    unreachable so the dashboard never shows a broken counter.
+    """
+    with tracer.start_as_current_span("api.chain.finding_count") as span:
+        count = await casper_rpc.read_finding_count()
+        if count is not None:
+            span.set_attribute("chain.count", count)
+            span.set_attribute("chain.source", "on-chain")
+            return {"count": count, "source": "on-chain", "network": "casper-test"}
+        span.set_attribute("chain.source", "fallback")
+        return {
+            "count": len(_findings_store),
+            "source": "fallback",
+            "network": "casper-test",
+            "note": "testnet RPC unreachable; using in-memory store length",
+        }
+
+
+@app.get("/chain/findings", tags=["Chain"])
+async def chain_findings(
+    limit: int = Query(20, ge=1, le=200),
+) -> Dict[str, Any]:
+    """Return the latest ``limit`` findings from AuditTrail (newest first).
+
+    Chain-first: queries ``finding_count`` then reads each finding by ID in
+    parallel. Falls back to the in-memory ``_findings_store`` when the chain
+    read returns nothing (RPC down or contract has no findings yet), so the
+    dashboard always has findings to render.
+    """
+    with tracer.start_as_current_span("api.chain.findings") as span:
+        span.set_attribute("limit", limit)
+        chain_findings_list = await casper_rpc.read_recent_findings(limit=limit)
+        if chain_findings_list:
+            span.set_attribute("chain.source", "on-chain")
+            span.set_attribute("chain.count", len(chain_findings_list))
+            shaped = [_finding_to_dashboard_shape(f) for f in chain_findings_list]
+            return {
+                "count": len(shaped),
+                "findings": shaped,
+                "source": "on-chain",
+                "network": "casper-test",
+            }
+        # Fallback: in-memory findings store (live agent pipeline output).
+        span.set_attribute("chain.source", "fallback")
+        mem = list(_findings_store[-limit:])
+        shaped = [_finding_to_dashboard_shape(f) for f in mem]
+        return {
+            "count": len(shaped),
+            "findings": shaped,
+            "source": "fallback",
+            "network": "casper-test",
+            "note": "testnet RPC unreachable or no on-chain findings; showing in-memory store",
+        }
+
+
+@app.get("/chain/finding/{finding_id}", tags=["Chain"])
+async def chain_finding(finding_id: int) -> Dict[str, Any]:
+    """Return a single finding by its numeric on-chain ID from AuditTrail.
+
+    Powers ``VaultWatchClient.audit_trail.get_finding(id)``. Returns 404 when
+    the finding does not exist on chain AND is not in the in-memory store.
+    """
+    with tracer.start_as_current_span("api.chain.finding") as span:
+        span.set_attribute("finding_id", finding_id)
+        finding = await casper_rpc.read_finding(finding_id)
+        if finding is not None:
+            span.set_attribute("chain.source", "on-chain")
+            return _finding_to_dashboard_shape(finding)
+        # Fallback: look it up in the in-memory store by numeric id.
+        for f in _findings_store:
+            if f.get("numeric_id") == finding_id or f.get("id") == f"F-{finding_id}":
+                span.set_attribute("chain.source", "fallback-memory")
+                return _finding_to_dashboard_shape(f)
+        raise HTTPException(
+            status_code=404,
+            detail=f"finding {finding_id} not found on chain or in memory",
+        )
+
+
+@app.get("/chain/risk-score/{address}", tags=["Chain"])
+async def chain_risk_score(address: str) -> Dict[str, Any]:
+    """Return the on-chain risk score for ``address`` from RiskOracle.
+
+    Powers ``VaultWatchClient.risk_oracle.get_score(address)``. The address
+    is the String key the contract stores (typically a Casper account-hash
+    string). Returns 404 when no score exists for the address.
+    """
+    with tracer.start_as_current_span("api.chain.risk_score") as span:
+        span.set_attribute("address", address)
+        score = await casper_rpc.read_risk_score(address)
+        if score is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"no risk score on chain for address {address}",
+            )
+        span.set_attribute("chain.score", score.get("score", 0))
+        return score
+
+
+# ===========================================================================
 # x402 v2 Payment Protocol — HTTP 402 middleware + payment-gated routes
 # ===========================================================================
 #

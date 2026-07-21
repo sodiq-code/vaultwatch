@@ -14,6 +14,83 @@ import httpx
 logger = logging.getLogger("vaultwatch.sdk")
 
 
+class AuditTrailNamespace:
+    """Direct on-chain query methods for the ``AuditTrail`` contract.
+
+    Every method hits the VaultWatch FastAPI proxy (``/chain/*``), which in
+    turn performs a real ``query_global_state`` JSON-RPC read against the
+    Casper testnet node. The browser/SDK never talks to the node directly
+    and never needs an API key.
+    """
+
+    def __init__(self, client: "VaultWatchClient") -> None:
+        self._client = client
+
+    async def get_finding(self, finding_id: int) -> Dict[str, Any]:
+        """Fetch a single finding by its numeric on-chain ID.
+
+        Corresponds to ``AuditTrail::get_finding(id)``. Returns the finding
+        as a dict (``id``, ``protocol``, ``summary``, ``severity``,
+        ``confidence``, ``contract_hash``, ``timestamp``, ``source``, …).
+
+        Raises ``httpx.HTTPStatusError`` (404) when the finding does not exist
+        on chain or in the proxy's in-memory fallback store.
+        """
+        return await self._client._get(f"/chain/finding/{int(finding_id)}")
+
+    async def get_findings(self, limit: int = 20) -> Dict[str, Any]:
+        """Fetch the latest ``limit`` findings (newest first).
+
+        Returns ``{"count": int, "findings": [...], "source": "on-chain"|"fallback"}``.
+        """
+        return await self._client._get("/chain/findings", limit=limit)
+
+    async def get_count(self) -> Dict[str, Any]:
+        """Return ``AuditTrail.finding_count`` (the on-chain counter)."""
+        return await self._client._get("/chain/finding-count")
+
+    # ------------------------------------------------------------------
+    # Synchronous wrappers
+    # ------------------------------------------------------------------
+    def get_finding_sync(self, finding_id: int) -> Dict[str, Any]:
+        return asyncio.run(self.get_finding(finding_id))
+
+    def get_findings_sync(self, limit: int = 20) -> Dict[str, Any]:
+        return asyncio.run(self.get_findings(limit))
+
+    def get_count_sync(self) -> Dict[str, Any]:
+        return asyncio.run(self.get_count())
+
+
+class RiskOracleNamespace:
+    """Direct on-chain query methods for the ``RiskOracle`` contract."""
+
+    def __init__(self, client: "VaultWatchClient") -> None:
+        self._client = client
+
+    async def get_score(self, address: str) -> Dict[str, Any]:
+        """Fetch the on-chain risk score for ``address``.
+
+        Corresponds to ``RiskOracle::get_risk_score(address)``. ``address`` is
+        the String key the contract stores (typically a Casper account-hash
+        string like ``"account-hash-<hex>"``). Returns the parsed ``RiskScore``
+        dict (``address``, ``score``, ``risk_type``, ``confidence``,
+        ``last_updated``, ``finding_id``, ``source``).
+
+        Raises ``httpx.HTTPStatusError`` (404) when no score exists for the
+        address on chain.
+        """
+        from urllib.parse import quote
+
+        return await self._client._get(f"/chain/risk-score/{quote(address, safe='')}")
+
+    # ------------------------------------------------------------------
+    # Synchronous wrappers
+    # ------------------------------------------------------------------
+    def get_score_sync(self, address: str) -> Dict[str, Any]:
+        return asyncio.run(self.get_score(address))
+
+
 class VaultWatchClient:
     """
     Async client for the VaultWatch REST API.
@@ -46,11 +123,29 @@ class VaultWatchClient:
         self.api_key = api_key
         self.timeout = timeout
         self._client: Optional[httpx.AsyncClient] = None
+        # Direct on-chain query namespaces — ``client.audit_trail.get_finding(id)``
+        # and ``client.risk_oracle.get_score(address)``. Each method proxies
+        # through the VaultWatch FastAPI /chain/* endpoints, which perform real
+        # query_global_state RPC reads against the Casper testnet node.
+        self.audit_trail = AuditTrailNamespace(self)
+        self.risk_oracle = RiskOracleNamespace(self)
+
+    def _auth_headers(self) -> Dict[str, str]:
+        """Build the auth header set matching ``api/security.py::AuthMiddleware``.
+
+        The middleware reads the ``X-API-Key`` header (constant-time compared
+        via ``hmac.compare_digest``). We send ``X-API-Key`` when ``api_key`` is
+        set; a ``Bearer`` fallback is also included for any legacy proxy that
+        still reads ``Authorization``.
+        """
+        if not self.api_key:
+            return {}
+        return {"X-API-Key": self.api_key, "Authorization": f"Bearer {self.api_key}"}
 
     async def __aenter__(self) -> "VaultWatchClient":
         self._client = httpx.AsyncClient(
             base_url=self.base_url,
-            headers={"Authorization": f"Bearer {self.api_key}"} if self.api_key else {},
+            headers=self._auth_headers(),
             timeout=self.timeout,
         )
         return self
@@ -63,7 +158,7 @@ class VaultWatchClient:
         if self._client is None:
             self._client = httpx.AsyncClient(
                 base_url=self.base_url,
-                headers={"Authorization": f"Bearer {self.api_key}"} if self.api_key else {},
+                headers=self._auth_headers(),
                 timeout=self.timeout,
             )
         return self._client

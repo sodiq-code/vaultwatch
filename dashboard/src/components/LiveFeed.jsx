@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { LIVE_FINDINGS, CONTRACT_HASHES, getLiveBlockHeight, fetchNetworkInfo } from '../liveApi.js'
+import { SEED_FINDINGS, fetchLiveFindings, CONTRACT_HASHES, getLiveBlockHeight, fetchNetworkInfo } from '../liveApi.js'
 
 const CARD = {
   background: 'var(--surface)',
@@ -94,8 +94,14 @@ function EventRow({ event, isNew }) {
 
 function FindingCard({ f }) {
   const color = SEV_COLOR[f.severity] || '#64748b'
-  const age   = Math.round((Date.now() - f.timestamp) / 60000)
+  const age   = Math.round((Date.now() - (f.timestamp || 0)) / 60000)
   const ageStr = age < 60 ? `${age}m ago` : `${Math.round(age / 60)}h ago`
+  // On-chain findings carry the AuditTrail contract hash → link to the
+  // contract view. Seed findings carry a deploy hash → link to the deploy.
+  const isOnChain = f.source === 'on-chain'
+  const explorerUrl = isOnChain
+    ? `https://testnet.cspr.live/contract/${f.contract_hash}`
+    : `https://testnet.cspr.live/deploy/${f.contract_hash}`
   return (
     <div style={{
       padding: '12px 14px',
@@ -109,6 +115,13 @@ function FindingCard({ f }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontWeight: 700, fontSize: 13 }}>{f.protocol}</span>
           <span style={{ fontFamily: 'monospace', fontSize: 10, color: 'var(--text-muted)' }}>{f.id}</span>
+          {isOnChain && (
+            <span style={{
+              fontSize: 9, fontWeight: 700, letterSpacing: 0.5,
+              padding: '1px 5px', borderRadius: 3,
+              background: '#0a2a0a', color: '#22c55e', border: '1px solid #22c55e40',
+            }}>ON-CHAIN</span>
+          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>{ageStr}</span>
@@ -120,7 +133,7 @@ function FindingCard({ f }) {
       </div>
       <div style={{ color: 'var(--text-muted)', marginBottom: 7, lineHeight: 1.5 }}>{f.summary}</div>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-        <a href={`https://testnet.cspr.live/deploy/${f.contract_hash}`}
+        <a href={explorerUrl}
           target="_blank" rel="noopener noreferrer"
           style={{ color: 'var(--accent)', fontSize: 11, textDecoration: 'none' }}>
           ⬡ {f.contract} ↗
@@ -142,8 +155,33 @@ export default function LiveFeed({ api, cspr, network, blockHeight }) {
   const [paused, setPaused]     = useState(false)
   const [filter, setFilter]     = useState('ALL')
   const [newIds, setNewIds]     = useState(new Set())
+  // Findings fetched from AuditTrail via the FastAPI proxy (/api/chain/findings).
+  // Seeded with SEED_FINDINGS so the panel renders immediately; replaced by
+  // real on-chain findings (or the in-memory fallback) once the proxy responds.
+  const [findings, setFindings] = useState(SEED_FINDINGS)
+  const [findingsSource, setFindingsSource] = useState('seed')
   const eventCounter            = useRef(12)
   const listRef                 = useRef(null)
+
+  // Fetch REAL on-chain findings through the FastAPI proxy. The proxy performs
+  // the query_global_state RPC against the Casper testnet node — the browser
+  // never talks to the node directly and never needs an API key.
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      const r = await fetchLiveFindings(20)
+      if (cancelled) return
+      if (r?.findings?.length) {
+        setFindings(r.findings)
+        setFindingsSource(r.source)
+      }
+    }
+    load()
+    // Refresh findings every 30s so newly-recorded on-chain findings appear
+    // without a manual page reload.
+    const id = setInterval(load, 30_000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [])
 
   // Auto-scroll to bottom
   const scrollToBottom = useCallback(() => {
@@ -319,9 +357,18 @@ export default function LiveFeed({ api, cspr, network, blockHeight }) {
           <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400, marginLeft: 8 }}>
             written to Casper contracts
           </span>
+          <span style={{
+            marginLeft: 10, fontSize: 9, fontWeight: 700, letterSpacing: 0.5,
+            padding: '2px 7px', borderRadius: 4,
+            background: findingsSource === 'on-chain' ? '#0a2a0a' : findingsSource === 'fallback' ? '#2a1a00' : 'var(--surface2)',
+            color: findingsSource === 'on-chain' ? '#22c55e' : findingsSource === 'fallback' ? '#f59e0b' : 'var(--text-muted)',
+            border: `1px solid ${findingsSource === 'on-chain' ? '#22c55e40' : findingsSource === 'fallback' ? '#f59e0b40' : 'var(--border)'}`,
+          }}>
+            {findingsSource === 'on-chain' ? '● ON-CHAIN' : findingsSource === 'fallback' ? '● IN-MEMORY' : findingsSource === 'cache' ? '● CACHED' : '● SEED'}
+          </span>
         </h2>
-        {LIVE_FINDINGS.map((f, i) => (
-          <FindingCard key={i} f={f} />
+        {findings.map((f, i) => (
+          <FindingCard key={f.id || i} f={f} />
         ))}
         <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted)' }}>
           Each finding is linked to its specific on-chain contract deploy.
