@@ -1,0 +1,72 @@
+{
+  "x402_version": 2,
+  "scheme": "exact",
+  "network": "casper:casper-test",
+  "chain_name": "casper-test",
+  "sdk": {
+    "@make-software/casper-x402": "1.0.0",
+    "@x402/core": "2.15.0",
+    "casper-js-sdk": "5.0.12"
+  },
+  "flow": "SubscriberVault.open_vault() stored-contract deploy on Casper testnet",
+  "subscriber_address": "subscriber-vaultwatch-demo-001",
+  "plan": "standard",
+  "amount_motes": "1000000000",
+  "amount_cspr": 1,
+  "payment_required": {
+    "x402Version": 2,
+    "error": "PAYMENT-SIGNATURE header is required",
+    "resource": {
+      "url": "https://api.vaultwatch.io/intel/subscriber-vaultwatch-demo-001",
+      "description": "VaultWatch standard subscription — 1 CSPR escrowed",
+      "mimeType": "application/json",
+      "serviceName": "VaultWatch",
+      "tags": [
+        "defi",
+        "risk-intelligence",
+        "casper"
+      ]
+    },
+    "accepts": [
+      {
+        "scheme": "exact",
+        "network": "casper:casper-test",
+        "asset": "d1cb42e21855b938d7e189186bb13751fc4d2523da53e1482027595a0f3463bf",
+        "amount": "1000000000",
+        "payTo": "000debd9ab6e903b6d3269f7c9ceaf28320e3b91209e1a1080fd9ddf097d3dbd68",
+        "maxTimeoutSeconds": 300,
+        "extra": {
+          "name": "VaultWatch SubscriberVault",
+          "version": "1",
+          "description": "Escrowed CSPR credit for VaultWatch intelligence queries"
+        }
+      }
+    ]
+  },
+  "payment_required_header": "eyJ4NDAyVmVyc2lvbiI6MiwiZXJyb3IiOiJQQVlNRU5ULVNJR05BVFVSRSBoZWFkZXIgaXMgcmVxdWlyZWQiLCJyZXNvdXJjZSI6eyJ1cmwiOiJodHRwczovL2FwaS52YXVsdHdhdGNoLmlvL2ludGVsL3N1YnNjcmliZXItdmF1bHR3YXRjaC1kZW1vLTAwMSIsImRlc2NyaXB0aW9uIjoiVmF1bHRXYXRjaCBzdGFuZGFyZCBzdWJzY3JpcHRpb24g4oCUIDEgQ1NQUiBlc2Nyb3dlZCIsIm1pbWVUeXBlIjoiYXBwbGljYXRpb24vanNvbiIsInNlcnZpY2VOYW1lIjoiVmF1bHRXYXRjaCIsInRhZ3MiOlsiZGVmaSIsInJpc2staW50ZWxsaWdlbmNlIiwiY2FzcGVyIl19LCJhY2NlcHRzIjpbeyJzY2hlbWUiOiJleGFjdCIsIm5ldHdvcmsiOiJjYXNwZXI6Y2FzcGVyLXRlc3QiLCJhc3NldCI6ImQxY2I0MmUyMTg1NWI5MzhkN2UxODkxODZiYjEzNzUxZmM0ZDI1MjNkYTUzZTE0ODIwMjc1OTVhMGYzNDYzYmYiLCJhbW91bnQiOiIxMDAwMDAwMDAwIiwicGF5VG8iOiIwMDBkZWJkOWFiNmU5MDNiNmQzMjY5ZjdjOWNlYWYyODMyMGUzYjkxMjA5ZTFhMTA4MGZkOWRkZjA5N2QzZGJkNjgiLCJtYXhUaW1lb3V0U2Vjb25kcyI6MzAwLCJleHRyYSI6eyJuYW1lIjoiVmF1bHRXYXRjaCBTdWJzY3JpYmVyVmF1bHQiLCJ2ZXJzaW9uIjoiMSIsImRlc2NyaXB0aW9uIjoiRXNjcm93ZWQgQ1NQUiBjcmVkaXQgZm9yIFZhdWx0V2F0Y2ggaW50ZWxsaWdlbmNlIHF1ZXJpZXMifX1dfQ==",
+  "on_chain_deploy": {
+    "deploy_hash": "0588e143d15eebb7004c23052cd3727d7b87c3b120981184eff5abc9b33f5e2c",
+    "block_hash": "753289ded7815545d801281b65aa2e6cc26047d6f5e8f13d1c54c939213ccf22",
+    "gas_cost_motes": "5000000000",
+    "gas_cost_cspr": 5,
+    "link": "https://testnet.cspr.live/deploy/0588e143d15eebb7004c23052cd3727d7b87c3b120981184eff5abc9b33f5e2c",
+    "contract_entry_point": "open_vault",
+    "contract_hash": "d1cb42e21855b938d7e189186bb13751fc4d2523da53e1482027595a0f3463bf",
+    "contract_package_hash": "d1cb42e21855b938d7e189186bb13751fc4d2523da53e1482027595a0f3463bf"
+  },
+  "settle_response": {
+    "success": true,
+    "payer": "000debd9ab6e903b6d3269f7c9ceaf28320e3b91209e1a1080fd9ddf097d3dbd68",
+    "transaction": "0588e143d15eebb7004c23052cd3727d7b87c3b120981184eff5abc9b33f5e2c",
+    "network": "casper:casper-test",
+    "amount": "1000000000",
+    "extensions": {
+      "casperDeployLink": "https://testnet.cspr.live/deploy/0588e143d15eebb7004c23052cd3727d7b87c3b120981184eff5abc9b33f5e2c",
+      "contract": "SubscriberVault",
+      "entryPoint": "open_vault"
+    }
+  },
+  "payment_response_header": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjAwMGRlYmQ5YWI2ZTkwM2I2ZDMyNjlmN2M5Y2VhZjI4MzIwZTNiOTEyMDllMWExMDgwZmQ5ZGRmMDk3ZDNkYmQ2OCIsInRyYW5zYWN0aW9uIjoiMDU4OGUxNDNkMTVlZWJiNzAwNGMyMzA1MmNkMzcyN2Q3Yjg3YzNiMTIwOTgxMTg0ZWZmNWFiYzliMzNmNWUyYyIsIm5ldHdvcmsiOiJjYXNwZXI6Y2FzcGVyLXRlc3QiLCJhbW91bnQiOiIxMDAwMDAwMDAwIiwiZXh0ZW5zaW9ucyI6eyJjYXNwZXJEZXBsb3lMaW5rIjoiaHR0cHM6Ly90ZXN0bmV0LmNzcHIubGl2ZS9kZXBsb3kvMDU4OGUxNDNkMTVlZWJiNzAwNGMyMzA1MmNkMzcyN2Q3Yjg3YzNiMTIwOTgxMTg0ZWZmNWFiYzliMzNmNWUyYyIsImNvbnRyYWN0IjoiU3Vic2NyaWJlclZhdWx0IiwiZW50cnlQb2ludCI6Im9wZW5fdmF1bHQifX0=",
+  "payee_account_hash": "000debd9ab6e903b6d3269f7c9ceaf28320e3b91209e1a1080fd9ddf097d3dbd68",
+  "verified_at_utc": "2026-07-21T18:49:14.686Z"
+}

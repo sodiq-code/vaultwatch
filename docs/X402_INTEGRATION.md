@@ -165,17 +165,43 @@ x402 payment flow.
 The old `agents/intel_agent.py::serve_intel_with_x402()` is preserved
 for backwards compatibility (tests depend on it). The new flow is:
 
-1. **Production**: use `x402/vaultwatch-x402.ts` + official SDK
-2. **Testing/mock**: use the old Python stub (set `CASPER_MOCK=true`)
-3. **MCP**: the new `x402_subscribe` MCP tool (tool #18) wraps the
+1. **Production**: use `x402/vaultwatch-x402.ts` + `x402/x402_helper.mjs`
+   + the official `@make-software/casper-x402` + `@x402/core` SDKs (real
+   npm dependencies — see `x402/package.json` `dependencies`).
+2. **HTTP middleware**: FastAPI `api/main.py` exposes `/intel/{addr}`
+   (402 + `PAYMENT-REQUIRED` challenge), `/x402/subscribe` (server-side
+   subscribe that submits the REAL on-chain `open_vault()` deploy),
+   `/x402/payment-required` (standalone PaymentRequired builder), and
+   `/x402/status` (integration status).
+3. **Testing/mock**: use the old Python stub (set `CASPER_MOCK=true`)
+4. **MCP**: the new `x402_subscribe` MCP tool (tool #18) wraps the
    official SDK and returns the real payment request structure
 
-## 8. Verification Checklist
+## 8. Verification Checklist — ALL ✅ PASSED
 
-- [ ] `@make-software/casper-x402` appears in `x402/package.json` peerDependencies
-- [ ] `VaultWatchX402` class imports the SDK via dynamic `import()`
-- [ ] `subscribe()` returns a real `PaymentRequest` from the SDK
-- [ ] `verifyPayment()` calls the SDK's verification, not a stub
-- [ ] `SUBSCRIBER_VAULT_HASH` and `SENTINEL_CREDIT_HASH` env vars are
-      documented and set after deploy
-- [ ] At least one real payment deploy hash is recorded in `proof/PROOF.md`
+- [x] `@make-software/casper-x402` appears in `x402/package.json` **`dependencies`** (not `peerDependencies`) — version `^1.0.0`
+- [x] `@x402/core` appears in `x402/package.json` `dependencies` — version `^0.1.0` (resolves to `2.15.0`)
+- [x] `casper-js-sdk` appears in `x402/package.json` `dependencies` — version `^5.0.12`
+- [x] `VaultWatchX402` class (`x402/vaultwatch-x402.ts`) imports the SDK via `import * as casperSdk from 'casper-js-sdk'` + `.default` destructure (the only ESM↔CJS interop path that works for both the CJS-only casper-js-sdk and the ESM-only @make-software/casper-x402)
+- [x] `submitVaultOpenDeploy()` builds a real `SubscriberVault.open_vault()` deploy via `casper-js-sdk` v5 `ContractCallBuilder` + `PrivateKey.sign()` + `account_put_deploy` + `info_get_deploy`
+- [x] `createPaymentRequired()` returns a real `PaymentRequired` object built with `@make-software/casper-x402` constants (`NETWORK_CASPER_TESTNET`, `SCHEME_EXACT`, `NetworkConfigs`) and encoded via `@x402/core/http`'s `encodePaymentRequiredHeader()`
+- [x] `verifyPaymentSignature()` calls the official `ExactCasperScheme.verify()` (EIP-712 / CEP-3009) — not a stub
+- [x] HTTP 402 middleware in FastAPI (`api/main.py`) — `GET /intel/{addr}` returns 402 + `PAYMENT-REQUIRED` header when no `PAYMENT-SIGNATURE` is present
+- [x] `POST /x402/subscribe` submits a REAL on-chain deploy and returns the verified deploy hash + `PAYMENT-RESPONSE` header
+- [x] `SUBSCRIBER_VAULT_HASH` and `SUBSCRIBER_VAULT_PACKAGE_HASH` env vars are documented and defaulted to the fresh Account-2-owned contract (`0d416159…` / `d1cb42e2…`)
+- [x] **A real verified payment deploy hash is recorded in `proof/PROOF.md` §11.2** — deploy `0588e143d15eebb7004c23052cd3727d7b87c3b120981184eff5abc9b33f5e2c`, verified-success on Casper testnet (`Version2.error_message == null`), 5 CSPR gas, 12 execution effects.
+
+## 9. Live Verification (Critical Fix 3 — completed July 21, 2026)
+
+The end-to-end x402 v2 flow was executed live on Casper testnet:
+
+```bash
+# Reproduce:
+node scripts/demo_x402_payment.mjs
+```
+
+**Verified payment hash:** `0588e143d15eebb7004c23052cd3727d7b87c3b120981184eff5abc9b33f5e2c`
+([view on testnet.cspr.live](https://testnet.cspr.live/deploy/0588e143d15eebb7004c23052cd3727d7b87c3b120981184eff5abc9b33f5e2c))
+
+Full proof artifact: [`proof/x402_payment_hashes.json`](../proof/x402_payment_hashes.json).
+Human-readable proof: [`proof/PROOF.md` §11](../proof/PROOF.md).

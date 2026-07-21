@@ -6,7 +6,11 @@
   "main": "vaultwatch-x402.ts",
   "scripts": {
     "demo": "tsx vaultwatch-x402.ts",
-    "typecheck": "tsc --noEmit vaultwatch-x402.ts"
+    "typecheck": "tsc --noEmit vaultwatch-x402.ts",
+    "encode:payment-required": "node x402_helper.cjs encode-payment-required",
+    "verify:payment-signature": "node x402_helper.cjs verify-payment-signature",
+    "submit:vault-payment": "node x402_helper.cjs submit-vault-payment",
+    "build:settle-response": "node x402_helper.cjs build-settle-response"
   },
   "keywords": [
     "casper",
@@ -29,20 +33,13 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "peerDependencies": {
+  "dependencies": {
     "@make-software/casper-x402": "^1.0.0",
-    "casper-js-sdk": "^2.15.0"
-  },
-  "peerDependenciesMeta": {
-    "@make-software/casper-x402": {
-      "optional": false
-    },
-    "casper-js-sdk": {
-      "optional": false
-    }
+    "@x402/core": "^0.1.0",
+    "casper-js-sdk": "^5.0.12"
   },
   "devDependencies": {
-    "typescript": "^5.4.0",
-    "tsx": "^4.7.0"
+    "tsx": "^4.23.1",
+    "typescript": "^5.9.3"
   }
 }

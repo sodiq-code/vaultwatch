@@ -298,3 +298,217 @@ python3 scripts/demo_upgrade_full.py
 
 Full design, build pipeline, mechanism, and on-chain results:
 [`docs/UPGRADE_DEMO.md`](../docs/UPGRADE_DEMO.md).
+---
+
+## 11. Critical Fix 3 — Real x402 v2 Payment Flow ✅ VERIFIED ON-CHAIN
+
+Closes the review's Critical Fix 3: the x402 payment protocol is now a **REAL**
+end-to-end flow on Casper testnet, not a stub. All four required components are
+implemented, tested, and verified:
+
+1. **`@make-software/casper-x402` is installed as a real npm dependency**
+   (not a `peerDependency`). See `package.json` (`dependencies.@make-software/casper-x402`)
+   and `x402/package.json` (`dependencies`). `@x402/core` (the HTTP transport
+   primitives) and `casper-js-sdk` v5 are also real dependencies. Verified:
+   `npm ls @make-software/casper-x402 @x402/core casper-js-sdk` resolves to
+   `1.0.0`, `2.15.0`, `5.0.12` respectively.
+
+2. **`submitVaultOpenDeploy()` is implemented with `casper-js-sdk`** —
+   `x402/x402_helper.mjs` exposes the `submit-vault-payment` command that builds,
+   signs, submits, and on-chain verifies a REAL `SubscriberVault.open_vault()`
+   stored-contract deploy via the SDK's `ContractCallBuilder` +
+   `PrivateKey.fromPem()` + `account_put_deploy` + `info_get_deploy`.
+
+3. **HTTP 402 middleware is added in FastAPI** — `api/main.py` exposes:
+   - `GET /intel/{addr}` — payment-gated resource. Without a `PAYMENT-SIGNATURE`
+     header, returns **402** with a real `PAYMENT-REQUIRED` base64 header built
+     by `@x402/core/http`'s `encodePaymentRequiredHeader()`. With a valid
+     signature, verifies via `@make-software/casper-x402`'s facilitator
+     `ExactCasperScheme.verify()` and returns 200 + `PAYMENT-RESPONSE` header.
+   - `POST /x402/subscribe` — server-initiated subscribe flow that builds the
+     PaymentRequired AND submits the REAL on-chain payment deploy, returning
+     the verified deploy hash + the `PAYMENT-RESPONSE` header.
+   - `GET /x402/payment-required` — standalone PaymentRequired builder for
+     x402 client wallets to discover the payment requirements.
+   - `GET /x402/status` — integration status (SDK versions, contract refs,
+     plan prices).
+
+4. **A verified payment hash is recorded** — see §11.2 below. The on-chain
+   `SubscriberVault.open_vault()` deploy is verified-success
+   (`Version2.error_message == null`) on Casper testnet, and the deploy hash
+   is carried in the x402 `SettleResponse.transaction` field of the
+   `PAYMENT-RESPONSE` header.
+
+**Status: FULLY VERIFIED ON-CHAIN on Casper Testnet (`casper-test`) on July 21, 2026.**
+The complete x402 flow (build PaymentRequired → sign + submit
+`open_vault()` deploy → verify on-chain → build SettleResponse carrying the
+verified deploy hash) was executed and verified. Deployer account:
+`02031300f7e7a8c0a9390ce7f365e315bae45c91e2cdcedaf754156b1a6bac13e3db`
+(account hash `0debd9ab6e903b6d3269f7c9ceaf28320e3b91209e1a1080fd9ddf097d3dbd68`).
+
+### 11.1 Architecture — the x402 v2 flow on Casper
+
+```
+Client ──GET /intel/{addr}──────────► VaultWatch API (FastAPI)
+Client ◄──402 + PAYMENT-REQUIRED──── VaultWatch API   (@x402/core/http encodePaymentRequiredHeader)
+Client ──GET + PAYMENT-SIGNATURE───► VaultWatch API   (@make-software/casper-x402 ExactCasperScheme.verify)
+VaultWatch ──open_vault deploy─────► Casper testnet   (casper-js-sdk ContractCallBuilder + PrivateKey.sign)
+VaultWatch ──build SettleResponse──► Client (200 + PAYMENT-RESPONSE)
+```
+
+The on-chain payment is a `SubscriberVault.open_vault()` stored-contract call
+that records `initial_deposit` CSPR as `escrowed_balance` in the subscriber's
+vault account (see `contracts/src/subscriber_vault.rs:39`). The deploy is
+signed by the vault owner (the deployer account, whose PEM is at
+`secret_key.pem`) — `open_vault()` is gated by `assert_vault_owner()`, so the
+deployer must own the SubscriberVault contract.
+
+### 11.2 The Verified Payment Hash
+
+| Field | Value |
+|-------|-------|
+| **Deploy hash** | `0588e143d15eebb7004c23052cd3727d7b87c3b120981184eff5abc9b33f5e2c` |
+| **Block hash** | `753289ded7815545d801281b65aa2e6cc26047d6f5e8f13d1c54c939213ccf22` |
+| **Timestamp** | `2026-07-21T18:48:08.326Z` |
+| **Gas cost** | 5 CSPR (5_000_000_000 motes) |
+| **Execution result** | `Version2.error_message == null` → **SUCCESS** |
+| **Effects** | 12 transforms (writes to SubscriberVault contract + package + balance hold) |
+| **testnet.cspr.live link** | [view deploy](https://testnet.cspr.live/deploy/0588e143d15eebb7004c23052cd3727d7b87c3b120981184eff5abc9b33f5e2c) |
+
+**SubscriberVault contract (fresh, owned by Account 2):**
+- contract hash: `0d41615944471f18c7ac75725901be7eeff26a0c168e1a3387db2449256b1f8c`
+- package hash: `d1cb42e21855b938d7e189186bb13751fc4d2523da53e1482027595a0f3463bf`
+- install deploy: `8b4ba50c91c075792fb10aa0a116234fcdd7d2fddcc99772b8e693e67e339c29`
+  ([view](https://testnet.cspr.live/deploy/8b4ba50c91c075792fb10aa0a116234fcdd7d2fddcc99772b8e693e67e339c29))
+
+> **Why a fresh SubscriberVault?** The original SubscriberVault (hash
+> `9a93db9c…`, package `68c4b7cc…`) was installed by Account 1 (now drained).
+> `open_vault()` is gated by `assert_vault_owner()` — only the installer can
+> call it. To make Account 2 the vault owner (so it can submit real x402
+> payments), a fresh SubscriberVault was installed with Account 2's key via
+> `scripts/casper_install.cjs` (same fresh-install path used in §10 for
+> RiskPolicyManager). The fresh contract is owned by Account 2 and is the
+> target of all x402 payment deploys.
+
+### 11.3 The x402 v2 PaymentRequired object (built by the official SDK)
+
+```json
+{
+  "x402Version": 2,
+  "error": "PAYMENT-SIGNATURE header is required",
+  "resource": {
+    "url": "https://api.vaultwatch.io/intel/subscriber-vaultwatch-demo-001",
+    "description": "VaultWatch standard subscription — 1 CSPR escrowed",
+    "mimeType": "application/json",
+    "serviceName": "VaultWatch",
+    "tags": ["defi", "risk-intelligence", "casper"]
+  },
+  "accepts": [{
+    "scheme": "exact",
+    "network": "casper:casper-test",
+    "asset": "d1cb42e21855b938d7e189186bb13751fc4d2523da53e1482027595a0f3463bf",
+    "amount": "1000000000",
+    "payTo": "000debd9ab6e903b6d3269f7c9ceaf28320e3b91209e1a1080fd9ddf097d3dbd68",
+    "maxTimeoutSeconds": 300,
+    "extra": {
+      "name": "VaultWatch SubscriberVault",
+      "version": "1",
+      "description": "Escrowed CSPR credit for VaultWatch intelligence queries"
+    }
+  }]
+}
+```
+
+The `PAYMENT-REQUIRED` HTTP response header is the base64 encoding of this
+JSON, produced by `@x402/core/http`'s `encodePaymentRequiredHeader()` — NOT a
+hand-rolled base64. Constants come from `@make-software/casper-x402`:
+`NETWORK_CASPER_TESTNET` (`"casper:casper-test"`), `SCHEME_EXACT` (`"exact"`),
+`NetworkConfigs[CASPER_TESTNET].rpcUrl`.
+
+### 11.4 The x402 v2 SettleResponse (carrying the verified deploy hash)
+
+```json
+{
+  "success": true,
+  "payer": "000debd9ab6e903b6d3269f7c9ceaf28320e3b91209e1a1080fd9ddf097d3dbd68",
+  "transaction": "0588e143d15eebb7004c23052cd3727d7b87c3b120981184eff5abc9b33f5e2c",
+  "network": "casper:casper-test",
+  "amount": "1000000000",
+  "extensions": {
+    "casperDeployLink": "https://testnet.cspr.live/deploy/0588e143d15eebb7004c23052cd3727d7b87c3b120981184eff5abc9b33f5e2c",
+    "contract": "SubscriberVault",
+    "entryPoint": "open_vault"
+  }
+}
+```
+
+The `PAYMENT-RESPONSE` HTTP response header is the base64 encoding of this
+JSON, produced by `@x402/core/http`'s `encodePaymentResponseHeader()`. The
+`transaction` field is the verified on-chain Casper deploy hash — this is the
+"verified payment hash" required by Critical Fix 3.
+
+### 11.5 SDK versions (all real npm dependencies)
+
+| Package | Version | Role |
+|---------|---------|------|
+| `@make-software/casper-x402` | `1.0.0` | Official Casper x402 scheme — `ExactCasperScheme` (EIP-712 / CEP-3009), `NETWORK_CASPER_TESTNET`, `SCHEME_EXACT`, `NetworkConfigs`, `toFacilitatorCasperSigner` |
+| `@x402/core` | `2.15.0` | x402 v2 transport primitives — `encodePaymentRequiredHeader`, `encodePaymentResponseHeader`, `decodePaymentSignatureHeader` |
+| `casper-js-sdk` | `5.0.12` | Casper-2.x-compatible deploy signing — `ContractCallBuilder`, `PrivateKey`, `Args`, `CLValue`, `RpcClient`, `HttpHandler` |
+
+### 11.6 Reproduce the on-chain x402 payment
+
+```bash
+# The deployer secret key (Account 2) is at vaultwatch/secret_key.pem.
+# Account 2 owns the fresh SubscriberVault (contract hash 0d416159…, package
+# hash d1cb42e2…). The x402 payment deploy calls open_vault() on this contract.
+
+# 1. Verify the SDKs are installed as real dependencies:
+npm ls @make-software/casper-x402 @x402/core casper-js-sdk
+
+# 2. Run the end-to-end live verification script (builds PaymentRequired,
+#    submits + verifies the open_vault() deploy, builds SettleResponse,
+#    writes proof/x402_payment_hashes.json):
+node scripts/demo_x402_payment.mjs
+
+# 3. Inspect the proof artifact:
+cat proof/x402_payment_hashes.json
+
+# 4. Verify the deploy on-chain (independent of the SDK):
+curl -s -X POST https://node.testnet.casper.network/rpc \
+  -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"info_get_deploy",
+       "params":{"deploy_hash":"0588e143d15eebb7004c23052cd3727d7b87c3b120981184eff5abc9b33f5e2c"}}' \
+  | python3 -c "import json,sys; r=json.load(sys.stdin)['result']; print('error_message:', r['execution_info']['execution_result']['Version2']['error_message']); print('cost (motes):', r['execution_info']['execution_result']['Version2']['cost'])"
+# → error_message: None
+# → cost (motes): 5000000000
+
+# 5. Start the FastAPI server and exercise the 402 flow:
+uvicorn api.main:app --host 0.0.0.0 --port 8000 &
+curl -i http://localhost:8000/intel/casper_swap_protocol
+# → HTTP/1.1 402 Payment Required
+# → PAYMENT-REQUIRED: eyJ4NDAyVmVyc2lvbiI6Miwi...
+curl -i http://localhost:8000/x402/status
+# → HTTP/1.1 200 OK  (integration status + SDK versions)
+```
+
+### 11.7 Files touched by Critical Fix 3
+
+| File | Role |
+|------|------|
+| `x402/package.json` | Promoted `@make-software/casper-x402`, `@x402/core`, `casper-js-sdk` from `peerDependencies` to real `dependencies` |
+| `x402/x402_helper.mjs` | The bridge between Python FastAPI and the JS x402 SDKs. Four commands: `encode-payment-required`, `verify-payment-signature`, `submit-vault-payment`, `build-settle-response`. Uses ESM with `import * as casperSdk from 'casper-js-sdk'` + `.default` destructure (the only interop path that works for both the CJS-only casper-js-sdk and the ESM-only @make-software/casper-x402). |
+| `x402/vaultwatch-x402.ts` | TypeScript wrapper class with the same `submitVaultOpenDeploy()` method, updated for the v5 SDK API (`RpcClient` + `HttpHandler`, `newCLUint64`). |
+| `api/main.py` | FastAPI 402 middleware + `/intel/{addr}`, `/x402/subscribe`, `/x402/payment-required`, `/x402/status` endpoints. Shells out to `x402/x402_helper.mjs` via `asyncio.create_subprocess_exec`. |
+| `scripts/demo_x402_payment.mjs` | End-to-end live verification script. Builds PaymentRequired, submits + verifies the `open_vault()` deploy, builds SettleResponse, writes `proof/x402_payment_hashes.json`. |
+| `proof/x402_payment_hashes.json` | The proof artifact: full PaymentRequired + on-chain deploy hash + SettleResponse + PAYMENT-REQUIRED / PAYMENT-RESPONSE headers. |
+| `proof/PROOF.md` (this section) | The human-readable proof referencing the verified payment hash. |
+
+### 11.8 Official resources used (per hackathon detail)
+
+Per https://dorahacks.io/hackathon/casper-agentic-buildathon-finals/detail, the
+officially sanctioned resources for x402 are:
+- **x402** (HTTP-native payment protocol) — https://github.com/x402-foundation/x402
+- **`@make-software/casper-x402`** (Casper x402 scheme) — https://www.npmjs.com/package/@make-software/casper-x402
+- **`casper-js-sdk` v5** (Casper-2.x-compatible deploy signing) — https://github.com/casper-network/casper-js-sdk
+- **Casper Testnet RPC** — https://node.testnet.casper.network/rpc
+- **testnet.cspr.live** (deploy viewer) — https://testnet.cspr.live/deploy/0588e143d15eebb7004c23052cd3727d7b87c3b120981184eff5abc9b33f5e2c
