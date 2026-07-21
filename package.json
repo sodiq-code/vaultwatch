@@ -12,6 +12,7 @@
     "api:dev": "uvicorn api.main:app --reload --host 0.0.0.0 --port 8000",
     "pipeline:start": "python pipeline.py",
     "mcp:start": "python vaultwatch_mcp/server.py",
+    "mcp:rwa": "python vaultwatch_rwa_mcp/server.py",
     "dashboard:dev": "cd dashboard && npm run dev",
     "dashboard:build": "cd dashboard && npm run build",
     "test": "pytest tests/ -v",
