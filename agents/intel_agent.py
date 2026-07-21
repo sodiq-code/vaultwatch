@@ -1,6 +1,6 @@
 """
 IntelAgent — Layer 6: Intelligence API + x402 pay-per-query gate
-Model: llama-3.1-8b-instant
+Model: llama-3.3-70b-versatile (JSON-mode risk analysis)
 Input: confirmed on-chain record from AuditAgent
 Actions:
   - Expose findings via REST API
@@ -61,7 +61,14 @@ class IntelAgent:
         self.casper_client = casper_client
         self.alert_count = 0
         self._groq_key = groq_api_key or os.getenv("GROQ_API_KEY", "")
-        self._model = "compound-beta"
+        # llama-3.3-70b-versatile — reliably supports response_format
+        # {"type":"json_object"} for structured risk-analysis output. Previously
+        # ``compound-beta`` (Groq's live-web-search compound model), which does
+        # not reliably honour JSON mode — its free-form search-augmented output
+        # frequently failed json.loads, causing analyze() to silently return
+        # empty summary/risk_factors. Same model the SafetyGuard/AnomalyAgent/
+        # ScannerAgent already use successfully.
+        self._model = "llama-3.3-70b-versatile"
         # Inject a pre-built client (tests / DI) or construct one from the key.
         if groq_client is not None:
             self._client = groq_client

@@ -113,7 +113,14 @@ async def test_findings_store_has_timestamp(agent):
 
 @pytest.mark.asyncio
 async def test_compound_model_used(agent):
-    """Verify IntelAgent targets the compound-beta model."""
+    """Verify IntelAgent targets a JSON-mode-capable Groq model.
+
+    Previously ``compound-beta`` (Groq's live-web-search compound model) which
+    did not reliably honour ``response_format={"type":"json_object"}`` and
+    caused analyze() to silently return empty fields. Now
+    ``llama-3.3-70b-versatile`` — the same JSON-mode model the SafetyGuard,
+    AnomalyAgent, and ScannerAgent use.
+    """
     with patch.object(agent, "_call_groq", new_callable=AsyncMock) as mock_groq:
         mock_groq.return_value = {
             "summary": "",
@@ -123,4 +130,4 @@ async def test_compound_model_used(agent):
         }
         await agent.analyze("test")
     # Model selection verified by agent's internal _model attribute
-    assert agent._model == "compound-beta"
+    assert agent._model == "llama-3.3-70b-versatile"
