@@ -585,6 +585,10 @@ vaultwatch/
 
 ```bash
 # Required
+# SECURITY (Critical Fix 7): the Groq key is SERVER-SIDE ONLY. It MUST live
+# in GROQ_API_KEY and NEVER in any VITE_* variable — Vite ships VITE_*
+# values to the browser bundle. The dashboard never reads this key directly;
+# all Groq calls go through the FastAPI proxy at /api/agent/*.
 GROQ_API_KEY=your_groq_key           # Free at console.groq.com
 
 # Casper Network
@@ -612,7 +616,6 @@ API_PORT=8000
 
 # Dashboard
 VITE_API_URL=http://localhost:8000
-VITE_GROQ_API_KEY=your_groq_key      # For client-side Groq calls
 
 # OpenTelemetry (stdout by default, any OTel sink supported)
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317

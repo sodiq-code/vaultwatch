@@ -1,29 +1,27 @@
 /**
  * VaultWatch Live API
  *
- * Calls Groq directly from the frontend for real AI-powered risk analysis.
+ * All Groq AI calls go through the VaultWatch FastAPI proxy at
+ * /api/agent/* (Critical Fix 7) — the Groq key is read server-side
+ * from the environment and NEVER shipped to the browser.
  * Uses CoinGecko for live CSPR price data.
  * Uses cspr.cloud REST API for live Casper network data — but ALWAYS
  * through the VaultWatch FastAPI reverse proxy (/api/cspr_cloud/*) so the
- * CSPR.cloud Bearer token NEVER ships to the browser. See api/main.py
+ * cspr.cloud auth token NEVER ships to the browser. See api/main.py
  * §CSPR.cloud reverse proxy (Critical Fix 6).
  * All Casper contract transaction hashes link to testnet explorer for verification.
  */
-
-// Set VITE_GROQ_API_KEY in your .env.local or Vercel environment variables
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || ''
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 
 // VaultWatch FastAPI base. In dev, Vite proxies /api/* -> http://localhost:8000/*
 // (see vite.config.js). In prod, set VITE_API_URL to the deployed API origin.
 const API_BASE = import.meta.env.VITE_API_URL || '/api'
 
 // Clarity event store (public, no auth) — kept direct. The cspr.cloud REST
-// API that requires a Bearer token is ALWAYS proxied through /api/cspr_cloud/*.
+// API that requires an auth token is ALWAYS proxied through /api/cspr_cloud/*.
 const CSPR_CLOUD_BASE = 'https://event-store-api-clarity-testnet.make.services'
 
 /**
- * Fetch from the CSPR.cloud reverse proxy. The proxy injects the Bearer token
+ * Fetch from the CSPR.cloud reverse proxy. The proxy injects the auth token
  * server-side, so the browser never sees the API key.
  *
  * @param {string} path  — the cspr.cloud REST path (e.g. 'blocks', 'accounts/<pk>/deploys')
@@ -149,7 +147,7 @@ export async function fetchNetworkInfo() {
   }
 
   // Fallback: try cspr.cloud's primary REST API — but THROUGH the
-  // VaultWatch FastAPI reverse proxy so the Bearer token stays server-side
+  // VaultWatch FastAPI reverse proxy so the auth token stays server-side
   // (Critical Fix 6). The proxy is at /api/cspr_cloud/blocks in dev (Vite
   // proxy) or ${VITE_API_URL}/cspr_cloud/blocks in prod.
   try {
@@ -185,7 +183,7 @@ export async function fetchNetworkInfo() {
 export async function fetchAccountDeploys(limit = 10) {
   try {
     // Route through the VaultWatch FastAPI reverse proxy so the cspr.cloud
-    // Bearer token never reaches the browser (Critical Fix 6).
+    // auth token never reaches the browser (Critical Fix 6).
     const d = await csprCloudGet(
       `accounts/${DEPLOYER_ACCOUNT}/deploys`,
       `page_size=${limit}&fields=deploy_hash,timestamp,cost,status`,
@@ -222,176 +220,47 @@ export async function fetchCSPRPriceHistory() {
   return []
 }
 
-// ─── Groq call helper ─────────────────────────────────────────────────────────
-async function groqCall(model, messages, schema = null) {
-  const body = {
-    model,
-    messages,
-    temperature: 0.3,
-    max_tokens: 1024,
-  }
-  if (schema) {
-    body.response_format = { type: 'json_object' }
-  }
-
-  const r = await fetch(GROQ_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${GROQ_API_KEY}`,
-    },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(20000),
-  })
-
-  if (!r.ok) {
-    const err = await r.text()
-    throw new Error(`Groq API error ${r.status}: ${err}`)
-  }
-
-  const data = await r.json()
-  const content = data.choices?.[0]?.message?.content || ''
-
-  if (schema) {
-    try { return JSON.parse(content) } catch { return content }
-  }
-  return content
-}
-
-// ─── Live AI: Risk Query ──────────────────────────────────────────────────────
+// ─── Live AI: Risk Query (proxied server-side via /api/agent/risk-query) ────────
 export async function liveRiskQuery({ query, protocol }) {
-  const systemPrompt = `You are VaultWatch, an AI-powered DeFi risk intelligence agent running on the Casper blockchain.
-You have 6 specialized agents: ScannerAgent, AnomalyAgent, SelfCorrectionAgent, RWAAgent, SafetyGuard, AuditAgent, IntelAgent.
-Your findings are written to 8 Odra smart contracts deployed on Casper Testnet.
-
-Analyze the DeFi risk query and return a JSON object with:
-- summary: detailed risk analysis paragraph (2-3 sentences)
-- risk_factors: array of 3-5 specific risk factors found
-- confidence: float 0.75-0.97 (your confidence level)
-- severity: one of CRITICAL/HIGH/MEDIUM/LOW
-- recommendation: actionable recommendation string
-- groq_model: "llama-3.3-70b-versatile"
-- on_chain_contract: "RiskOracle" (the contract this would be written to)
-
-Be specific to DeFi protocols on Casper. Focus on real DeFi risks: liquidity, whale concentration, governance, smart contract, collateral, oracle manipulation.`
-
-  const result = await groqCall(
-    'llama-3.3-70b-versatile',
-    [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: `Protocol: ${protocol || 'Unknown'}\nQuery: ${query}` }
-    ],
-    true
-  )
-
-  return {
-    result: {
-      summary:          result.summary || result.content || String(result),
-      risk_factors:     Array.isArray(result.risk_factors) ? result.risk_factors : [],
-      confidence:       typeof result.confidence === 'number' ? result.confidence : 0.85,
-      severity:         result.severity || 'MEDIUM',
-      recommendation:   result.recommendation || '',
-      groq_model:       'llama-3.3-70b-versatile',
-      on_chain_contract: 'RiskOracle',
-      on_chain_hash:    CONTRACT_HASHES.RiskOracle,
-    }
+  // The Groq API key is injected server-side — the browser never sees it.
+  const r = await fetch(`${API_BASE}/agent/risk-query`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ query, protocol: protocol || undefined }),
+    signal:  AbortSignal.timeout(20000),
+  })
+  if (!r.ok) {
+    throw new Error(`agent/risk-query ${r.status}: ${await r.text().catch(() => '')}`)
   }
+  return r.json()
 }
 
-// ─── Live AI: Anomaly Detection ───────────────────────────────────────────────
+// ─── Live AI: Anomaly Detection (proxied server-side via /api/agent/anomaly-detect) ──
 export async function liveDetectAnomaly(metrics) {
-  const systemPrompt = `You are VaultWatch AnomalyAgent powered by llama-3.3-70b-versatile on Casper blockchain.
-Analyze DeFi protocol metrics and detect anomalies.
-
-Return JSON with:
-- risk_score: integer 0-100
-- anomalies: array of detected anomaly strings
-- recommendation: string (CRITICAL/ELEVATED/NORMAL + explanation)
-- confidence: float 0.75-0.98
-- agent: "AnomalyAgent (llama-3.3-70b-versatile) + SelfCorrectionAgent"
-- self_correction_applied: boolean
-- severity: CRITICAL/HIGH/MEDIUM/LOW`
-
-  const result = await groqCall(
-    'llama-3.3-70b-versatile',
-    [
-      { role: 'system', content: systemPrompt },
-      {
-        role: 'user',
-        content: `Analyze these Casper DeFi protocol metrics:
-Protocol: ${metrics.protocol}
-TVL: $${Number(metrics.tvl).toLocaleString()}
-24h Volume: $${Number(metrics.volume_24h).toLocaleString()}
-Volume/TVL ratio: ${(Number(metrics.volume_24h) / Math.max(Number(metrics.tvl), 1)).toFixed(3)}
-Price Change 1h: ${metrics.price_change_1h}%
-Transactions 24h: ${metrics.num_transactions}
-Liquidity Ratio: ${metrics.liquidity_ratio}
-
-Detect anomalies and return risk assessment.`
-      }
-    ],
-    true
-  )
-
-  return {
-    risk_score:              typeof result.risk_score === 'number' ? result.risk_score : 50,
-    anomalies:               Array.isArray(result.anomalies) ? result.anomalies : [],
-    recommendation:          result.recommendation || 'Analysis complete.',
-    confidence:              typeof result.confidence === 'number' ? result.confidence : 0.85,
-    agent:                   result.agent || 'AnomalyAgent (llama-3.3-70b-versatile)',
-    severity:                result.severity || 'MEDIUM',
-    self_correction_applied: result.self_correction_applied || false,
-    on_chain_contract:       'SentinelAlertLog',
+  const r = await fetch(`${API_BASE}/agent/anomaly-detect`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(metrics),
+    signal:  AbortSignal.timeout(20000),
+  })
+  if (!r.ok) {
+    throw new Error(`agent/anomaly-detect ${r.status}: ${await r.text().catch(() => '')}`)
   }
+  return r.json()
 }
 
-// ─── Live AI: RWA Assessment ──────────────────────────────────────────────────
+// ─── Live AI: RWA Assessment (proxied server-side via /api/agent/rwa-assess) ────
 export async function liveAssessRWA(asset) {
-  const systemPrompt = `You are VaultWatch RWAAgent, powered by Groq Compound (compound-beta model) with live web search capabilities.
-You assess real-world assets for on-chain tokenisation viability on the Casper blockchain.
-
-Analyze the asset and return JSON with:
-- verdict: APPROVED / REJECTED / REVIEW
-- risk_score: integer 0-100 (lower = safer)
-- notes: detailed assessment paragraph (2-3 sentences)
-- risk_factors: array of specific risk factors
-- groq_model: "compound-beta"
-- collateral_assessment: brief collateral analysis string
-- regulatory_status: brief regulatory comment`
-
-  const result = await groqCall(
-    'llama-3.3-70b-versatile',
-    [
-      { role: 'system', content: systemPrompt },
-      {
-        role: 'user',
-        content: `Assess this real-world asset for Casper blockchain tokenisation:
-Asset ID: ${asset.asset_id}
-Asset Type: ${asset.asset_type}
-Issuer: ${asset.issuer}
-Collateral Ratio: ${asset.collateral_ratio}x
-Maturity: ${asset.maturity_days} days
-Credit Rating: ${asset.credit_rating}
-
-Provide thorough RWA risk assessment.`
-      }
-    ],
-    true
-  )
-
-  return {
-    assessment: {
-      verdict:               result.verdict || 'REVIEW',
-      risk_score:            typeof result.risk_score === 'number' ? result.risk_score : 45,
-      notes:                 result.notes || result.content || 'Assessment complete.',
-      risk_factors:          Array.isArray(result.risk_factors) ? result.risk_factors : [],
-      groq_model:            'compound-beta (Groq Compound)',
-      collateral_assessment: result.collateral_assessment || '',
-      regulatory_status:     result.regulatory_status || '',
-      on_chain_contract:     'RiskPolicyManager',
-      on_chain_hash:         CONTRACT_HASHES.RiskPolicyManager,
-    }
+  const r = await fetch(`${API_BASE}/agent/rwa-assess`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(asset),
+    signal:  AbortSignal.timeout(20000),
+  })
+  if (!r.ok) {
+    throw new Error(`agent/rwa-assess ${r.status}: ${await r.text().catch(() => '')}`)
   }
+  return r.json()
 }
 
 // ─── Live: Recent Findings ────────────────────────────────────────────────────
@@ -458,8 +327,18 @@ export const LIVE_FINDINGS = [
   },
 ]
 
-// ─── Health check ──────────────────────────────────────────────────────────────
+// ─── Health check (proxied server-side via /api/agent/health) ───────────────
 export async function liveHealth() {
+  try {
+    const r = await fetch(`${API_BASE}/agent/health`, {
+      signal: AbortSignal.timeout(8000),
+      headers: { Accept: 'application/json' },
+    })
+    if (r.ok) return r.json()
+  } catch {
+    // fall through to local fallback
+  }
+  // Fallback so the dashboard keeps rendering even if the proxy is down
   const price = await fetchCSPRPrice().catch(() => null)
   return {
     status: 'ok',
@@ -467,7 +346,7 @@ export async function liveHealth() {
     mode: 'live',
     agents: 6,
     contracts: 8,
-    groq_connected: true,
+    groq_connected: false,
     cspr_price_usd: price?.usd ?? null,
     network: 'casper-test',
   }

@@ -35,9 +35,23 @@ impl SentinelCredit {
         self.total_revenue.set(U512::zero());
     }
 
-    /// Deposit CSPR credits to an account
+    /// Deposit CSPR credits to an account — PAYABLE.
+    ///
+    /// The caller attaches real CSPR via `CallDef::with_amount(amount)`. Odra's
+    /// `#[odra(payable)]` attribute auto-invokes `handle_attached_value()` which
+    /// transfers the attached CSPR from the caller's cargo purse into this
+    /// contract's main purse (`__contract_main_purse`). We then credit the
+    /// account's internal balance ledger by the same amount.
+    ///
+    /// The `amount` argument MUST match the attached value — the contract
+    /// verifies this to prevent accounting drift.
+    #[odra(payable)]
     pub fn deposit(&mut self, account_address: String, amount: U512) {
         self.assert_owner();
+        let attached = self.env().attached_value();
+        if attached != amount {
+            self.env().revert(ExecutionError::User(2));
+        }
         let mut account = self.accounts.get(&account_address).unwrap_or(CreditAccount {
             owner: account_address.clone(),
             balance: U512::zero(),
@@ -48,6 +62,34 @@ impl SentinelCredit {
         account.balance += amount;
         account.total_deposited += amount;
         self.accounts.set(&account_address, account);
+    }
+
+    /// Withdraw CSPR credits from an account — transfers real CSPR from the
+    /// contract's main purse back to the caller's account.
+    ///
+    /// The caller must be the contract owner. The account's balance is
+    /// decremented and the equivalent CSPR is transferred via
+    /// `self.env().transfer_tokens()`.
+    pub fn withdraw(&mut self, account_address: String, amount: U512) {
+        self.assert_owner();
+        match self.accounts.get(&account_address) {
+            Some(mut account) => {
+                if account.balance < amount {
+                    self.env().revert(ExecutionError::User(3));
+                }
+                account.balance -= amount;
+                self.accounts.set(&account_address, account);
+                // Transfer real CSPR from the contract's main purse to the caller.
+                let caller = self.env().caller();
+                self.env().transfer_tokens(&caller, &amount);
+            }
+            None => self.env().revert(ExecutionError::User(4)),
+        }
+    }
+
+    /// Returns the contract's real CSPR balance (the main purse balance).
+    pub fn get_contract_balance(&self) -> U512 {
+        self.env().self_balance()
     }
 
     /// Deduct credit for a standard query — called by IntelAgent
@@ -132,8 +174,27 @@ mod tests {
             query_price: U512::from(1_000_000u64),
             premium_price: U512::from(5_000_000u64),
         });
-        contract.deposit("casper1proto".to_string(), U512::from(10_000_000u64));
+        // deposit is now payable — attach 10 CSPR (10_000_000_000 motes) via with_tokens
+        contract
+            .with_tokens(U512::from(10_000_000u64))
+            .deposit("casper1proto".to_string(), U512::from(10_000_000u64));
         assert_eq!(contract.get_balance("casper1proto".to_string()), U512::from(10_000_000u64));
+    }
+
+    #[test]
+    fn test_deposit_increases_contract_balance() {
+        let env = odra_test::env();
+        let mut contract = SentinelCreditHostRef::deploy(&env, InitArgs {
+            query_price: U512::from(1_000_000u64),
+            premium_price: U512::from(5_000_000u64),
+        });
+        // Contract starts with 0 CSPR
+        assert_eq!(contract.get_contract_balance(), U512::zero());
+        // Payable deposit transfers real CSPR to the contract's main purse
+        contract
+            .with_tokens(U512::from(10_000_000u64))
+            .deposit("casper1proto".to_string(), U512::from(10_000_000u64));
+        assert_eq!(contract.get_contract_balance(), U512::from(10_000_000u64));
     }
 
     #[test]
@@ -143,7 +204,9 @@ mod tests {
             query_price: U512::from(1_000_000u64),
             premium_price: U512::from(5_000_000u64),
         });
-        contract.deposit("casper1proto".to_string(), U512::from(10_000_000u64));
+        contract
+            .with_tokens(U512::from(10_000_000u64))
+            .deposit("casper1proto".to_string(), U512::from(10_000_000u64));
         let success = contract.deduct_query("casper1proto".to_string(), false);
         assert!(success);
         assert_eq!(contract.get_balance("casper1proto".to_string()), U512::from(9_000_000u64));
@@ -158,5 +221,54 @@ mod tests {
         });
         let success = contract.deduct_query("casper1broke".to_string(), false);
         assert!(!success);
+    }
+
+    #[test]
+    fn test_withdraw_transfers_real_cspr() {
+        let env = odra_test::env();
+        let mut contract = SentinelCreditHostRef::deploy(&env, InitArgs {
+            query_price: U512::from(1_000_000u64),
+            premium_price: U512::from(5_000_000u64),
+        });
+        // Deposit 10 CSPR (payable)
+        contract
+            .with_tokens(U512::from(10_000_000u64))
+            .deposit("casper1proto".to_string(), U512::from(10_000_000u64));
+        assert_eq!(contract.get_contract_balance(), U512::from(10_000_000u64));
+        // Withdraw 4 CSPR — should transfer real CSPR back to caller
+        contract.withdraw("casper1proto".to_string(), U512::from(4_000_000u64));
+        // Account balance decremented
+        assert_eq!(contract.get_balance("casper1proto".to_string()), U512::from(6_000_000u64));
+        // Contract main purse decremented (4 CSPR transferred out)
+        assert_eq!(contract.get_contract_balance(), U512::from(6_000_000u64));
+    }
+
+    #[test]
+    fn test_withdraw_insufficient_balance_reverts() {
+        let env = odra_test::env();
+        let mut contract = SentinelCreditHostRef::deploy(&env, InitArgs {
+            query_price: U512::from(1_000_000u64),
+            premium_price: U512::from(5_000_000u64),
+        });
+        // Deposit 2 CSPR
+        contract
+            .with_tokens(U512::from(2_000_000u64))
+            .deposit("casper1proto".to_string(), U512::from(2_000_000u64));
+        // Try to withdraw 5 CSPR (more than balance) — should revert
+        let result = contract.try_withdraw("casper1proto".to_string(), U512::from(5_000_000u64));
+        assert!(result.is_err());
+        // Balance unchanged
+        assert_eq!(contract.get_balance("casper1proto".to_string()), U512::from(2_000_000u64));
+    }
+
+    #[test]
+    fn test_withdraw_nonexistent_account_reverts() {
+        let env = odra_test::env();
+        let mut contract = SentinelCreditHostRef::deploy(&env, InitArgs {
+            query_price: U512::from(1_000_000u64),
+            premium_price: U512::from(5_000_000u64),
+        });
+        let result = contract.try_withdraw("ghost".to_string(), U512::from(1_000u64));
+        assert!(result.is_err());
     }
 }

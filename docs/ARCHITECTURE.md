@@ -67,12 +67,22 @@ All 8 contracts compiled to WASM (bulk-memory-safe) and deployed to Casper testn
 |----------|---------|-----------------|
 | `AuditTrail` | Immutable finding log | `record_finding`, `get_finding`, `get_count` |
 | `RiskOracle` | On-chain risk scores | `update_score`, `get_risk_score`, `is_high_risk` |
-| `SentinelCredit` | Credit ledger for pay-per-query | `deposit`, `deduct_query`, `get_balance` |
+| `SentinelCredit` | Credit ledger for pay-per-query | `deposit` (payable), `withdraw`, `deduct_query`, `get_balance`, `get_contract_balance` |
 | `SentinelRegistry` | Operator registration | `register`, `deregister`, `is_active` |
 | `SentinelAlertLog` | Alert event store | `log_alert`, `get_log`, `get_total_count` |
 | `AgentBehaviorIndex` | Agent performance tracking | `record_decision`, `get_metrics`, `get_trust_score` |
 | `RiskPolicyManager` | Configurable risk policies | `upgrade_policy`, `get_current_policy`, `get_policy_version` |
-| `SubscriberVault` | Subscription & payment escrow | `open_vault`, `deduct`, `top_up`, `get_balance` |
+| `SubscriberVault` | Subscription & payment escrow | `open_vault` (payable), `top_up` (payable), `withdraw`, `deduct`, `get_balance`, `get_contract_balance` |
+
+### Payable Contracts (Critical Fix 8)
+`SentinelCredit.deposit` and `SubscriberVault.open_vault` / `top_up` are marked
+`#[odra(payable)]` — the caller attaches real CSPR via `CallDef::with_amount()`.
+Odra's `handle_attached_value()` transfers the CSPR from the caller's cargo purse
+into the contract's `__contract_main_purse`. The `amount` argument must match the
+attached value (the contract verifies this). Both contracts also expose
+`withdraw()` (transfers real CSPR back to the caller via `transfer_tokens()`,
+respecting the vault's lock period) and `get_contract_balance()` (reads the
+main purse balance via `self.env().self_balance()`).
 
 ### x402 Pay-Per-Query
 The `SubscriberVault` contract enables pay-per-query billing via the official

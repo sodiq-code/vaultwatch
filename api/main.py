@@ -322,6 +322,246 @@ async def list_rwa_assets() -> Dict[str, Any]:
     return {"count": len(assets), "assets": assets}
 
 
+# ===========================================================================
+# /agent/* — Groq proxy for the dashboard (Critical Fix 7)
+# ===========================================================================
+#
+# The dashboard previously called Groq directly from the browser using
+# VITE_GROQ_API_KEY (visible in devtools to anyone). These endpoints move
+# every Groq call server-side, injecting GROQ_API_KEY from the server's
+# environment.
+#
+# The endpoints mirror the response shapes that
+# dashboard/src/liveApi.js:liveRiskQuery / liveDetectAnomaly / liveAssessRWA
+# / liveHealth previously built client-side — so the dashboard UI continues
+# to work unchanged (including the rich fields on_chain_contract,
+# on_chain_hash, groq_model, severity, self_correction_applied, etc.).
+#
+# They reuse the same server-side agents used by /risk/query, /anomaly/detect,
+# and /rwa/assess (which already read GROQ_API_KEY from os.getenv).
+#
+# SECURITY:
+#   * GROQ_API_KEY is read from os.getenv ONLY — never from request headers,
+#     query params, or body.
+#   * No `groq_api_key` or `api_key` parameter is accepted on any /agent/*
+#     endpoint. The client cannot supply or override the key.
+
+# Verified contract transaction hashes on Casper Testnet (July 2026 redeploy).
+# Kept in sync with dashboard/src/liveApi.js + transaction_hashes_live.json.
+_AGENT_CONTRACT_HASHES: Dict[str, str] = {
+    "RiskOracle":         "e071aacc460a62e538092f5006930710f49e632598846c4c843e3daf0c5a7c9d",
+    "SentinelAlertLog":   "53317e080ffdffcf097447ea3375c9195c6936fe7b1ed53795bf46134322a925",
+    "RiskPolicyManager":  "93e35d6488dcab8524a22c82241c7ddc6d07b0f7c011544e6c4a296c1a0eee2e",
+}
+
+
+class AgentRiskQueryRequest(BaseModel):
+    """Request body for POST /agent/risk-query — matches dashboard liveRiskQuery()."""
+
+    query: str
+    protocol: Optional[str] = None
+
+
+class AgentAnomalyRequest(BaseModel):
+    """Request body for POST /agent/anomaly-detect — matches dashboard liveDetectAnomaly()."""
+
+    protocol: str
+    tvl: float
+    volume_24h: float
+    price_change_1h: float
+    num_transactions: int
+    liquidity_ratio: float
+
+
+class AgentRWARequest(BaseModel):
+    """Request body for POST /agent/rwa-assess — matches dashboard liveAssessRWA()."""
+
+    asset_id: str
+    asset_type: str
+    issuer: str
+    collateral_ratio: float
+    maturity_days: int
+    credit_rating: str
+
+
+def _groq_configured() -> bool:
+    """Return True if GROQ_API_KEY is set in the server environment.
+
+    Used by /agent/health so the dashboard can show whether Groq is online —
+    without ever echoing the key itself.
+    """
+    return bool(os.getenv("GROQ_API_KEY", "").strip())
+
+
+@app.get("/agent/health", tags=["Agent Proxy"])
+async def agent_health() -> Dict[str, Any]:
+    """Health endpoint for the dashboard's agent proxy.
+
+    Returns the same shape that dashboard/src/liveApi.js:liveHealth()
+    previously returned: status, version, mode, agents, contracts,
+    groq_connected (bool), cspr_price_usd, network.
+
+    The Groq key is NEVER echoed — only a boolean `groq_connected`.
+    """
+    with tracer.start_as_current_span("api.agent.health"):
+        cspr_price_usd: Optional[float] = None
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(
+                    "https://api.coingecko.com/api/v3/simple/price"
+                    "?ids=casper-network&vs_currencies=usd",
+                )
+                if resp.status_code == 200:
+                    val = resp.json().get("casper-network", {}).get("usd")
+                    if val is not None:
+                        cspr_price_usd = float(val)
+        except (httpx.HTTPError, ValueError, TypeError, KeyError):
+            pass
+        return {
+            "status": "ok",
+            "version": "4.0.0",
+            "mode": "live",
+            "agents": 6,
+            "contracts": 8,
+            "groq_connected": _groq_configured(),
+            "cspr_price_usd": cspr_price_usd,
+            "network": "casper-test",
+        }
+
+
+@app.post("/agent/risk-query", tags=["Agent Proxy"])
+async def agent_risk_query(req: AgentRiskQueryRequest) -> Dict[str, Any]:
+    """Run IntelAgent + SafetyGuard server-side and return the dashboard-shaped
+    response (matching liveApi.js:liveRiskQuery()).
+
+    The Groq API key is read from GROQ_API_KEY env var ONLY — never from
+    the request. The dashboard no longer needs VITE_GROQ_API_KEY.
+    """
+    with tracer.start_as_current_span("api.agent.risk_query") as span:
+        span.set_attribute("query_length", len(req.query))
+        if req.protocol:
+            span.set_attribute("protocol", req.protocol)
+        intel = _get_intel()
+        safety = _get_safety()
+
+        # Safety check first — fail-closed on prompt-injection / malicious input
+        safe_result = await safety.check(req.query)
+        if not safe_result.get("safe", True):
+            span.set_attribute("agent.safety_blocked", True)
+            return {
+                "result": {
+                    "summary": "Query blocked by SafetyGuard: "
+                    + safe_result.get("reason", ""),
+                    "risk_factors": [],
+                    "confidence": 0.0,
+                    "severity": "LOW",
+                    "recommendation": "Reformulate your query and try again.",
+                    "groq_model": "llama-3.3-70b-versatile",
+                    "on_chain_contract": "RiskOracle",
+                    "on_chain_hash": _AGENT_CONTRACT_HASHES["RiskOracle"],
+                }
+            }
+
+        raw = await intel.analyze(req.query, protocol=req.protocol, extra_context=None)
+        summary = str(raw.get("summary") or raw.get("content") or "")
+        risk_factors = raw.get("risk_factors") or []
+        if not isinstance(risk_factors, list):
+            risk_factors = []
+        confidence = raw.get("confidence")
+        if not isinstance(confidence, (int, float)):
+            confidence = 0.85
+        severity = raw.get("severity") or "MEDIUM"
+        recommendation = raw.get("recommendation") or ""
+
+        return {
+            "result": {
+                "summary": summary,
+                "risk_factors": risk_factors,
+                "confidence": float(confidence),
+                "severity": severity,
+                "recommendation": recommendation,
+                "groq_model": "llama-3.3-70b-versatile",
+                "on_chain_contract": "RiskOracle",
+                "on_chain_hash": _AGENT_CONTRACT_HASHES["RiskOracle"],
+            }
+        }
+
+
+@app.post("/agent/anomaly-detect", tags=["Agent Proxy"])
+async def agent_anomaly_detect(req: AgentAnomalyRequest) -> Dict[str, Any]:
+    """Run AnomalyAgent server-side and return the dashboard-shaped response
+    (matching liveApi.js:liveDetectAnomaly()).
+    """
+    with tracer.start_as_current_span("api.agent.anomaly_detect") as span:
+        span.set_attribute("protocol", req.protocol)
+        agent = _get_anomaly()
+        metrics = {
+            "protocol": req.protocol,
+            "tvl": req.tvl,
+            "volume_24h": req.volume_24h,
+            "price_change_1h": req.price_change_1h,
+            "num_transactions": req.num_transactions,
+            "liquidity_ratio": req.liquidity_ratio,
+        }
+        result: AnomalyResult = await agent.detect(metrics)
+        span.set_attribute("risk_score", result.risk_score)
+        confidence = (
+            float(result.confidence)
+            if isinstance(result.confidence, (int, float))
+            else 0.85
+        )
+        return {
+            "risk_score": float(result.risk_score),
+            "anomalies": list(result.anomalies or []),
+            "recommendation": result.recommendation or "Analysis complete.",
+            "confidence": confidence,
+            "agent": "AnomalyAgent (llama-3.3-70b-versatile) + SelfCorrectionAgent",
+            "severity": result.severity or "MEDIUM",
+            "self_correction_applied": False,
+            "on_chain_contract": "SentinelAlertLog",
+        }
+
+
+@app.post("/agent/rwa-assess", tags=["Agent Proxy"])
+async def agent_rwa_assess(req: AgentRWARequest) -> Dict[str, Any]:
+    """Run RWAAgent server-side and return the dashboard-shaped response
+    (matching liveApi.js:liveAssessRWA()).
+    """
+    with tracer.start_as_current_span("api.agent.rwa_assess") as span:
+        span.set_attribute("asset_id", req.asset_id)
+        agent = _get_rwa()
+        asset_data = {
+            "asset_id": req.asset_id,
+            "asset_type": req.asset_type,
+            "issuer": req.issuer,
+            "collateral_ratio": req.collateral_ratio,
+            "maturity_days": req.maturity_days,
+            "credit_rating": req.credit_rating,
+        }
+        raw = await agent.assess(asset_data)
+        verdict = raw.get("verdict") or "REVIEW"
+        risk_score = raw.get("risk_score")
+        if not isinstance(risk_score, (int, float)):
+            risk_score = 45
+        notes = raw.get("notes") or raw.get("content") or "Assessment complete."
+        risk_factors = raw.get("risk_factors") or []
+        if not isinstance(risk_factors, list):
+            risk_factors = []
+        return {
+            "assessment": {
+                "verdict": verdict,
+                "risk_score": float(risk_score),
+                "notes": notes,
+                "risk_factors": risk_factors,
+                "groq_model": "compound-beta (Groq Compound)",
+                "collateral_assessment": raw.get("collateral_assessment") or "",
+                "regulatory_status": raw.get("regulatory_status") or "",
+                "on_chain_contract": "RiskPolicyManager",
+                "on_chain_hash": _AGENT_CONTRACT_HASHES["RiskPolicyManager"],
+            }
+        }
+
+
 # ---------------------------------------------------------------------------
 # Routes — Protocol Scanner
 # ---------------------------------------------------------------------------
