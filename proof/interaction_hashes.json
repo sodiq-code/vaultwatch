@@ -1,128 +1,170 @@
 [
   {
-    "label": "AuditTrail::add_entry[agent_risk_scan]",
-    "deploy_hash": "aca60b05fb801960ae1f4db9bdd3c2d3a0cfd142c9b020edcf57df27c0f8ea72",
-    "link": "https://testnet.cspr.live/deploy/aca60b05fb801960ae1f4db9bdd3c2d3a0cfd142c9b020edcf57df27c0f8ea72",
-    "status": "submitted"
+    "label": "AuditTrail::record_finding[anomaly_scan_CasperSwap]",
+    "contract": "AuditTrail",
+    "entry_point": "record_finding",
+    "deploy_hash": null,
+    "link": null,
+    "status": "pending_run_broadcast_interactions_py"
   },
   {
-    "label": "AuditTrail::add_entry[pipeline_heartbeat]",
-    "deploy_hash": "6f5cd6bf7a21146502d2b5e53250a45aa352e73560e6d228a0c271fc2d29262d",
-    "link": "https://testnet.cspr.live/deploy/6f5cd6bf7a21146502d2b5e53250a45aa352e73560e6d228a0c271fc2d29262d",
-    "status": "submitted"
+    "label": "AuditTrail::record_finding[rwa_treasury_scan]",
+    "contract": "AuditTrail",
+    "entry_point": "record_finding",
+    "deploy_hash": null,
+    "link": null,
+    "status": "pending_run_broadcast_interactions_py"
   },
   {
-    "label": "RiskOracle::update_score[CasperLend]",
-    "deploy_hash": "ae061e24af2fbd19f88e5103db2f97abcc565ced54b128b8e3fda4f86dbff285",
-    "link": "https://testnet.cspr.live/deploy/ae061e24af2fbd19f88e5103db2f97abcc565ced54b128b8e3fda4f86dbff285",
-    "status": "submitted"
+    "label": "AuditTrail::record_finding[liquidity_monitor]",
+    "contract": "AuditTrail",
+    "entry_point": "record_finding",
+    "deploy_hash": null,
+    "link": null,
+    "status": "pending_run_broadcast_interactions_py"
   },
   {
-    "label": "SentinelAlertLog::log_alert[HIGH]",
-    "deploy_hash": "b295168fe1f88b8a0380c9b8f3519ca5811ee969a909d24da28fdf358a9a96fd",
-    "link": "https://testnet.cspr.live/deploy/b295168fe1f88b8a0380c9b8f3519ca5811ee969a909d24da28fdf358a9a96fd",
-    "status": "submitted"
+    "label": "RiskOracle::update_score[CasperSwap_HIGH]",
+    "contract": "RiskOracle",
+    "entry_point": "update_score",
+    "deploy_hash": null,
+    "link": null,
+    "status": "pending_run_broadcast_interactions_py"
   },
   {
-    "label": "SentinelAlertLog::log_alert[LOW]",
-    "deploy_hash": "5319acd5a9794d2ecc10ad9f1345e92da93b5736ea309845237432c771e6de8d",
-    "link": "https://testnet.cspr.live/deploy/5319acd5a9794d2ecc10ad9f1345e92da93b5736ea309845237432c771e6de8d",
-    "status": "submitted"
+    "label": "RiskOracle::update_score[CasperLend_MEDIUM]",
+    "contract": "RiskOracle",
+    "entry_point": "update_score",
+    "deploy_hash": null,
+    "link": null,
+    "status": "pending_run_broadcast_interactions_py"
   },
   {
-    "label": "SentinelRegistry::register_sentinel[v2]",
-    "deploy_hash": "ef9c93c6d465041c7c22cfc4fac8619c0375528b159884411e0677a54a063f37",
-    "link": "https://testnet.cspr.live/deploy/ef9c93c6d465041c7c22cfc4fac8619c0375528b159884411e0677a54a063f37",
-    "status": "submitted"
+    "label": "RiskOracle::update_score[Treasury_LOW]",
+    "contract": "RiskOracle",
+    "entry_point": "update_score",
+    "deploy_hash": null,
+    "link": null,
+    "status": "pending_run_broadcast_interactions_py"
   },
   {
-    "label": "SentinelRegistry::register_sentinel[mcp_v2]",
-    "deploy_hash": "a0225857d684ed651ace79fc7bab3c49b7beabc27ecbb5a79add962a4d1a333c",
-    "link": "https://testnet.cspr.live/deploy/a0225857d684ed651ace79fc7bab3c49b7beabc27ecbb5a79add962a4d1a333c",
-    "status": "submitted"
+    "label": "SentinelAlertLog::log_alert[HIGH_price_crash]",
+    "contract": "SentinelAlertLog",
+    "entry_point": "log_alert",
+    "deploy_hash": null,
+    "link": null,
+    "status": "pending_run_broadcast_interactions_py"
   },
   {
-    "label": "SubscriberVault::subscribe[basic_7d]",
-    "deploy_hash": "10194da10e07ab724aefd4e297e38ee2f4fa177031acdc9135e19c34a86e548b",
-    "link": "https://testnet.cspr.live/deploy/10194da10e07ab724aefd4e297e38ee2f4fa177031acdc9135e19c34a86e548b",
-    "status": "submitted"
+    "label": "SentinelAlertLog::log_alert[MEDIUM_collateral]",
+    "contract": "SentinelAlertLog",
+    "entry_point": "log_alert",
+    "deploy_hash": null,
+    "link": null,
+    "status": "pending_run_broadcast_interactions_py"
   },
   {
-    "label": "AgentBehaviorIndex::record_action[classify]",
-    "deploy_hash": "da61b7b38388e683c37f8040514a1b2a77b59209f9aa64c661094503e85169db",
-    "link": "https://testnet.cspr.live/deploy/da61b7b38388e683c37f8040514a1b2a77b59209f9aa64c661094503e85169db",
-    "status": "submitted"
+    "label": "SentinelAlertLog::log_alert[LOW_liquidity]",
+    "contract": "SentinelAlertLog",
+    "entry_point": "log_alert",
+    "deploy_hash": null,
+    "link": null,
+    "status": "pending_run_broadcast_interactions_py"
   },
   {
-    "label": "AgentBehaviorIndex::record_action[skip]",
-    "deploy_hash": "36811baffde99c09663c64ccf08a0ceb3d86581c3cae57a82dfdb7d40655a568",
-    "link": "https://testnet.cspr.live/deploy/36811baffde99c09663c64ccf08a0ceb3d86581c3cae57a82dfdb7d40655a568",
-    "status": "submitted"
+    "label": "SentinelAlertLog::log_alert[HIGH_rwa_compliance]",
+    "contract": "SentinelAlertLog",
+    "entry_point": "log_alert",
+    "deploy_hash": null,
+    "link": null,
+    "status": "pending_run_broadcast_interactions_py"
   },
   {
-    "label": "RiskPolicyManager::set_threshold[min_confidence]",
-    "deploy_hash": "77b1f5e6acf89dbdec06a4d98cd0052b5a4c55761ded7f9960604550d401eb8a",
-    "link": "https://testnet.cspr.live/deploy/77b1f5e6acf89dbdec06a4d98cd0052b5a4c55761ded7f9960604550d401eb8a",
-    "status": "submitted"
+    "label": "SentinelRegistry::register[pipeline_v3]",
+    "contract": "SentinelRegistry",
+    "entry_point": "register",
+    "deploy_hash": null,
+    "link": null,
+    "status": "pending_run_broadcast_interactions_py"
   },
   {
-    "label": "RiskPolicyManager::set_threshold[max_risk]",
-    "deploy_hash": "7efd0b77f3bbec253c074639955e7efb08795bac8b9dbbcbf88210c18e723e03",
-    "link": "https://testnet.cspr.live/deploy/7efd0b77f3bbec253c074639955e7efb08795bac8b9dbbcbf88210c18e723e03",
-    "status": "submitted"
+    "label": "SentinelRegistry::register[mcp_v3]",
+    "contract": "SentinelRegistry",
+    "entry_point": "register",
+    "deploy_hash": null,
+    "link": null,
+    "status": "pending_run_broadcast_interactions_py"
   },
   {
-    "label": "SentinelCredit::issue_credit[deployer]",
-    "deploy_hash": "29f1924933f16949b5b82d462ed8ad85c1f1d8be25226c55a1c6a627ba2c6ed8",
-    "link": "https://testnet.cspr.live/deploy/29f1924933f16949b5b82d462ed8ad85c1f1d8be25226c55a1c6a627ba2c6ed8",
-    "status": "submitted"
+    "label": "SentinelCredit::deposit[pipeline_account]",
+    "contract": "SentinelCredit",
+    "entry_point": "deposit",
+    "deploy_hash": null,
+    "link": null,
+    "status": "pending_run_broadcast_interactions_py"
   },
   {
-    "label": "AuditTrail::pipeline_status",
-    "deploy_hash": "ce5e64355638df810ac4b6ee489990363976319a21487394ef62f91c67d1c662",
-    "link": "https://testnet.cspr.live/deploy/ce5e64355638df810ac4b6ee489990363976319a21487394ef62f91c67d1c662",
-    "status": "submitted"
+    "label": "SentinelCredit::deposit[mcp_account]",
+    "contract": "SentinelCredit",
+    "entry_point": "deposit",
+    "deploy_hash": null,
+    "link": null,
+    "status": "pending_run_broadcast_interactions_py"
   },
   {
-    "label": "RiskOracle::protocol_scan_v2",
-    "deploy_hash": "62e3dc976e412ee45d7cc013939ce90abb9b4f396e19e93d6d46ea27700e98ad",
-    "link": "https://testnet.cspr.live/deploy/62e3dc976e412ee45d7cc013939ce90abb9b4f396e19e93d6d46ea27700e98ad",
-    "status": "submitted"
+    "label": "AgentBehaviorIndex::record_decision[anomaly_classify]",
+    "contract": "AgentBehaviorIndex",
+    "entry_point": "record_decision",
+    "deploy_hash": null,
+    "link": null,
+    "status": "pending_run_broadcast_interactions_py"
   },
   {
-    "label": "SentinelAlertLog::batch_flush",
-    "deploy_hash": "019822354bb63b29f613e34601751977647d3ad9f4719547d70e067789cfd7fa",
-    "link": "https://testnet.cspr.live/deploy/019822354bb63b29f613e34601751977647d3ad9f4719547d70e067789cfd7fa",
-    "status": "submitted"
+    "label": "AgentBehaviorIndex::record_decision[correction_skip]",
+    "contract": "AgentBehaviorIndex",
+    "entry_point": "record_decision",
+    "deploy_hash": null,
+    "link": null,
+    "status": "pending_run_broadcast_interactions_py"
   },
   {
-    "label": "AgentBehaviorIndex::agent_init",
-    "deploy_hash": "3ea7ff328ed52fc74325a7b227d6ea0f8772a7422f4d519a674d7b7d67b03cfb",
-    "link": "https://testnet.cspr.live/deploy/3ea7ff328ed52fc74325a7b227d6ea0f8772a7422f4d519a674d7b7d67b03cfb",
-    "status": "submitted"
+    "label": "AgentBehaviorIndex::record_decision[safety_reject]",
+    "contract": "AgentBehaviorIndex",
+    "entry_point": "record_decision",
+    "deploy_hash": null,
+    "link": null,
+    "status": "pending_run_broadcast_interactions_py"
   },
   {
-    "label": "RiskPolicyManager::policy_reload",
-    "deploy_hash": "5da86f8eaca22f96b7756c7958a1aff03a300e020569f0cfadcafaafd53d979f",
-    "link": "https://testnet.cspr.live/deploy/5da86f8eaca22f96b7756c7958a1aff03a300e020569f0cfadcafaafd53d979f",
-    "status": "submitted"
+    "label": "RiskPolicyManager::upgrade_policy[v2_conservative]",
+    "contract": "RiskPolicyManager",
+    "entry_point": "upgrade_policy",
+    "deploy_hash": null,
+    "link": null,
+    "status": "pending_run_broadcast_interactions_py"
   },
   {
-    "label": "SentinelRegistry::health_ping",
-    "deploy_hash": "d0240be05b2834a1634d3ee28d361d3381a52c551c9fdfb6fe28a2655accb3ee",
-    "link": "https://testnet.cspr.live/deploy/d0240be05b2834a1634d3ee28d361d3381a52c551c9fdfb6fe28a2655accb3ee",
-    "status": "submitted"
+    "label": "RiskPolicyManager::upgrade_policy[v3_aggressive]",
+    "contract": "RiskPolicyManager",
+    "entry_point": "upgrade_policy",
+    "deploy_hash": null,
+    "link": null,
+    "status": "pending_run_broadcast_interactions_py"
   },
   {
-    "label": "SentinelCredit::balance_check",
-    "deploy_hash": "97efecfe56f004aeb0178bd309fd97d3b17ae60a43e1b79b9a3a0c4ca0a53d68",
-    "link": "https://testnet.cspr.live/deploy/97efecfe56f004aeb0178bd309fd97d3b17ae60a43e1b79b9a3a0c4ca0a53d68",
-    "status": "submitted"
+    "label": "SubscriberVault::open_vault[pro_30d]",
+    "contract": "SubscriberVault",
+    "entry_point": "open_vault",
+    "deploy_hash": null,
+    "link": null,
+    "status": "pending_run_broadcast_interactions_py"
   },
   {
-    "label": "SubscriberVault::vault_sync",
-    "deploy_hash": "3449dd44973390ff3aa2ff4922b1f540f1c5d265aae216a1aff803a07ab0a6a8",
-    "link": "https://testnet.cspr.live/deploy/3449dd44973390ff3aa2ff4922b1f540f1c5d265aae216a1aff803a07ab0a6a8",
-    "status": "submitted"
+    "label": "SubscriberVault::open_vault[basic_7d]",
+    "contract": "SubscriberVault",
+    "entry_point": "open_vault",
+    "deploy_hash": null,
+    "link": null,
+    "status": "pending_run_broadcast_interactions_py"
   }
 ]
