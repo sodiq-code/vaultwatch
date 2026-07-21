@@ -39,10 +39,21 @@ pub struct AlertRecord {
 pub struct SentinelAlertLog {
     logs: Mapping<u64, AlertRecord>,
     log_count: Var<u64>,
-    // address → list of log IDs (stored as comma-separated string for simplicity)
-    address_logs: Mapping<Address, String>,
+    // address → list of log IDs (typed Vec<u64>, capped at MAX_ADDRESS_LOG_IDS).
+    // Previously a comma-separated String, which was unbounded, required parsing
+    // off-chain, and could blow up global-state URef values for noisy accounts.
+    // A bounded Vec<u64> keeps per-address history deterministic and cheap.
+    address_logs: Mapping<Address, Vec<u64>>,
     owner: Var<Address>,
 }
+
+/// Hard cap on the number of log IDs retained per subscriber address.
+///
+/// When the cap is exceeded the oldest IDs are evicted first (FIFO), so the
+/// index always reflects the most-recent `MAX_ADDRESS_LOG_IDS` alerts. 256
+/// keeps a single subscriber's on-chain footprint bounded while preserving
+/// enough history for compliance lookbacks.
+const MAX_ADDRESS_LOG_IDS: usize = 256;
 
 #[odra::module]
 impl SentinelAlertLog {
@@ -77,14 +88,16 @@ impl SentinelAlertLog {
         self.logs.set(&log_id, record);
         self.log_count.set(log_id);
 
-        // Append to address log index
-        let existing = self.address_logs.get(&subscriber_address).unwrap_or_default();
-        let updated = if existing.is_empty() {
-            format!("{}", log_id)
-        } else {
-            format!("{},{}", existing, log_id)
-        };
-        self.address_logs.set(&subscriber_address, updated);
+        // Append to the per-address log-ID index (Vec<u64>, FIFO-capped at 256).
+        // unwrap_or_default yields an empty Vec for first-time subscribers.
+        let mut ids = self.address_logs.get(&subscriber_address).unwrap_or_default();
+        ids.push(log_id);
+        if ids.len() > MAX_ADDRESS_LOG_IDS {
+            // Drop the oldest entries first so only the most-recent 256 remain.
+            let drop_count = ids.len() - MAX_ADDRESS_LOG_IDS;
+            ids.drain(0..drop_count);
+        }
+        self.address_logs.set(&subscriber_address, ids);
 
         // Emit the on-chain event so off-chain indexers/dashboard are notified.
         self.env().emit_event(AlertLogged {
@@ -102,7 +115,12 @@ impl SentinelAlertLog {
         self.logs.get(&log_id).unwrap_or_revert(self)
     }
 
-    pub fn get_address_log_ids(&self, address: Address) -> String {
+    /// Returns the list of log IDs recorded for `address`, most-recent last.
+    ///
+    /// The returned `Vec<u64>` is capped at `MAX_ADDRESS_LOG_IDS` (256); once an
+    /// address exceeds the cap the oldest IDs are evicted. An address with no
+    /// alerts returns an empty Vec.
+    pub fn get_address_log_ids(&self, address: Address) -> Vec<u64> {
         self.address_logs.get(&address).unwrap_or_default()
     }
 
@@ -151,7 +169,46 @@ mod tests {
         contract.log_alert(sub, 2, "HIGH".to_string(), "depeg".to_string(), 101, 201, true);
 
         let ids = contract.get_address_log_ids(sub);
-        assert_eq!(ids, "1,2");
+        assert_eq!(ids, vec![1u64, 2u64]);
+    }
+
+    #[test]
+    fn test_address_log_ids_empty_for_unknown_address() {
+        let env = odra_test::env();
+        let contract = SentinelAlertLog::deploy(&env, NoArgs);
+        let sub = env.get_account(2);
+
+        let ids = contract.get_address_log_ids(sub);
+        assert!(ids.is_empty(), "unknown address must return an empty Vec");
+    }
+
+    #[test]
+    fn test_address_log_ids_capped_at_256() {
+        let env = odra_test::env();
+        let mut contract = SentinelAlertLog::deploy(&env, NoArgs);
+        let sub = env.get_account(1);
+
+        // Log 260 alerts for the same subscriber — the index must cap at 256
+        // most-recent IDs (FIFO eviction of the oldest 4).
+        for i in 1..=260u64 {
+            contract.log_alert(
+                sub,
+                i,
+                "HIGH".to_string(),
+                "depeg".to_string(),
+                100 + i,
+                200 + i,
+                true,
+            );
+        }
+
+        let ids = contract.get_address_log_ids(sub);
+        assert_eq!(ids.len(), 256, "address log index must be capped at 256");
+        // FIFO: oldest 4 (ids 1..=4) dropped; first retained is 5, last is 260.
+        assert_eq!(ids[0], 5, "oldest entries are evicted first (FIFO)");
+        assert_eq!(*ids.last().unwrap(), 260, "most-recent entry is retained");
+        // Monotonic ascending order preserved after eviction.
+        assert!(ids.windows(2).all(|w| w[0] < w[1]));
     }
 
     #[test]

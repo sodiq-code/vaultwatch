@@ -1,14 +1,38 @@
 """Unit tests — SafetyGuard"""
 
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
+from agents.anomaly_agent import AnomalyResult
+from agents.rwa_agent import EnrichedFinding
 from agents.safety_guard import SafetyGuard
 
 
 @pytest.fixture
 def guard():
     return SafetyGuard(groq_api_key="test-key")
+
+
+def _make_finding() -> EnrichedFinding:
+    """Build a minimal EnrichedFinding for validate() tests."""
+    base = AnomalyResult(
+        protocol="Aave",
+        risk_score=72.0,
+        risk_type="depeg",
+        severity="HIGH",
+        confidence=0.82,
+        reasoning="USDC peg deviation detected",
+    )
+    return EnrichedFinding(
+        base=base,
+        rwa_context="USDC peg at 0.97 — historical deviation <0.3%",
+        collateral_signals=[],
+        yield_data="",
+        depeg_alerts=["USDC depeg risk"],
+        enriched=True,
+        rwa_sources_count=2,
+        enrichment_model="compound",
+    )
 
 
 SAFE_QUERIES = [
@@ -86,3 +110,59 @@ async def test_concurrent_checks(guard):
         mock_groq.return_value = {"safe": True, "reason": "ok"}
         results = await asyncio.gather(*[guard.check(q) for q in SAFE_QUERIES])
     assert all(r.get("safe") is True for r in results)
+
+
+# ---------------------------------------------------------------------------
+# validate() — fail-closed behaviour (on-chain write guard)
+# ---------------------------------------------------------------------------
+# A faulty guard must never let an unverified finding reach the chain. Both a
+# missing model client and any model error must REJECT the finding.
+
+
+@pytest.mark.asyncio
+async def test_validate_fails_closed_on_model_error(guard):
+    """A model error (timeout / auth / parse) must REJECT, not approve."""
+    finding = _make_finding()
+    with patch.object(guard, "_client") as mock_client:
+        mock_client.chat.completions.create.side_effect = RuntimeError("API timeout")
+        result = await guard.validate(finding)
+    assert result.approved is False
+    assert result.safety_score == 1.0
+    assert "fail-closed" in result.rejection_reason
+    assert "API timeout" in result.rejection_reason
+
+
+@pytest.mark.asyncio
+async def test_validate_fails_closed_when_no_client():
+    """No Groq client configured → cannot verify → REJECT (fail-closed)."""
+    guard_no_key = SafetyGuard(groq_api_key="")
+    assert guard_no_key._client is None
+    result = await guard_no_key.validate(_make_finding())
+    assert result.approved is False
+    assert result.safety_score == 1.0
+    assert "no model client" in result.rejection_reason
+
+
+@pytest.mark.asyncio
+async def test_validate_rejects_injection_finding(guard):
+    """Prompt-injection classification must REJECT (score 0.95 >= 0.80)."""
+    fake_resp = MagicMock()
+    fake_resp.choices = [MagicMock(message=MagicMock(content="injection detected"))]
+    with patch.object(guard, "_client") as mock_client:
+        mock_client.chat.completions.create.return_value = fake_resp
+        result = await guard.validate(_make_finding())
+    assert result.approved is False
+    assert result.safety_score == 0.95
+
+
+@pytest.mark.asyncio
+async def test_validate_approves_benign_finding(guard):
+    """Benign classification must APPROVE (happy path still works)."""
+    fake_resp = MagicMock()
+    fake_resp.choices = [MagicMock(message=MagicMock(content="benign"))]
+    with patch.object(guard, "_client") as mock_client:
+        mock_client.chat.completions.create.return_value = fake_resp
+        result = await guard.validate(_make_finding())
+    assert result.approved is True
+    assert result.safety_score == 0.05
+    assert result.rejection_reason == ""

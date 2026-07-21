@@ -17,7 +17,11 @@ from .rwa_agent import EnrichedFinding
 logger = logging.getLogger("vaultwatch.safetyguard")
 tracer = trace.get_tracer("vaultwatch.safety_guard")
 
-groq_client = Groq(api_key=os.getenv("GROQ_API_KEY", "mock-key-for-testing"))
+# The guard is constructed with its own Groq client (see SafetyGuard.__init__).
+# A module-level client is intentionally NOT created so that fail-closed
+# behaviour is deterministic: if no API key is configured, self._client is
+# None and validate() rejects the finding instead of silently calling a
+# half-initialised shared client.
 
 
 @dataclass
@@ -95,7 +99,29 @@ class SafetyGuard:
             )
 
             try:
-                response = groq_client.chat.completions.create(
+                # Fail-closed when no model client is configured: a missing key
+                # means we CANNOT verify the finding is safe, so it must not be
+                # written to chain. Previously this fell through to the shared
+                # module-level client (which silently used a mock key and then
+                # fail-opened on the resulting auth error).
+                if self._client is None:
+                    rejection_reason = (
+                        "SafetyGuard fail-closed: no model client configured "
+                        "(GROQ_API_KEY missing) — cannot verify finding safety"
+                    )
+                    span.set_attribute("safety.approved", False)
+                    span.set_attribute("safety.score", 1.0)
+                    span.set_attribute("safety.fail_closed_reason", "no_client")
+                    logger.warning("SafetyGuard REJECTED (fail-closed, no client)")
+                    return SafetyResult(
+                        finding=finding,
+                        approved=False,
+                        safety_score=1.0,
+                        rejection_reason=rejection_reason,
+                        model_used="llama-prompt-guard-2-86m (unavailable)",
+                    )
+
+                response = self._client.chat.completions.create(
                     model="llama-prompt-guard-2-86m",
                     messages=[{"role": "user", "content": content_to_check}],
                     temperature=0.0,
@@ -135,13 +161,25 @@ class SafetyGuard:
                 )
 
             except Exception as e:
+                # FAIL-CLOSED: any model error (auth, timeout, malformed JSON,
+                # network, rate-limit, parse failure) rejects the finding. A
+                # faulty guard must never let an unverified finding reach the
+                # chain — the cost of a false approval (malicious data written
+                # on-chain) far exceeds the cost of a false rejection (a valid
+                # finding that must be retried). AuditAgent surfaces the reason.
                 span.record_exception(e)
-                logger.warning(f"SafetyGuard model error — defaulting to APPROVED: {e}")
-                # On model error, pass through (don't block valid findings)
+                span.set_attribute("safety.approved", False)
+                span.set_attribute("safety.score", 1.0)
+                span.set_attribute("safety.fail_closed_reason", "model_error")
+                rejection_reason = (
+                    f"SafetyGuard fail-closed: model error — {e}. "
+                    "Finding rejected because safety could not be verified."
+                )
+                logger.warning(rejection_reason)
                 return SafetyResult(
                     finding=finding,
-                    approved=True,
-                    safety_score=0.0,
-                    rejection_reason="",
+                    approved=False,
+                    safety_score=1.0,
+                    rejection_reason=rejection_reason,
                     model_used="llama-prompt-guard-2-86m",
                 )

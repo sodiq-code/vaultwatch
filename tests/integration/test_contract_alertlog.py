@@ -34,7 +34,11 @@ def mock_client():
                 "timestamp": args["timestamp"],
                 "delivered": args.get("delivered", True),
             }
-            _address_index.setdefault(addr, []).append(log_id)
+            # Mirror the on-chain Vec<u64> index, FIFO-capped at 256.
+            bucket = _address_index.setdefault(addr, [])
+            if len(bucket) >= 256:
+                bucket.pop(0)
+            bucket.append(log_id)
             return f"hash-alertlog-{log_id:03d}"
         return "hash-unknown"
 
@@ -42,8 +46,8 @@ def mock_client():
         if path[0] == "logs" and len(path) > 1:
             return _logs.get(int(path[1]))
         if path[0] == "address_logs" and len(path) > 1:
-            ids = _address_index.get(path[1], [])
-            return ",".join(str(i) for i in ids)
+            # Contract now returns Vec<u64> (capped at 256), not a comma-string.
+            return list(_address_index.get(path[1], []))
         if path[0] == "log_count":
             return _counter["n"]
         return None
@@ -112,10 +116,12 @@ def test_address_log_index(mock_client):
                 "delivered": True,
             },
         )
-    ids_str = mock_client.query_contract_state("hash-alertlog", ["address_logs", addr])
-    assert ids_str is not None
-    ids = [int(x) for x in ids_str.split(",")]
+    ids = mock_client.query_contract_state("hash-alertlog", ["address_logs", addr])
+    assert ids is not None
+    # Contract now returns a Vec<u64> (list), not a comma-separated string.
+    assert isinstance(ids, list)
     assert len(ids) == 3
+    assert ids == [1, 2, 3]
 
 
 def test_log_count_increments(mock_client):
