@@ -54,12 +54,35 @@ async def test_get_log_no_casper(agent_no_casper):
 
 
 @pytest.mark.asyncio
-async def test_record_action_stored(agent):
+async def test_record_finding_stored(agent):
+    """record() must standardize on the record_finding entry point (the only
+    write entry point on the AuditTrail contract) and use the contract_hash=
+    kwarg (not the legacy contract= path)."""
     deploy_hash = await agent.record(action="policy_update", actor="admin", details="threshold=5")
     assert isinstance(deploy_hash, str)
-    # Verify casper call was made
+    # Verify casper call was made with the standardized entry point + kwarg
     if hasattr(agent, "_casper") and agent._casper:
         agent._casper.call_contract.assert_called()
+        call_kwargs = agent._casper.call_contract.call_args.kwargs or {}
+        assert call_kwargs.get("entry_point") == "record_finding"
+        assert "contract_hash" in call_kwargs
+        assert "contract" not in call_kwargs
+        args = call_kwargs.get("args", {})
+        # record_finding requires these 9 runtime args
+        for required in (
+            "address",
+            "risk_type",
+            "severity",
+            "confidence",
+            "description",
+            "rwa_enriched",
+            "agent_model",
+            "block_height",
+            "timestamp",
+        ):
+            assert required in args, f"missing record_finding arg: {required}"
+        assert args["risk_type"] == "policy_update"
+        assert args["address"] == "admin"
 
 
 @pytest.mark.asyncio

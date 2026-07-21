@@ -46,8 +46,8 @@ INTERACTIONS = [
     {"label": "SentinelAlertLog::log_alert[MEDIUM]", "correlation_id": 1007},
     {"label": "SentinelAlertLog::log_alert[LOW]", "correlation_id": 1008},
     # AgentBehaviorIndex — 2
-    {"label": "AgentBehaviorIndex::record_action[classify]", "correlation_id": 1009},
-    {"label": "AgentBehaviorIndex::record_action[skip]", "correlation_id": 1010},
+    {"label": "AgentBehaviorIndex::record_decision[classify]", "correlation_id": 1009},
+    {"label": "AgentBehaviorIndex::record_decision[skip]", "correlation_id": 1010},
     # RiskPolicyManager — 2
     {
         "label": "RiskPolicyManager::set_threshold[min_confidence]",

@@ -223,12 +223,24 @@ class IntelAgent:
 
             # Verify and deduct credit
             if casper_client:
-                has_credit = await casper_client.call_contract(
-                    contract="sentinel_credit",
-                    entry_point="deduct_query",
-                    args={"account_address": caller_address, "is_premium": is_premium},
-                )
-                if not has_credit:
+                # Standardized on the ``contract_hash=`` kwarg everywhere
+                # (CasperContractClient.call_contract's signature is
+                # ``contract_hash: str``). The legacy ``contract=<name>`` path
+                # is removed. call_contract() returns the deploy-hash string;
+                # a failed deduction reverts on-chain and raises, which we
+                # surface as an insufficiency error below.
+                sentinel_credit_hash = os.getenv("SENTINEL_CREDIT_HASH", "")
+                try:
+                    deploy_hash = casper_client.call_contract(
+                        contract_hash=sentinel_credit_hash,
+                        entry_point="deduct_query",
+                        args={"account_address": caller_address, "is_premium": is_premium},
+                    )
+                except Exception as exc:
+                    span.set_attribute("intel.credit_denied", True)
+                    span.record_exception(exc)
+                    return {"error": "Insufficient credit. Deposit CSPR to SentinelCredit contract."}
+                if not deploy_hash:
                     span.set_attribute("intel.credit_denied", True)
                     return {"error": "Insufficient credit. Deposit CSPR to SentinelCredit contract."}
                 span.set_attribute("intel.credit_deducted", True)

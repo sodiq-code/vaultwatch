@@ -65,14 +65,14 @@ All 8 contracts compiled to WASM (bulk-memory-safe) and deployed to Casper testn
 
 | Contract | Purpose | Key Entry Points |
 |----------|---------|-----------------|
-| `AuditTrail` | Immutable action log | `record_action`, `get_log` |
-| `RiskOracle` | On-chain risk scores | `update_risk_score`, `get_score` |
-| `SentinelCredit` | Credit ledger for pay-per-query | `mint`, `burn`, `transfer` |
-| `SentinelRegistry` | Operator registration | `register_sentinel`, `deactivate_sentinel` |
-| `SentinelAlertLog` | Alert event store | `log_alert`, `get_alerts` |
-| `AgentBehaviorIndex` | Agent performance tracking | `record_behavior`, `get_index` |
-| `RiskPolicyManager` | Configurable risk policies | `update_policy`, `get_policy` |
-| `SubscriberVault` | Subscription & payment escrow | `subscribe`, `unsubscribe`, `collect_fees` |
+| `AuditTrail` | Immutable finding log | `record_finding`, `get_finding`, `get_count` |
+| `RiskOracle` | On-chain risk scores | `update_score`, `get_risk_score`, `is_high_risk` |
+| `SentinelCredit` | Credit ledger for pay-per-query | `deposit`, `deduct_query`, `get_balance` |
+| `SentinelRegistry` | Operator registration | `register`, `deregister`, `is_active` |
+| `SentinelAlertLog` | Alert event store | `log_alert`, `get_log`, `get_total_count` |
+| `AgentBehaviorIndex` | Agent performance tracking | `record_decision`, `get_metrics`, `get_trust_score` |
+| `RiskPolicyManager` | Configurable risk policies | `upgrade_policy`, `get_current_policy`, `get_policy_version` |
+| `SubscriberVault` | Subscription & payment escrow | `open_vault`, `deduct`, `top_up`, `get_balance` |
 
 ### x402 Pay-Per-Query
 The `SubscriberVault` contract enables pay-per-query billing via the official

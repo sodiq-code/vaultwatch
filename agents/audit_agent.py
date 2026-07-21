@@ -28,6 +28,42 @@ tracer = trace.get_tracer("vaultwatch.audit_agent")
 groq_client = Groq(api_key=os.getenv("GROQ_API_KEY", "mock-key-for-testing"))
 
 
+def _parse_finding_count(state: object) -> Optional[int]:
+    """Best-effort parse of the AuditTrail ``finding_count`` named-key value
+    returned by ``CasperContractClient.query_contract_state``.
+
+    The query response shape varies across mock/real clients and SDK versions
+    (it may be a raw int, a dict with a ``CLValue`` wrapper, or a dict with a
+    parsed ``value``). This helper extracts the integer finding count if
+    present and returns ``None`` when the shape is unrecognized.
+    """
+    if state is None:
+        return None
+    if isinstance(state, int):
+        return state
+    if isinstance(state, dict):
+        for key in ("value", "finding_count", "count"):
+            val = state.get(key)
+            if isinstance(val, int):
+                return val
+            if isinstance(val, str) and val.isdigit():
+                return int(val)
+            if isinstance(val, dict):
+                inner = val.get("value") or val.get("parsed")
+                if isinstance(inner, int):
+                    return inner
+                if isinstance(inner, str) and inner.isdigit():
+                    return int(inner)
+        clvalue = state.get("CLValue")
+        if isinstance(clvalue, dict):
+            inner = clvalue.get("value") or clvalue.get("parsed")
+            if isinstance(inner, int):
+                return inner
+            if isinstance(inner, str) and inner.isdigit():
+                return int(inner)
+    return None
+
+
 @dataclass
 class OnChainRecord:
     finding: EnrichedFinding
@@ -55,13 +91,21 @@ class AuditAgent:
         self.casper_client = casper_client
 
     async def record(self, action: str, actor: str, details: str = "") -> str:
-        """Record an audit entry on-chain (or mock). Returns deploy hash."""
+        """Record an audit entry on-chain (or mock). Returns deploy hash.
+
+        Standardized on the AuditTrail contract's ``record_finding`` entry
+        point. The legacy ``record_action`` entry point never existed on-chain
+        (AuditTrail only exposes ``record_finding``); the (action, actor,
+        details) public API is preserved by mapping it onto ``record_finding``'s
+        9 required runtime args.
+        """
         import time
         import hashlib
 
         with tracer.start_as_current_span("audit.record") as span:
             span.set_attribute("action", action)
             span.set_attribute("actor", actor)
+            span.set_attribute("audit.entry_point", "record_finding")
             entry = {
                 "action": action,
                 "actor": actor,
@@ -72,10 +116,24 @@ class AuditAgent:
             if self._casper:
                 try:
                     contract_hash = os.getenv("AUDIT_TRAIL_HASH", "")
+                    timestamp = int(time.time())
+                    # Map the (action, actor, details) audit tuple onto the
+                    # AuditTrail::record_finding entry point's 9 runtime args.
+                    # call_contract() returns the deploy hash as a str.
                     deploy_hash = self._casper.call_contract(
                         contract_hash=contract_hash,
-                        entry_point="record_action",
-                        args={"action": action, "actor": actor, "details": details},
+                        entry_point="record_finding",
+                        args={
+                            "address": actor,
+                            "risk_type": action,
+                            "severity": "LOW",
+                            "confidence": 0,
+                            "description": details or action,
+                            "rwa_enriched": False,
+                            "agent_model": "vaultwatch-audit-agent",
+                            "block_height": 0,
+                            "timestamp": timestamp,
+                        },
                     )
                     return deploy_hash
                 except Exception as exc:
@@ -131,8 +189,13 @@ class AuditAgent:
             if self.casper_client:
                 # Real on-chain write
                 try:
-                    audit_tx = await self.casper_client.call_contract(
-                        contract="audit_trail",
+                    audit_trail_hash = os.getenv("AUDIT_TRAIL_HASH", "")
+                    risk_oracle_hash = os.getenv("RISK_ORACLE_HASH", "")
+                    # call_contract() returns the deploy hash as a str (not a
+                    # dict). Standardized on the ``contract_hash=`` kwarg
+                    # everywhere — the legacy ``contract=`` path is removed.
+                    audit_tx = self.casper_client.call_contract(
+                        contract_hash=audit_trail_hash,
                         entry_point="record_finding",
                         args={
                             "address": base.event.address,
@@ -147,8 +210,8 @@ class AuditAgent:
                         },
                     )
 
-                    oracle_tx = await self.casper_client.call_contract(
-                        contract="risk_oracle",
+                    oracle_tx = self.casper_client.call_contract(
+                        contract_hash=risk_oracle_hash,
                         entry_point="update_score",
                         args={
                             "address": base.event.address,
@@ -160,16 +223,30 @@ class AuditAgent:
                         },
                     )
 
-                    finding_id = audit_tx.get("finding_id", 0)
-                    span.set_attribute("audit.audit_trail_tx", audit_tx.get("deploy_hash", ""))
-                    span.set_attribute("audit.risk_oracle_tx", oracle_tx.get("deploy_hash", ""))
+                    # call_contract returns the deploy-hash string. finding_id
+                    # is not echoed back by the host function; resolve it by
+                    # querying AuditTrail::finding_count (named key) after the
+                    # write, falling back to 0 if the query is unavailable.
+                    finding_id = 0
+                    try:
+                        count_state = self.casper_client.query_contract_state(
+                            audit_trail_hash, ["finding_count"]
+                        )
+                        parsed = _parse_finding_count(count_state)
+                        if parsed is not None:
+                            finding_id = parsed
+                    except Exception as count_exc:
+                        logger.debug("finding_count query failed: %s", count_exc)
 
-                    logger.info(f"On-chain write SUCCESS: {audit_tx.get('deploy_hash', 'unknown')}")
+                    span.set_attribute("audit.audit_trail_tx", audit_tx)
+                    span.set_attribute("audit.risk_oracle_tx", oracle_tx)
+
+                    logger.info(f"On-chain write SUCCESS: {audit_tx}")
 
                     return OnChainRecord(
                         finding=finding,
-                        audit_trail_tx=audit_tx.get("deploy_hash", ""),
-                        risk_oracle_tx=oracle_tx.get("deploy_hash", ""),
+                        audit_trail_tx=audit_tx,
+                        risk_oracle_tx=oracle_tx,
                         finding_id=finding_id,
                         block_height=base.event.block_height,
                         timestamp=timestamp,

@@ -48,9 +48,10 @@ async def test_record_entry_point(audit_agent, mock_client):
     assert call_args is not None
     kwargs = call_args.kwargs or {}
     args = call_args.args or ()
-    # entry_point should be 'record_action' or similar
+    # entry_point must be 'record_finding' — the only write entry point on
+    # the AuditTrail contract (record_action never existed on-chain).
     entry_point = kwargs.get("entry_point") or (args[1] if len(args) > 1 else "")
-    assert isinstance(entry_point, str)
+    assert entry_point == "record_finding"
 
 
 @pytest.mark.asyncio
@@ -81,6 +82,10 @@ async def test_record_args_contain_action(audit_agent, mock_client):
     call_args = mock_client.call_contract.call_args
     all_args = str(call_args)
     assert "my_action" in all_args or "record" in all_args
+    # Standardized on contract_hash= kwarg (not the legacy contract= path)
+    kwargs = call_args.kwargs or {}
+    assert "contract_hash" in kwargs
+    assert "contract" not in kwargs
 
 
 @pytest.mark.asyncio
