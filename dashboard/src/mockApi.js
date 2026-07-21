@@ -83,15 +83,16 @@ const OTEL_SPANS = [
   { name: 'ScannerAgent.scan', duration_ms: 298.5, status: 'OK' },
 ]
 
+// FIX #18: Real deploy hashes from liveApi.js CONTRACT_EXPLORER_LINKS
 const DEPLOY_HASHES = {
-  AuditTrail: '27249e7838f2b14443ebd3b0aa461608675e36e6ef3a954af431b5f2df8041fb',
-  RiskOracle: '68ef325d2b3a0f544467d8624e5042e428cd40258009777ffcdc568c1f426c55',
-  SentinelCredit: 'b6466009e65ac07a7ab7a26b3c5f0f600a6dc4c1efeaf96ea105000d24c8e6d9',
-  SentinelRegistry: '71398513bc183652549d46f4ea3d5319a7614cc55ce6c5378302150e46b07562',
-  SentinelAlertLog: '8f762ab42f0da419ace4d99259893165a8483ad376d524b15ba76355cb597693',
-  AgentBehaviorIndex: '665c1bd2937f88403806a1e3cd4fc9de7b931baa6cbc9b87bd05b6b23d823171',
-  RiskPolicyManager: '14284d5c3f3acf47dab65df94bbe982cdc787ff38245154521810f7cf819d874',
-  SubscriberVault: '2fb6b5b699216d4662701b9d54101bb3740b3a10c62d8f7aaf5f0703a7a1b009',
+  AuditTrail: 'b9c70cdceff1011008b3933835d4a46146f26f1d1e82ada8520be77e1d6333a7',
+  SentinelRegistry: '9a5eb4f83de8cbfef4f389516b977258b0e1d63179b288ca623a860fc6ec346c',
+  RiskOracle: 'e071aacc460a62e538092f5006930710f49e632598846c4c843e3daf0c5a7c9d',
+  SentinelCredit: '0c09f2ad66701b38b1720390e20bf8ac5b7bf6a20cc174cba44f3861549baf71',
+  AgentBehaviorIndex: '05066c33ddb73b523ab8f67275ca6096254f9d1832e76075d1e5f41f188b7dd0',
+  SentinelAlertLog: '53317e080ffdffcf097447ea3375c9195c6936fe7b1ed53795bf46134322a925',
+  RiskPolicyManager: '93e35d6488dcab8524a22c82241c7ddc6d07b0f7c011544e6c4a296c1a0eee2e',
+  SubscriberVault: '6620787c14d9d78506b281be8c95c8f9b105781b9705d2bd9736f2aabfd6956d',
 }
 
 let _blockHeight = 2847391

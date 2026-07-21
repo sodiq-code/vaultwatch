@@ -23,7 +23,6 @@ CSPR_CLOUD_URL = os.getenv("CSPR_CLOUD_API_URL", "https://api.testnet.cspr.cloud
 CSPR_CLOUD_KEY = os.getenv("CSPR_CLOUD_API_KEY", "")
 SCAN_INTERVAL = int(os.getenv("SCAN_INTERVAL_SECONDS", "60"))
 
-groq_client = Groq(api_key=os.getenv("GROQ_API_KEY", "mock-key-for-testing"))
 
 
 @dataclass
@@ -210,8 +209,12 @@ class ScannerAgent:
                 for e in events[:20]  # cap at 20 for token efficiency
             ]
 
+            if self._client is None:
+                logger.warning("No Groq client available, skipping LLM filter and returning all events")
+                return events
+
             try:
-                response = groq_client.chat.completions.create(
+                response = self._client.chat.completions.create(
                     model="llama-3.1-8b-instant",
                     messages=[
                         {

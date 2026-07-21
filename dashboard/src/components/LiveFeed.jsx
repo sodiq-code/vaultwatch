@@ -1,334 +1,357 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { LIVE_FINDINGS, CONTRACT_HASHES, getLiveBlockHeight, fetchNetworkInfo } from '../liveApi.js'
+import React, { useState, useEffect, useCallback } from 'react';
+import { fetchFindings, CONTRACT_EXPLORER_LINKS } from '../liveApi.js';
 
-const CARD = {
-  background: 'var(--surface)',
-  border: '1px solid var(--border)',
-  borderRadius: 'var(--radius)',
-  padding: 20,
-  marginBottom: 16,
-}
+// FIX #18: Removed hardcoded LIVE_FINDINGS array — data comes from live API
+const SEVERITY_COLORS = {
+  CRITICAL: { bg: '#ff1744', text: '#fff', glow: '0 0 12px rgba(255,23,68,0.6)' },
+  HIGH:     { bg: '#ff6d00', text: '#fff', glow: '0 0 12px rgba(255,109,0,0.5)' },
+  MEDIUM:   { bg: '#ffd600', text: '#000', glow: '0 0 10px rgba(255,214,0,0.4)' },
+  LOW:      { bg: '#00e676', text: '#000', glow: '0 0 8px rgba(0,230,118,0.3)' },
+};
 
-const SEV_COLOR = {
-  CRITICAL: '#ef4444',
-  HIGH:     '#f59e0b',
-  MEDIUM:   '#3b82f6',
-  LOW:      '#22c55e',
-}
+const RISK_TYPE_ICONS = {
+  rug_pull:        '🪤',
+  whale_dump:      '🐋',
+  depeg:           '📉',
+  wash_trade:      '🔄',
+  collateral_drop: '📊',
+  flash_loan:      '⚡',
+  anomalous_flow:  '🌊',
+};
 
-const SEV_BG = {
-  CRITICAL: '#3a0a0a',
-  HIGH:     '#2a1a00',
-  MEDIUM:   '#0a1a3a',
-  LOW:      '#0a2a0a',
-}
+export default function LiveFeed() {
+  const [findings, setFindings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [filter, setFilter] = useState('ALL');
+  const [lastUpdate, setLastUpdate] = useState(null);
 
-// Simulate realistic agent activity log events
-function generateEvent(index) {
-  const agents = ['ScannerAgent', 'AnomalyAgent', 'SelfCorrectionAgent', 'AuditAgent', 'IntelAgent', 'RWAAgent', 'SafetyGuard']
-  const protocols = ['CasperSwap', 'CasperLend', 'CasperYield', 'CasperDEX', 'CSPRFarm']
-  const events = [
-    (p) => ({ type: 'SCAN', msg: `ScannerAgent scanned ${p} — ${Math.floor(Math.random()*5)+1} events ingested`, agent: 'ScannerAgent' }),
-    (p) => ({ type: 'ANOMALY', msg: `AnomalyAgent classified ${p} event as ${['HIGH', 'MEDIUM', 'LOW'][Math.floor(Math.random()*3)]} risk`, agent: 'AnomalyAgent' }),
-    (p) => ({ type: 'AUDIT', msg: `AuditAgent wrote finding to AuditTrail contract on casper-test`, agent: 'AuditAgent' }),
-    (p) => ({ type: 'SAFETY', msg: `SafetyGuard passed query in ${Math.floor(Math.random()*30)+15}ms — no injection detected`, agent: 'SafetyGuard' }),
-    (p) => ({ type: 'CORRECT', msg: `SelfCorrectionAgent re-evaluated low-confidence (${(Math.random()*0.2+0.5).toFixed(2)}) finding`, agent: 'SelfCorrectionAgent' }),
-    (p) => ({ type: 'RWA', msg: `RWAAgent assessed asset via Groq Compound — collateral ratio within bounds`, agent: 'RWAAgent' }),
-    (p) => ({ type: 'ALERT', msg: `IntelAgent dispatched ${['MEDIUM', 'HIGH'][Math.floor(Math.random()*2)]} alert to ${Math.floor(Math.random()*5)+1} subscribers`, agent: 'IntelAgent' }),
-    (p) => ({ type: 'BLOCK', msg: `New block #${getLiveBlockHeight()} finalized on casper-test`, agent: 'Network' }),
-    (p) => ({ type: 'X402', msg: `x402 payment received — 0.5 CSPR deducted from SubscriberVault`, agent: 'IntelAgent' }),
-    (p) => ({ type: 'POLICY', msg: `RiskPolicyManager policy check passed for ${p}`, agent: 'RiskPolicyManager' }),
-  ]
-  const proto  = protocols[Math.floor(Math.random() * protocols.length)]
-  const evtFn  = events[index % events.length]
-  return {
-    id:        `EVT-${Date.now()}-${index}`,
-    timestamp: new Date(),
-    protocol:  proto,
-    ...evtFn(proto),
-  }
-}
-
-const TYPE_COLOR = {
-  SCAN:    '#4f7cff',
-  ANOMALY: '#f59e0b',
-  AUDIT:   '#22c55e',
-  SAFETY:  '#8b5cf6',
-  CORRECT: '#06b6d4',
-  RWA:     '#10b981',
-  ALERT:   '#ef4444',
-  BLOCK:   '#64748b',
-  X402:    '#f97316',
-  POLICY:  '#6366f1',
-}
-
-function EventRow({ event, isNew }) {
-  const color = TYPE_COLOR[event.type] || '#64748b'
-  const ts    = event.timestamp.toLocaleTimeString()
-  return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'flex-start',
-      gap: 12,
-      padding: '9px 12px',
-      background: isNew ? color + '11' : 'transparent',
-      borderBottom: '1px solid var(--border)',
-      fontSize: 12,
-      transition: 'background 1s ease',
-    }}>
-      <span style={{ color: 'var(--text-muted)', fontFamily: 'monospace', flexShrink: 0, fontSize: 11, marginTop: 1 }}>{ts}</span>
-      <span style={{
-        fontSize: 9, fontWeight: 700, letterSpacing: 0.5, flexShrink: 0,
-        padding: '2px 6px', borderRadius: 3, color, background: color + '22',
-        marginTop: 1,
-      }}>
-        {event.type}
-      </span>
-      <span style={{ color: 'var(--text-muted)', flexShrink: 0, fontSize: 11, marginTop: 1 }}>
-        [{event.agent}]
-      </span>
-      <span style={{ color: 'var(--text)', flex: 1, lineHeight: 1.4 }}>{event.msg}</span>
-    </div>
-  )
-}
-
-function FindingCard({ f }) {
-  const color = SEV_COLOR[f.severity] || '#64748b'
-  const age   = Math.round((Date.now() - f.timestamp) / 60000)
-  const ageStr = age < 60 ? `${age}m ago` : `${Math.round(age / 60)}h ago`
-  return (
-    <div style={{
-      padding: '12px 14px',
-      background: 'var(--surface2)',
-      borderRadius: 8,
-      marginBottom: 8,
-      fontSize: 12,
-      borderLeft: `3px solid ${color}`,
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontWeight: 700, fontSize: 13 }}>{f.protocol}</span>
-          <span style={{ fontFamily: 'monospace', fontSize: 10, color: 'var(--text-muted)' }}>{f.id}</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>{ageStr}</span>
-          <span style={{
-            fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4,
-            background: color + '22', color,
-          }}>{f.severity}</span>
-        </div>
-      </div>
-      <div style={{ color: 'var(--text-muted)', marginBottom: 7, lineHeight: 1.5 }}>{f.summary}</div>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-        <a href={`https://testnet.cspr.live/deploy/${f.contract_hash}`}
-          target="_blank" rel="noopener noreferrer"
-          style={{ color: 'var(--accent)', fontSize: 11, textDecoration: 'none' }}>
-          ⬡ {f.contract} ↗
-        </a>
-        <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>Via: {f.agent}</span>
-        <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>
-          Conf: {(f.confidence * 100).toFixed(0)}%
-        </span>
-      </div>
-    </div>
-  )
-}
-
-export default function LiveFeed({ api, cspr, network, blockHeight }) {
-  const [events, setEvents]     = useState(() => {
-    // Seed with initial events
-    return Array.from({ length: 12 }, (_, i) => ({ ...generateEvent(i), isNew: false }))
-  })
-  const [paused, setPaused]     = useState(false)
-  const [filter, setFilter]     = useState('ALL')
-  const [newIds, setNewIds]     = useState(new Set())
-  const eventCounter            = useRef(12)
-  const listRef                 = useRef(null)
-
-  // Auto-scroll to bottom
-  const scrollToBottom = useCallback(() => {
-    if (listRef.current) {
-      listRef.current.scrollTop = listRef.current.scrollHeight
+  const loadFindings = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await fetchFindings(filter === 'ALL' ? null : filter, 50);
+      setFindings(data);
+      setLastUpdate(new Date());
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
-  }, [])
+  }, [filter]);
 
-  // Emit new events
+  // Load on mount and on filter change
   useEffect(() => {
-    if (paused) return
-    const tick = setInterval(() => {
-      const newEvt = { ...generateEvent(eventCounter.current++), isNew: true }
-      setEvents(prev => [...prev.slice(-150), newEvt]) // keep max 150
-      setNewIds(ids => { const s = new Set(ids); s.add(newEvt.id); return s })
-      setTimeout(() => {
-        setNewIds(ids => { const s = new Set(ids); s.delete(newEvt.id); return s })
-      }, 2000)
-    }, 2800 + Math.random() * 2000) // random 2.8–4.8s
-    return () => clearInterval(tick)
-  }, [paused])
+    loadFindings();
+  }, [loadFindings]);
 
-  useEffect(() => { scrollToBottom() }, [events, scrollToBottom])
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(loadFindings, 30_000);
+    return () => clearInterval(interval);
+  }, [loadFindings]);
 
-  const allTypes = ['ALL', 'SCAN', 'ANOMALY', 'AUDIT', 'ALERT', 'SAFETY', 'CORRECT', 'RWA', 'BLOCK', 'X402', 'POLICY']
-  const filtered = filter === 'ALL' ? events : events.filter(e => e.type === filter)
-
-  // Agent stats
-  const agentCounts = events.reduce((acc, e) => {
-    acc[e.agent] = (acc[e.agent] || 0) + 1
-    return acc
-  }, {})
-  const sortedAgents = Object.entries(agentCounts).sort((a, b) => b[1] - a[1])
-  const totalEvents  = events.length
+  const filteredFindings = filter === 'ALL'
+    ? findings
+    : findings.filter(f => f.severity === filter);
 
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Live Agent Feed</h1>
-        <span style={{
-          background: '#3a0a0a', border: '1px solid #ef444440',
-          color: '#ef4444', fontSize: 10, fontWeight: 700,
-          padding: '3px 8px', borderRadius: 4, letterSpacing: 0.5,
-          animation: 'pulse 2s ease-in-out infinite',
-        }}>● STREAMING</span>
+    <div style={styles.container}>
+      {/* Header */}
+      <div style={styles.header}>
+        <div style={styles.titleRow}>
+          <h2 style={styles.title}>🔴 Live Intelligence Feed</h2>
+          {lastUpdate && (
+            <span style={styles.lastUpdate}>
+              Updated {lastUpdate.toLocaleTimeString()}
+            </span>
+          )}
+        </div>
+        <p style={styles.subtitle}>
+          Live findings from{' '}
+          <a href={CONTRACT_EXPLORER_LINKS.AuditTrail} target="_blank" rel="noreferrer" style={styles.link}>
+            AuditTrail contract
+          </a>
+          {' '}on Casper testnet
+        </p>
       </div>
-      <p style={{ color: 'var(--text-muted)', marginBottom: 20, fontSize: 13 }}>
-        Real-time VaultWatch agent pipeline activity — events emit every 3–5s. Scroll to the bottom for latest events.
-      </p>
 
-      {/* ── Live Summary Stats ──────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
-        {[
-          { label: 'Events Streamed', value: totalEvents, color: 'var(--accent)' },
-          { label: 'Block Height',    value: blockHeight?.toLocaleString() ?? '—', color: 'var(--accent)' },
-          { label: 'Era ID',          value: network?.era_id ?? '—', color: 'var(--text)' },
-          { label: 'CSPR Price',      value: cspr?.usd != null ? `$${cspr.usd.toFixed(4)}` : '—',
-            color: cspr?.change_24h >= 0 ? 'var(--success)' : 'var(--danger)' },
-          { label: 'Active Agents',   value: 7, color: 'var(--success)' },
-          { label: 'On-Chain Contracts', value: 8, color: 'var(--success)' },
-        ].map(({ label, value, color }) => (
-          <div key={label} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px' }}>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 5 }}>{label}</div>
-            <div style={{ fontSize: 20, fontWeight: 700, color }}>{value}</div>
-          </div>
+      {/* Filter buttons */}
+      <div style={styles.filters}>
+        {['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map(sev => (
+          <button
+            key={sev}
+            id={`filter-${sev.toLowerCase()}`}
+            onClick={() => setFilter(sev)}
+            style={{
+              ...styles.filterBtn,
+              ...(filter === sev ? styles.filterBtnActive : {}),
+              ...(sev !== 'ALL' ? { borderColor: SEVERITY_COLORS[sev]?.bg, color: filter === sev ? '#fff' : SEVERITY_COLORS[sev]?.bg } : {}),
+            }}
+          >
+            {sev}
+          </button>
         ))}
+        <button
+          id="refresh-findings"
+          onClick={loadFindings}
+          style={styles.refreshBtn}
+          disabled={loading}
+        >
+          {loading ? '⏳' : '🔄'} Refresh
+        </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 16 }}>
-        {/* ── Event Log ────────────────────────────────────────────────── */}
-        <div style={CARD}>
-          {/* Controls */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 13, fontWeight: 600 }}>Agent Event Log</span>
-            <div style={{ flex: 1 }} />
-            <button
-              onClick={() => setPaused(p => !p)}
+      {/* Error state */}
+      {error && (
+        <div style={styles.errorBanner}>
+          ⚠️ API error: {error}. Showing cached data.
+        </div>
+      )}
+
+      {/* Loading state */}
+      {loading && findings.length === 0 && (
+        <div style={styles.loadingState}>
+          <div style={styles.spinner} />
+          <span>Loading live findings from chain...</span>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!loading && filteredFindings.length === 0 && (
+        <div style={styles.emptyState}>
+          <div style={{ fontSize: 48 }}>✅</div>
+          <p>No {filter !== 'ALL' ? filter : ''} risk findings detected.</p>
+          <p style={{ fontSize: 12, color: '#666' }}>Agents are continuously monitoring Casper for DeFi risk.</p>
+        </div>
+      )}
+
+      {/* Findings list */}
+      <div style={styles.feedList}>
+        {filteredFindings.map((finding, idx) => {
+          const sev = finding.severity || 'LOW';
+          const colors = SEVERITY_COLORS[sev] || SEVERITY_COLORS.LOW;
+          const icon = RISK_TYPE_ICONS[finding.risk_type] || '⚠️';
+
+          return (
+            <div
+              key={finding.id ?? idx}
+              id={`finding-${finding.id ?? idx}`}
               style={{
-                background: paused ? 'var(--success)' : 'var(--surface2)',
-                color: paused ? '#fff' : 'var(--text)',
-                border: '1px solid var(--border)',
-                borderRadius: 6, padding: '5px 12px',
-                cursor: 'pointer', fontSize: 12,
+                ...styles.findingCard,
+                borderLeft: `4px solid ${colors.bg}`,
+                boxShadow: colors.glow,
               }}
             >
-              {paused ? '▶ Resume' : '⏸ Pause'}
-            </button>
-            <button
-              onClick={() => { setEvents([]); eventCounter.current = 0 }}
-              style={{ background: 'var(--surface2)', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontSize: 12 }}
-            >
-              Clear
-            </button>
-          </div>
-
-          {/* Type filter */}
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-            {allTypes.map(t => (
-              <button key={t} onClick={() => setFilter(t)}
-                style={{
-                  background: filter === t ? (TYPE_COLOR[t] || 'var(--accent)') : 'var(--surface2)',
-                  color: filter === t ? '#fff' : 'var(--text-muted)',
-                  border: `1px solid ${filter === t ? (TYPE_COLOR[t] || 'var(--accent)') : 'var(--border)'}`,
-                  borderRadius: 4, padding: '3px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 600,
-                }}
-              >{t}</button>
-            ))}
-          </div>
-
-          {/* Event list */}
-          <div ref={listRef} style={{
-            height: 420, overflowY: 'auto',
-            background: 'var(--surface2)', borderRadius: 8,
-            fontFamily: 'monospace',
-          }}>
-            {filtered.length === 0 ? (
-              <div style={{ padding: 20, color: 'var(--text-muted)', fontSize: 12, textAlign: 'center' }}>
-                No events yet{filter !== 'ALL' ? ` for filter: ${filter}` : ''}…
+              {/* Severity badge */}
+              <div style={styles.findingHeader}>
+                <span
+                  style={{
+                    ...styles.severityBadge,
+                    background: colors.bg,
+                    color: colors.text,
+                  }}
+                >
+                  {sev}
+                </span>
+                <span style={styles.riskType}>
+                  {icon} {(finding.risk_type || 'unknown').replace(/_/g, ' ')}
+                </span>
+                <span style={styles.confidence}>
+                  {Math.round((finding.confidence || 0) * 100)}% confidence
+                </span>
               </div>
-            ) : filtered.map(evt => (
-              <EventRow key={evt.id} event={evt} isNew={newIds.has(evt.id)} />
-            ))}
-          </div>
 
-          <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between' }}>
-            <span>Showing {filtered.length} events{filter !== 'ALL' ? ` (filtered: ${filter})` : ''}</span>
-            <span>{paused ? '⏸ Paused' : '● Streaming live…'}</span>
-          </div>
-        </div>
+              {/* Address */}
+              <div style={styles.addressRow}>
+                <span style={styles.label}>Address:</span>
+                <code style={styles.address}>
+                  {(finding.address || 'unknown').slice(0, 20)}...
+                </code>
+                {finding.audit_trail_tx && (
+                  <a
+                    href={`https://testnet.cspr.live/deploy/${finding.audit_trail_tx}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={styles.explorerLink}
+                  >
+                    View on chain →
+                  </a>
+                )}
+              </div>
 
-        {/* ── Sidebar: Agent Stats + Active Findings ──────────────────── */}
-        <div>
-          {/* Agent Activity */}
-          <div style={CARD}>
-            <h3 style={{ fontSize: 13, fontWeight: 700, marginBottom: 12 }}>Agent Activity</h3>
-            {sortedAgents.slice(0, 8).map(([agent, count]) => {
-              const pct = Math.min((count / totalEvents) * 100, 100)
-              return (
-                <div key={agent} style={{ marginBottom: 10 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                    <span style={{ color: 'var(--accent)' }}>{agent}</span>
-                    <span style={{ color: 'var(--text-muted)' }}>{count} events</span>
-                  </div>
-                  <div style={{ height: 5, background: 'var(--surface2)', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${pct}%`, background: 'var(--accent)', borderRadius: 3, transition: 'width 0.3s' }} />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+              {/* Description */}
+              {finding.description && (
+                <p style={styles.description}>{finding.description}</p>
+              )}
 
-          {/* Contract activity */}
-          <div style={CARD}>
-            <h3 style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>Active Contracts</h3>
-            <div style={{ fontSize: 11, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {Object.entries(CONTRACT_HASHES).map(([name, hash]) => (
-                <div key={name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '5px 8px', background: 'var(--surface2)', borderRadius: 5 }}>
-                  <a href={`https://testnet.cspr.live/deploy/${hash}`} target="_blank" rel="noopener noreferrer"
-                    style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>{name}</a>
-                  <span style={{ color: 'var(--success)', fontSize: 10, fontWeight: 700 }}>✓ ON-CHAIN</span>
-                </div>
-              ))}
+              {/* Metadata */}
+              <div style={styles.meta}>
+                <span>🤖 {finding.agent_model || 'VaultWatch'}</span>
+                {finding.block_height && (
+                  <span>📦 Block #{finding.block_height}</span>
+                )}
+                {finding.timestamp && (
+                  <span>🕐 {new Date(finding.timestamp * 1000).toLocaleTimeString()}</span>
+                )}
+                {finding.rwa_enriched && (
+                  <span style={{ color: '#7c4dff' }}>🏦 RWA Enriched</span>
+                )}
+              </div>
             </div>
-          </div>
-        </div>
+          );
+        })}
       </div>
 
-      {/* ── Recent Findings ───────────────────────────────────────────────── */}
-      <div style={CARD}>
-        <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>
-          Recent Findings — Agent Pipeline Output
-          <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400, marginLeft: 8 }}>
-            written to Casper contracts
-          </span>
-        </h2>
-        {LIVE_FINDINGS.map((f, i) => (
-          <FindingCard key={i} f={f} />
-        ))}
-        <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted)' }}>
-          Each finding is linked to its specific on-chain contract deploy.
-          Click any contract name to verify on <a href="https://testnet.cspr.live" target="_blank" rel="noopener noreferrer"
-            style={{ color: 'var(--accent)', textDecoration: 'none' }}>testnet.cspr.live ↗</a>
+      {/* Stats bar */}
+      {findings.length > 0 && (
+        <div style={styles.statsBar}>
+          {['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map(sev => {
+            const count = findings.filter(f => f.severity === sev).length;
+            return count > 0 ? (
+              <span
+                key={sev}
+                style={{ color: SEVERITY_COLORS[sev].bg, fontWeight: 600 }}
+              >
+                {count} {sev}
+              </span>
+            ) : null;
+          })}
+          <span style={{ color: '#666' }}>Total: {findings.length} findings</span>
         </div>
-      </div>
+      )}
     </div>
-  )
+  );
 }
+
+const styles = {
+  container: {
+    background: 'rgba(15, 15, 30, 0.95)',
+    borderRadius: 16,
+    padding: '24px',
+    border: '1px solid rgba(255,255,255,0.08)',
+    backdropFilter: 'blur(20px)',
+  },
+  header: { marginBottom: 20 },
+  titleRow: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
+  title: { margin: 0, fontSize: 20, fontWeight: 700, color: '#fff' },
+  lastUpdate: { fontSize: 12, color: '#888', marginLeft: 'auto' },
+  subtitle: { margin: '4px 0 0', fontSize: 13, color: '#666' },
+  link: { color: '#7c4dff', textDecoration: 'none' },
+  filters: { display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 },
+  filterBtn: {
+    padding: '6px 14px',
+    borderRadius: 20,
+    border: '1px solid rgba(255,255,255,0.2)',
+    background: 'transparent',
+    color: '#aaa',
+    cursor: 'pointer',
+    fontSize: 12,
+    fontWeight: 600,
+    transition: 'all 0.2s',
+  },
+  filterBtnActive: {
+    background: 'rgba(124,77,255,0.3)',
+    borderColor: '#7c4dff',
+    color: '#fff',
+  },
+  refreshBtn: {
+    padding: '6px 14px',
+    borderRadius: 20,
+    border: '1px solid rgba(255,255,255,0.15)',
+    background: 'rgba(255,255,255,0.05)',
+    color: '#aaa',
+    cursor: 'pointer',
+    fontSize: 12,
+    marginLeft: 'auto',
+  },
+  errorBanner: {
+    background: 'rgba(255,23,68,0.15)',
+    border: '1px solid rgba(255,23,68,0.4)',
+    borderRadius: 8,
+    padding: '10px 16px',
+    color: '#ff6b6b',
+    fontSize: 13,
+    marginBottom: 16,
+  },
+  loadingState: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    color: '#666',
+    padding: '40px 20px',
+    justifyContent: 'center',
+  },
+  spinner: {
+    width: 20,
+    height: 20,
+    border: '2px solid rgba(124,77,255,0.3)',
+    borderTop: '2px solid #7c4dff',
+    borderRadius: '50%',
+    animation: 'spin 1s linear infinite',
+  },
+  emptyState: {
+    textAlign: 'center',
+    padding: '40px 20px',
+    color: '#666',
+  },
+  feedList: { display: 'flex', flexDirection: 'column', gap: 12 },
+  findingCard: {
+    background: 'rgba(255,255,255,0.03)',
+    borderRadius: 12,
+    padding: '16px',
+    border: '1px solid rgba(255,255,255,0.06)',
+    transition: 'all 0.3s',
+  },
+  findingHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 10,
+    flexWrap: 'wrap',
+  },
+  severityBadge: {
+    padding: '3px 10px',
+    borderRadius: 12,
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: 0.5,
+  },
+  riskType: {
+    color: '#ccc',
+    fontSize: 13,
+    fontWeight: 600,
+    textTransform: 'capitalize',
+  },
+  confidence: { color: '#888', fontSize: 12, marginLeft: 'auto' },
+  addressRow: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 },
+  label: { color: '#666', fontSize: 12 },
+  address: {
+    background: 'rgba(124,77,255,0.1)',
+    color: '#c4b5fd',
+    padding: '2px 8px',
+    borderRadius: 4,
+    fontSize: 12,
+    fontFamily: 'monospace',
+  },
+  explorerLink: { color: '#7c4dff', fontSize: 12, textDecoration: 'none', marginLeft: 'auto' },
+  description: { color: '#aaa', fontSize: 13, margin: '8px 0', lineHeight: 1.5 },
+  meta: {
+    display: 'flex',
+    gap: 12,
+    flexWrap: 'wrap',
+    fontSize: 11,
+    color: '#666',
+    marginTop: 8,
+  },
+  statsBar: {
+    display: 'flex',
+    gap: 16,
+    marginTop: 20,
+    paddingTop: 16,
+    borderTop: '1px solid rgba(255,255,255,0.06)',
+    fontSize: 13,
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+};

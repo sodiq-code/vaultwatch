@@ -37,6 +37,51 @@ wasm-opt --version       # 116+
 
 ---
 
+## Step 0 — Create an Agent Wallet with CSPR.click
+
+VaultWatch AI agents need Casper accounts to sign contract interactions. Use CSPR.click for browser-based wallet creation, or the CLI script for automated setup.
+
+### Option A: CSPR.click Browser Wallet (Recommended for Development)
+
+1. **Open CSPR.click** — Navigate to [https://cspr.click](https://cspr.click)
+2. **Create a new wallet** — Click "Create Wallet" and follow the on-screen prompts
+3. **Secure your seed phrase** — Write down the 12-word recovery phrase and store it securely
+4. **Copy your public key** — This is your agent's on-chain identity (starts with `02...`)
+5. **Fund the wallet** — Send CSPR from [testnet faucet](https://testnet.cspr.live/faucet) (testnet) or your exchange (mainnet)
+6. **Export the signing key** — In CSPR.click Settings → Export Keys → download `secret_key.pem`
+7. **Place the key file** — Move `secret_key.pem` to the repo root (already in `.gitignore`)
+
+```bash
+# Verify your key is loaded
+export CASPER_KEY_PATH=./secret_key.pem
+python3 -c "from pycspr.factory import parse_private_key; from pycspr.types.crypto import KeyAlgorithm; \
+  key = parse_private_key('./secret_key.pem', KeyAlgorithm.SECP256K1); \
+  print(f'Agent public key: {key.to_public_key().account_key.hex()[:30]}...')"
+```
+
+### Option B: CLI Script (Automated / CI)
+
+```bash
+# Generate a new agent wallet using CSPR.click pattern
+node scripts/create_agent_wallet.js
+
+# This creates:
+#   .wallets/agent-<timestamp>/public_key_hex.txt  — Agent identity
+#   .wallets/agent-<timestamp>/secret_key.pem       — Signing key (NEVER commit)
+#   .wallets/agent-<timestamp>/cspr_click_url.txt   — CSPR.click import URL
+```
+
+The script also outputs a CSPR.click URL that you can open in a browser to import the wallet for monitoring.
+
+### Agent Wallet Security
+
+- **Never commit** `secret_key.pem` or `.wallets/` to git (already in `.gitignore`)
+- **Use environment variables** for CI/CD: `CASPER_SECRET_KEY_HEX` or `CASPER_KEY_PATH`
+- **Rotate keys** if any signing key is accidentally exposed
+- **Separate keys per agent** in production — each AI agent should have its own Casper identity
+
+---
+
 ## Step 1 — Build the WASM Contracts
 
 ```bash

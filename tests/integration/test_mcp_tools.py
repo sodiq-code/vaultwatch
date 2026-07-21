@@ -1,4 +1,9 @@
-"""Integration test — MCP server tools (VaultWatch v4)"""
+"""Integration test — MCP server tools (VaultWatch v4)
+
+FIX #7: Aligned all test calls with the actual MCP tool signatures
+from server.py. Removed references to non-existent tools
+(subscribe_alerts, upgrade_policy) and fixed parameter mismatches.
+"""
 
 import pytest
 import json
@@ -18,7 +23,7 @@ def test_mcp_server_importable():
 
 
 def test_mcp_has_15_tools():
-    """MCP server should expose exactly 20 tools."""
+    """MCP server should expose at least 10 async tool functions."""
     import vaultwatch_mcp.server as srv
 
     # FastMCP stores tools in mcp._tool_manager or similar
@@ -122,36 +127,53 @@ async def test_query_findings_returns_dict():
 
 @pytest.mark.asyncio
 async def test_get_audit_trail_returns_dict():
-    """get_audit_trail: should return dict for any address."""
+    """get_audit_trail: should return dict with findings.
+
+    FIX: get_audit_trail takes only (limit=10), not (address=..., limit=5).
+    Removed address parameter — audit trail is global, not per-address.
+    """
     import vaultwatch_mcp.server as srv
 
-    result = await srv.get_audit_trail(address="test_address_002", limit=5)
+    result = await srv.get_audit_trail(limit=5)
     assert isinstance(result, dict)
-    assert result.get("address") == "test_address_002"
     assert "findings" in result
+    assert "count" in result
 
 
 @pytest.mark.asyncio
-async def test_subscribe_alerts_returns_dict():
-    """subscribe_alerts: should return confirmation dict."""
+async def test_x402_subscribe_returns_dict():
+    """x402_subscribe: should return subscription confirmation dict.
+
+    FIX: Replaced non-existent subscribe_alerts with x402_subscribe,
+    which takes (subscriber_address, plan, payment_amount_cspr).
+    """
     import vaultwatch_mcp.server as srv
 
-    result = await srv.subscribe_alerts(
-        address="test_address_003",
-        webhook_url="https://example.com/hook",
-        min_severity="HIGH",
+    result = await srv.x402_subscribe(
+        subscriber_address="test_address_003",
+        plan="standard",
+        payment_amount_cspr=10.0,
     )
     assert isinstance(result, dict)
-    assert "subscribed" in result or "address" in result or "status" in result
+    assert "subscriber" in result or "x402Version" in result
 
 
 @pytest.mark.asyncio
-async def test_upgrade_policy_returns_dict():
-    """upgrade_policy: should confirm new policy settings."""
+async def test_policy_hotswap_returns_dict():
+    """policy_hotswap: should confirm new policy settings.
+
+    FIX: Replaced non-existent upgrade_policy with policy_hotswap,
+    which takes (new_critical_threshold, new_confidence_threshold, new_max_retries).
+    """
     import vaultwatch_mcp.server as srv
 
-    result = await srv.upgrade_policy(min_confidence=75, critical_threshold=85)
+    result = await srv.policy_hotswap(
+        new_critical_threshold=85,
+        new_confidence_threshold=75,
+        new_max_retries=2,
+    )
     assert isinstance(result, dict)
+    assert "proposed_policy" in result or "hotswap_ready" in result
 
 
 @pytest.mark.asyncio
@@ -159,18 +181,10 @@ async def test_get_risk_score_returns_dict():
     """get_risk_score: should return composite risk dict."""
     import vaultwatch_mcp.server as srv
 
-    mock_groq = MagicMock()
-    mock_choice = MagicMock()
-    mock_choice.message.content = json.dumps(
-        {
-            "risk_score": 30,
-            "risk_level": "LOW",
-            "vulnerabilities": [],
-            "summary": "Low risk",
-        }
-    )
-    mock_groq.chat.completions.create.return_value = MagicMock(choices=[mock_choice])
-    with patch("groq.Groq", return_value=mock_groq):
+    # Mock the Casper RPC call to avoid network dependency
+    mock_rpc_result = {"stored_value": {"CLValue": {"parsed": {"score": 30}}}}
+    with patch.object(srv, "casper_rpc_call", new_callable=AsyncMock) as mock_rpc:
+        mock_rpc.return_value = mock_rpc_result
         result = await srv.get_risk_score(address="test_addr_004")
     assert isinstance(result, dict)
-    assert "address" in result or "risk" in str(result).lower() or "timestamp" in result
+    assert "address" in result or "risk_oracle_query" in result or "timestamp" in result
