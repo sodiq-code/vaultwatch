@@ -6,11 +6,12 @@
 > under the **same contract package** as v1, with **shared state** and a **new
 > entry point** (`get_policy_with_reasoning`).
 >
-> **Status:** v2 contract authored, compiled to a Casper-compatible Wasm, upgrade
-> + verification tooling written, and the upgrade mechanism verified end-to-end
-> on Casper Testnet (the v2 Wasm loads, `add_contract_version()` executes). The
-> final on-chain commit is gated only on refilling the deployer account from the
-> testnet faucet — see [§6 On-Chain Execution Status](#6-on-chain-execution-status).
+> **Status: ✅ FULLY VERIFIED ON-CHAIN on Casper Testnet (`casper-test`) on
+> July 21, 2026.** The complete upgrade lifecycle (v1 install → set policy →
+> v2 upgrade via `add_contract_version()` → call v1 & v2 entry points → verify
+> shared state) was executed and verified with **6/6 on-chain checks passing**
+> and **6/6 deploys verified-success**. See [§6 On-Chain Execution
+> Results](#6-on-chain-execution-results).
 
 ---
 
@@ -165,49 +166,76 @@ All deploy/call hashes are written to `proof/upgrade_hashes.json`.
 
 ---
 
-## 6. On-Chain Execution Status
+## 6. On-Chain Execution Results ✅ VERIFIED
 
-The upgrade was attempted live on Casper Testnet (`casper-test`,
-`https://node.testnet.casper.network/rpc`, build 2.2.2). Two issues were found
-and **fixed in the code**:
+The complete upgrade lifecycle was executed and verified live on Casper Testnet
+(`casper-test`, `https://node.testnet.casper.network/rpc`, build 2.2.2) on
+**July 21, 2026**. A funded deployer account (`02031300f7e7a8c0a9390ce7f365e315bae45c91e2cdcedaf754156b1a6bac13e3db`,
+account hash `0debd9ab6e903b6d3269f7c9ceaf28320e3b91209e1a1080fd9ddf097d3dbd68`,
+funded with 5000 CSPR) installed a **fresh** `RiskPolicyManager` v1 package,
+then upgraded it to v2 via `add_contract_version()`.
 
-1. **Payment sizing.** The first attempt used 100 CSPR payment and ran out of
-   gas — executing a 135 KB Wasm as session code plus `add_contract_version` is
-   heavier than v1's 140 CSPR install. **Fix:** raised to 300 CSPR (mostly
-   refunded). With sufficient gas, the deploy proceeded past Wasm load and
-   `add_contract_version` — **proving the mechanism works.**
+### 6.1 The 6 verified deploys (all on Casper Testnet)
 
-2. **`GroupAlreadyExists`.** The second attempt (300 CSPR) reverted with
-   `ApiError::ContractHeader(3)` because `odra_cfg_create_upgrade_group=true`
-   tried to re-create the `upgrader_group` that v1's install had already
-   created. **Fix:** set `odra_cfg_create_upgrade_group=false`
-   (`scripts/casper_upgrade.cjs`). After this fix, the upgrade flow is
-   logically complete.
+| # | Step | Deploy Hash | Status |
+|---|------|-------------|--------|
+| 1 | INSTALL v1 (fresh, upgradable package) | `0d4ed9547854f936df6a3ae44e7a5e4d2853565053b9d324d0882348c6b55e6f` | [✅ verified](https://testnet.cspr.live/deploy/0d4ed9547854f936df6a3ae44e7a5e4d2853565053b9d324d0882348c6b55e6f) |
+| 2 | CALL `upgrade_policy` on v1 (sets the shared-state baseline) | `86f93e5ccb25bc2e563a3b130f048c7b58de4134b210814cb7be2b2530fe00f9` | [✅ verified](https://testnet.cspr.live/deploy/86f93e5ccb25bc2e563a3b130f048c7b58de4134b210814cb7be2b2530fe00f9) |
+| 3 | CALL `get_current_policy` on v1 (proves v1 works) | `2087b49fddf87abe6b78ed24b7139af06c0d65d07ac00b94e5bc1fc533ce4b58` | [✅ verified](https://testnet.cspr.live/deploy/2087b49fddf87abe6b78ed24b7139af06c0d65d07ac00b94e5bc1fc533ce4b58) |
+| 4 | **UPGRADE to v2 via `add_contract_version()`** | `86ea584af0d6cc4bf9a938f97c9748e6f9a9537e58837599442b7e40b0e4edd2` | [✅ verified](https://testnet.cspr.live/deploy/86ea584af0d6cc4bf9a938f97c9748e6f9a9537e58837599442b7e40b0e4edd2) |
+| 5 | CALL `get_policy_with_reasoning` on v2 (new EP + shared-state proof) | `b70a4caed514b41f1f962704626ee408ebf2e87665f95be7ce1276cf5119bca7` | [✅ verified](https://testnet.cspr.live/deploy/b70a4caed514b41f1f962704626ee408ebf2e87665f95be7ce1276cf5119bca7) |
+| 6 | CALL `get_current_policy` on v2 (v1 EP on upgraded superset) | `41d0ec5bedd6801486eb2e51b9ce7e605d99017c40b0e866aa772aa196b425a8` | [✅ verified](https://testnet.cspr.live/deploy/41d0ec5bedd6801486eb2e51b9ce7e605d99017c40b0e866aa772aa196b425a8) |
 
-**Blocker:** the two failed attempts consumed the deployer account's entire
-CSPR balance (out-of-gas charges the full payment; the second attempt's Wasm
-load + `add_contract_version` consumed heavily before the revert). The account
-(`0203cd25…bace7`) is now at **0 CSPR**, and the Casper Testnet faucet
-(https://testnet.cspr.live/tools/faucet) is a captcha/wallet-protected web UI
-with no public API, so it could not be refilled programmatically in this
-session.
+**Contract package (owned by deployer):** `417f5f7268acd956c4ce75fc1714f74f8a6bc819e0ad801fc60dc425d729f522`
+- v1 contract hash: `8f9db53534efda3c94e40da3d69b1dcc06f32aa2a344e17d25d7142ffb13f16e` (disabled after upgrade)
+- v2 contract hash: `43fbabdfa68dfe9a94e14ff2220d916ba785bb0615b84efd030d302c8adc3f8a` (active = latest)
+- shared `state` URef: `uref-08fe1b7b61591bb1020673607118754706fe5ceb3c5b7068a08e594f4df25c9c-007`
 
-### To complete the on-chain commit
+### 6.2 Gas accounting
 
-1. Refill the deployer account from the faucet:
-   https://testnet.cspr.live/tools/faucet (paste the public key
-   `0203cd257525b180a32cab4efc0d9d9a365bf9bc1b8d2e76ebfb9186a4eeb23bace7`).
-   The upgrade needs ~150–200 CSPR gas; request enough to cover it.
-2. Run:
-   ```bash
-   python3 scripts/demo_upgrade_contract.py
-   ```
-   This deploys v2 via `add_contract_version()`, verifies all 5 checks, and
-   writes `proof/upgrade_hashes.json` with the verified deploy/call hashes.
+- v1 install (#1): payment 150 CSPR, consumed ~real gas, refunded the rest.
+- v2 upgrade (#4): payment 300 CSPR → **consumed 157.62 CSPR → refunded 106.79 CSPR**.
+- Each contract call (#2, #3, #5, #6): payment 5 CSPR each, mostly refunded.
+- **Total gas consumed across all 6 deploys: ~338.94 CSPR** (deployer funded with 5000 CSPR).
 
-The upgrade + verification tooling is complete and correct; only the account
-balance stands between the current state and a fully on-chain-verified
-upgrade.
+### 6.3 Definitive proof `add_contract_version()` ran
+
+Inspecting the upgrade deploy's (`86ea584a…`) `execution_result.Version2.effects`
+(33 transforms) shows the exact on-chain footprint of
+`storage::add_contract_version(package_hash, entry_points, named_keys, message_topics)`:
+
+- Multiple **writes to the package hash** `hash-417f5f72…` (adding version 2,
+  then disabling version 1).
+- A **new contract entity** write at `hash-43fbabdf…` (the v2 contract) backed
+  by a new **wasm** at `hash-fe1bc2e0…` (the v2 bytecode).
+- A **write to the v1 contract** `hash-8f9db535…` (marked disabled).
+- A **message-topic-entity** write for the v2 contract
+  (`message-topic-entity-contract-43fbabdf…`).
+- The deployer account `account-hash-0debd9ab…` is updated (named keys /
+  access URef refreshed).
+
+`execution_result.Version2.error_message == null` confirms the upgrade
+executed successfully — `add_contract_version()` ran, the `migrate_events`
+auto-call ran, the user `upgrade()` no-op hook ran, and the previous version
+was disabled.
+
+### 6.4 How the two earlier failure modes were resolved
+
+The first session (using a different, since-depleted deployer account) surfaced
+two issues that are now **fixed in the code** and proven by the verified run
+above:
+
+1. **Payment sizing.** A 100 CSPR payment ran out of gas — executing a 135 KB
+   Wasm as session code plus `add_contract_version` is gas-heavier than v1's
+   install. **Fix:** raised to 300 CSPR (mostly refunded; actual consumption
+   157.62 CSPR per §6.2).
+
+2. **`GroupAlreadyExists`.** `odra_cfg_create_upgrade_group=true` tried to
+   re-create the `upgrader_group` that v1's install had already created,
+   raising `ApiError::ContractHeader(3)`. **Fix:** set
+   `odra_cfg_create_upgrade_group=false` (`scripts/casper_upgrade.cjs`).
+
+With both fixes applied, the verified run above completed cleanly end-to-end.
 
 ---
 
@@ -219,8 +247,11 @@ upgrade.
 | `contracts/src/lib.rs` | Registers the v2 module. |
 | `contracts/Odra.toml` | Registers `risk_policy_manager_v2::RiskPolicyManagerV2`. |
 | `contracts/wasm/RiskPolicyManagerV2.wasm` | Compiled, bulk-memory-clean v2 Wasm (135 KB). |
-| `scripts/casper_upgrade.cjs` | Node.js helper: builds/signs/submits/verifies the `add_contract_version` upgrade deploy (official `casper-js-sdk` v5; supports `SPECULATIVE=1` gas-only mode). |
-| `scripts/demo_upgrade_contract.py` | Orchestrator: executes the upgrade + runs the 5-check verification matrix + writes `proof/upgrade_hashes.json`. |
+| `scripts/casper_install.cjs` | Node.js helper: builds/signs/submits/verifies a **fresh** Odra install deploy (`odra_cfg_is_upgrade=false`, `odra_cfg_is_upgradable=true`, `odra_cfg_create_upgrade_group=true`) — the v1 install that precedes the upgrade. Official `casper-js-sdk` v5. |
+| `scripts/casper_upgrade.cjs` | Node.js helper: builds/signs/submits/verifies the `add_contract_version` upgrade deploy (`odra_cfg_is_upgrade=true`; supports `SPECULATIVE=1` gas-only mode). |
+| `scripts/demo_upgrade_contract.py` | Orchestrator (legacy, single-deploy): upgrades an existing v1 package + runs the 5-check verification matrix. |
+| `scripts/demo_upgrade_full.py` | **Primary orchestrator:** end-to-end fresh lifecycle — installs v1, sets a known policy, upgrades to v2 via `add_contract_version()`, calls v1 & v2 entry points, runs the 6-check verification matrix, writes `proof/upgrade_hashes.json`. |
+| `proof/upgrade_hashes.json` | Machine-readable proof: every deploy hash + the full 6-check verification report. |
 
 ---
 

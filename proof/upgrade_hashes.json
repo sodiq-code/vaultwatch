@@ -1,0 +1,141 @@
+{
+  "network": "casper-test",
+  "rpc_url": "https://node.testnet.casper.network/rpc",
+  "timestamp_utc": "2026-07-21T17:41:58Z",
+  "deployer_account_hash": "account-hash-0debd9ab6e903b6d3269f7c9ceaf28320e3b91209e1a1080fd9ddf097d3dbd68",
+  "package_hash": "417f5f7268acd956c4ce75fc1714f74f8a6bc819e0ad801fc60dc425d729f522",
+  "v1_contract_hash": "8f9db53534efda3c94e40da3d69b1dcc06f32aa2a344e17d25d7142ffb13f16e",
+  "v1_state_uref": "uref-08fe1b7b61591bb1020673607118754706fe5ceb3c5b7068a08e594f4df25c9c-007",
+  "baseline_policy_set_on_v1": {
+    "min_confidence_threshold": 70,
+    "critical_score_threshold": 85,
+    "high_score_threshold": 65,
+    "medium_score_threshold": 45,
+    "max_retry_count": 2,
+    "safety_rejection_threshold": 90,
+    "block_height": 1500000,
+    "updated_by": "v1-pre-upgrade-state"
+  },
+  "deploys": {
+    "v1_install": {
+      "deploy_hash": "0d4ed9547854f936df6a3ae44e7a5e4d2853565053b9d324d0882348c6b55e6f",
+      "block_hash": "e54868ad742e27716675d9b2ac4662d6f67420aa669789d8f9213552a8b6de50",
+      "cost_motes": "150000000000",
+      "link": "https://testnet.cspr.live/deploy/0d4ed9547854f936df6a3ae44e7a5e4d2853565053b9d324d0882348c6b55e6f",
+      "success": true
+    },
+    "upgrade_policy_on_v1": {
+      "deploy_hash": "86f93e5ccb25bc2e563a3b130f048c7b58de4134b210814cb7be2b2530fe00f9",
+      "block_hash": "746d87946e088d12e415b5439d6e31a3f1e0edab7e88a1a1f54c2391c5f3b25e",
+      "cost_motes": "5000000000",
+      "link": "https://testnet.cspr.live/deploy/86f93e5ccb25bc2e563a3b130f048c7b58de4134b210814cb7be2b2530fe00f9",
+      "success": true
+    },
+    "get_current_policy_on_v1": {
+      "deploy_hash": "2087b49fddf87abe6b78ed24b7139af06c0d65d07ac00b94e5bc1fc533ce4b58",
+      "block_hash": "e5f7c8cee5a7160b2d4e88d2b70b18dcd47e7bb31a7c2b92bcff558b4af9ab40",
+      "cost_motes": "5000000000",
+      "link": "https://testnet.cspr.live/deploy/2087b49fddf87abe6b78ed24b7139af06c0d65d07ac00b94e5bc1fc533ce4b58",
+      "success": true
+    },
+    "v2_upgrade_add_contract_version": {
+      "deploy_hash": "86ea584af0d6cc4bf9a938f97c9748e6f9a9537e58837599442b7e40b0e4edd2",
+      "block_hash": "78670678fb2b2553f0ce298c4500c57f9b3c2e0c83808cce32f0a88a8ec3d6e0",
+      "cost_motes": "300000000000",
+      "link": "https://testnet.cspr.live/deploy/86ea584af0d6cc4bf9a938f97c9748e6f9a9537e58837599442b7e40b0e4edd2",
+      "success": true
+    },
+    "get_policy_with_reasoning_on_v2": {
+      "deploy_hash": "b70a4caed514b41f1f962704626ee408ebf2e87665f95be7ce1276cf5119bca7",
+      "block_hash": "7304410c28b09747357d0939991e2514a4c5a27a3cb2e3b3a53051edf8b06950",
+      "cost_motes": "5000000000",
+      "link": "https://testnet.cspr.live/deploy/b70a4caed514b41f1f962704626ee408ebf2e87665f95be7ce1276cf5119bca7",
+      "success": true
+    },
+    "get_current_policy_on_v2": {
+      "deploy_hash": "41d0ec5bedd6801486eb2e51b9ce7e605d99017c40b0e866aa772aa196b425a8",
+      "block_hash": "027a20f42e4ef3dc0f4b07fa0910c17fb22f9b6ce4bf8f9e83b73672f0574655",
+      "cost_motes": "5000000000",
+      "link": "https://testnet.cspr.live/deploy/41d0ec5bedd6801486eb2e51b9ce7e605d99017c40b0e866aa772aa196b425a8",
+      "success": true
+    }
+  },
+  "checks": {
+    "package_has_2_versions": {
+      "count": 2,
+      "versions": [
+        {
+          "protocol_version_major": 2,
+          "contract_version": 1,
+          "contract_hash": "contract-8f9db53534efda3c94e40da3d69b1dcc06f32aa2a344e17d25d7142ffb13f16e"
+        },
+        {
+          "protocol_version_major": 2,
+          "contract_version": 2,
+          "contract_hash": "contract-43fbabdfa68dfe9a94e14ff2220d916ba785bb0615b84efd030d302c8adc3f8a"
+        }
+      ],
+      "disabled_versions": [
+        [
+          2,
+          1
+        ]
+      ],
+      "lock_status": "Unlocked",
+      "access_key": "uref-1060563110994275538ee05e8de51ff75e849fb396d704bd6692856d56ef6ef6-007",
+      "pass": true
+    },
+    "v2_new_entry_point": {
+      "v2_entry_points": [
+        "get_current_policy",
+        "get_current_version",
+        "get_policy_version",
+        "get_policy_with_reasoning",
+        "init",
+        "migrate_events",
+        "transfer_ownership",
+        "upgrade",
+        "upgrade_policy"
+      ],
+      "has_get_policy_with_reasoning": true,
+      "pass": true
+    },
+    "v1_entry_points_preserved_in_v2": {
+      "expected": [
+        "get_current_policy",
+        "get_current_version",
+        "get_policy_version",
+        "init",
+        "transfer_ownership",
+        "upgrade_policy"
+      ],
+      "preserved": true,
+      "pass": true
+    },
+    "shared_state_uref": {
+      "v1_state_uref": "uref-08fe1b7b61591bb1020673607118754706fe5ceb3c5b7068a08e594f4df25c9c-007",
+      "v2_state_uref": "uref-08fe1b7b61591bb1020673607118754706fe5ceb3c5b7068a08e594f4df25c9c-007",
+      "shared": true,
+      "pass": true
+    },
+    "call_get_policy_with_reasoning_on_v2": {
+      "deploy_hash": "b70a4caed514b41f1f962704626ee408ebf2e87665f95be7ce1276cf5119bca7",
+      "link": "https://testnet.cspr.live/deploy/b70a4caed514b41f1f962704626ee408ebf2e87665f95be7ce1276cf5119bca7",
+      "success": true,
+      "error": null,
+      "pass": true,
+      "rationale": "success proves v2 reads v1's shared state (get_policy_with_reasoning reads current_policy via get_or_revert; without shared state it would revert with User(1))"
+    },
+    "call_get_current_policy_on_v2": {
+      "deploy_hash": "41d0ec5bedd6801486eb2e51b9ce7e605d99017c40b0e866aa772aa196b425a8",
+      "link": "https://testnet.cspr.live/deploy/41d0ec5bedd6801486eb2e51b9ce7e605d99017c40b0e866aa772aa196b425a8",
+      "success": true,
+      "error": null,
+      "pass": true
+    }
+  },
+  "v2_contract_hash": "43fbabdfa68dfe9a94e14ff2220d916ba785bb0615b84efd030d302c8adc3f8a",
+  "all_pass": true,
+  "checks_run": 6,
+  "checks_passed": 6
+}

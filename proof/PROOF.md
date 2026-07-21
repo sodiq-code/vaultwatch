@@ -200,13 +200,20 @@ This project uses the following resources from the [Casper AI Toolkit](https://w
 
 ---
 
-## 10. Critical Fix 2 — Casper-Native Upgradable Contracts (`add_contract_version`)
+## 10. Critical Fix 2 — Casper-Native Upgradable Contracts (`add_contract_version`) ✅ VERIFIED ON-CHAIN
 
 Closes the review's Critical Fix 2: the "upgradable contracts" headline is now
 backed by a **real** `storage::add_contract_version()` upgrade, not a Var
 overwrite. A **v2** of `RiskPolicyManager` (`contracts/src/risk_policy_manager_v2.rs`)
 is installed as a new version under the **same contract package** as v1, with
 **shared state** and a **new entry point** `get_policy_with_reasoning`.
+
+**Status: FULLY VERIFIED ON-CHAIN on Casper Testnet (`casper-test`) on July 21, 2026.**
+The complete upgrade lifecycle (v1 install → set policy → v2 upgrade via
+`add_contract_version()` → call v1 & v2 entry points → verify shared state) was
+executed and verified with **6/6 on-chain checks passing** and **6/6 deploys
+verified-success**. Deployer account: `02031300f7e7a8c0a9390ce7f365e315bae45c91e2cdcedaf754156b1a6bac13e3db`
+(account hash `0debd9ab6e903b6d3269f7c9ceaf28320e3b91209e1a1080fd9ddf097d3dbd68`).
 
 **Build artifact:** `contracts/wasm/RiskPolicyManagerV2.wasm` (135.2 KB,
 bulk-memory-clean, exports `call` + all v1 entry points + `get_policy_with_reasoning`
@@ -218,31 +225,76 @@ invokes `storage::add_contract_version(pkg, entry_points, named_keys, {})`
 on-chain. Full design + build + verification matrix:
 [`docs/UPGRADE_DEMO.md`](../docs/UPGRADE_DEMO.md).
 
-**On-chain status:** the upgrade mechanism was verified live on Casper Testnet
-(the v2 Wasm loads and `add_contract_version()` executes). Two issues were found
-and fixed in code: (1) payment raised from 100 → 300 CSPR (Wasm load +
-`add_contract_version` is gas-heavy); (2) `odra_cfg_create_upgrade_group=false`
-(v1 install already created `upgrader_group`; re-creating raises
-`ApiError::ContractHeader(3)` GroupAlreadyExists). The final on-chain commit is
-gated only on refilling the deployer account from the testnet faucet — see
-`docs/UPGRADE_DEMO.md` §6.
+### 10.1 The Verified Upgrade Lifecycle (6 deploys, all on Casper Testnet)
 
-**Reproduce the on-chain upgrade + verification:**
+| # | Step | Deploy Hash | Status |
+|---|------|-------------|--------|
+| 1 | INSTALL v1 `RiskPolicyManager` (fresh, upgradable package) | `0d4ed9547854f936df6a3ae44e7a5e4d2853565053b9d324d0882348c6b55e6f` | [✅ verified](https://testnet.cspr.live/deploy/0d4ed9547854f936df6a3ae44e7a5e4d2853565053b9d324d0882348c6b55e6f) |
+| 2 | CALL `upgrade_policy` on v1 (sets the shared-state baseline) | `86f93e5ccb25bc2e563a3b130f048c7b58de4134b210814cb7be2b2530fe00f9` | [✅ verified](https://testnet.cspr.live/deploy/86f93e5ccb25bc2e563a3b130f048c7b58de4134b210814cb7be2b2530fe00f9) |
+| 3 | CALL `get_current_policy` on v1 (proves v1 works) | `2087b49fddf87abe6b78ed24b7139af06c0d65d07ac00b94e5bc1fc533ce4b58` | [✅ verified](https://testnet.cspr.live/deploy/2087b49fddf87abe6b78ed24b7139af06c0d65d07ac00b94e5bc1fc533ce4b58) |
+| 4 | **UPGRADE to v2 via `add_contract_version()`** | `86ea584af0d6cc4bf9a938f97c9748e6f9a9537e58837599442b7e40b0e4edd2` | [✅ verified](https://testnet.cspr.live/deploy/86ea584af0d6cc4bf9a938f97c9748e6f9a9537e58837599442b7e40b0e4edd2) |
+| 5 | CALL `get_policy_with_reasoning` on v2 (new EP + shared-state proof) | `b70a4caed514b41f1f962704626ee408ebf2e87665f95be7ce1276cf5119bca7` | [✅ verified](https://testnet.cspr.live/deploy/b70a4caed514b41f1f962704626ee408ebf2e87665f95be7ce1276cf5119bca7) |
+| 6 | CALL `get_current_policy` on v2 (v1 EP on upgraded superset) | `41d0ec5bedd6801486eb2e51b9ce7e605d99017c40b0e866aa772aa196b425a8` | [✅ verified](https://testnet.cspr.live/deploy/41d0ec5bedd6801486eb2e51b9ce7e605d99017c40b0e866aa772aa196b425a8) |
+
+**Contract package (owned by deployer):** `417f5f7268acd956c4ce75fc1714f74f8a6bc819e0ad801fc60dc425d729f522`
+- v1 contract hash: `8f9db53534efda3c94e40da3d69b1dcc06f32aa2a344e17d25d7142ffb13f16e` (disabled after upgrade)
+- v2 contract hash: `43fbabdfa68dfe9a94e14ff2220d916ba785bb0615b84efd030d302c8adc3f8a` (active = latest)
+- shared `state` URef: `uref-08fe1b7b61591bb1020673607118754706fe5ceb3c5b7068a08e594f4df25c9c-007`
+
+**Gas accounting (upgrade deploy #4):** payment 300 CSPR → consumed **157.62 CSPR** → refunded 106.79 CSPR.
+Total gas consumed across all 6 deploys: **~338.94 CSPR** (deployer funded with 5000 CSPR).
+
+### 10.2 Verification Matrix — 6/6 PASS
+
+Run by `scripts/demo_upgrade_full.py` (full report: [`proof/upgrade_hashes.json`](upgrade_hashes.json)):
+
+| # | Check | How | Result |
+|---|-------|-----|--------|
+| 1 | Package has 2 versions | `query_global_state` on `hash-<package>` → `ContractPackage.versions[]` | ✅ versions=[1, 2], v1 disabled |
+| 2a | v2 exposes `get_policy_with_reasoning` | `query_global_state` on `hash-<v2_contract>` → `entry_points[]` | ✅ present (9 EPs total) |
+| 2b | v1 entry points preserved in v2 | same query | ✅ all 6 v1 EPs ⊆ v2 EPs |
+| 3 | Shared state (structural) | compare v2's `state` URef to v1's `state` URef | ✅ equal (`uref-08fe1b7b…c9c-007`) |
+| 4 | `get_policy_with_reasoning` works on v2 (functional shared-state proof) | stored-contract call on v2 | ✅ success (`error_message == null`) |
+| 5 | v1 entry point still works on upgraded package | call `get_current_policy` on v2 | ✅ success |
+
+**Why check 4 is a functional shared-state proof:** `get_policy_with_reasoning`
+reads `current_policy` via `get_or_revert_with(ExecutionError::User(1))`. If v2
+could NOT read v1's state (i.e. the `state` dictionary were not shared), this
+call would revert with `User(1)`. Its success proves v2 reads v1's written state.
+
+**Why check 3 is a structural shared-state proof:** Odra stores all module state
+in a single `state` dictionary (a named key on the contract holding the seed
+URef). v2 keeps v1's struct fields in the **same order** (`current_policy`,
+`policy_history`, `owner`), so v2 reads v1's state via the identical dictionary
+keys. The `state` URef being byte-identical between v1 and v2 is the on-chain
+structural confirmation.
+
+### 10.3 Definitive Proof `add_contract_version()` Ran (execution effects of deploy #4)
+
+Inspecting the upgrade deploy's execution_result.effects (33 transforms) shows:
+- Multiple **writes to the package hash** `417f5f72…` (adding version 2,
+  disabling version 1).
+- A **new contract entity** write at `hash-43fbabdf…` (the v2 contract) backed
+  by a new **wasm** at `hash-fe1bc2e0…` (the v2 bytecode).
+- A **write to the v1 contract** `hash-8f9db535…` (marked disabled).
+- A **message-topic-entity** write for the v2 contract (`message-topic-entity-contract-43fbabdf…`).
+
+This is exactly the on-chain footprint of `storage::add_contract_version(package_hash,
+entry_points, named_keys, message_topics)`.
+
+### 10.4 Reproduce the on-chain upgrade + verification
+
 ```bash
-# After refueling the deployer account at https://testnet.cspr.live/tools/faucet:
-python3 scripts/demo_upgrade_contract.py
-# → deploys v2 via add_contract_version(), verifies 5 on-chain checks,
-#   writes proof/upgrade_hashes.json with all deploy/call hashes.
+# The deployer secret key (Account 2) is at vaultwatch/secret_key.pem.
+# (Account 2 is the package owner; the upgrade requires the access URef that
+#  Odra stores under <package_hash_key_name>_access_token in the deployer's
+#  named keys — so the same account must install v1 AND upgrade to v2.)
+
+python3 scripts/demo_upgrade_full.py
+# → installs v1 (fresh upgradable package), sets a known policy, upgrades to
+#   v2 via add_contract_version(), calls v1 + v2 entry points, verifies all
+#   6 on-chain checks, writes proof/upgrade_hashes.json with every deploy hash.
 ```
 
-**Verification matrix (run by `scripts/demo_upgrade_contract.py`):**
-1. Package `versions[]` grows from 1 → 2 (`query_global_state`).
-2. v2 contract `entry_points[]` includes `get_policy_with_reasoning` (new) **and**
-   preserves all v1 entry points (superset).
-3. v2's `state` URef == v1's `state` URef `uref-dca768b2…117bf-007` (shared state,
-   structural proof).
-4. Calling `get_policy_with_reasoning` on v2 **succeeds** — functional proof of
-   shared state (it reads `current_policy` via `get_or_revert`; if state weren't
-   shared, it would revert with `User(1)`).
-5. Calling `get_current_policy` on v2 **succeeds** — v1 entry point still works on
-   the upgraded package.
+Full design, build pipeline, mechanism, and on-chain results:
+[`docs/UPGRADE_DEMO.md`](../docs/UPGRADE_DEMO.md).

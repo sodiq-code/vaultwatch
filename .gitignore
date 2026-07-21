@@ -32,3 +32,8 @@ htmlcov/
 secret_key.pem
 dashboard/.env.local
 .tmp_deploy_request.json
+
+# Depleted/rotated deployer keys (never commit any real secret key)
+secret_key*.pem
+*.pem
+!contracts/wasm/*.wasm
