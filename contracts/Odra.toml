@@ -20,4 +20,7 @@ fqn = "agent_behavior_index::AgentBehaviorIndex"
 fqn = "risk_policy_manager::RiskPolicyManager"
 
 [[contracts]]
+fqn = "risk_policy_manager_v2::RiskPolicyManagerV2"
+
+[[contracts]]
 fqn = "subscriber_vault::SubscriberVault"

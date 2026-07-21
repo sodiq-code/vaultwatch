@@ -197,3 +197,52 @@ This project uses the following resources from the [Casper AI Toolkit](https://w
 | Odra Framework | https://github.com/odra-lang/odra | Smart contract development with AI-discoverable docs |
 | x402 Micropayments Protocol | https://github.com/x402-payment/x402-spec | HTTP-native payment protocol for agent API access |
 | CSPR.click AI Agent Skill | https://cspr.click | Agent wallet creation and transaction signing |
+
+---
+
+## 10. Critical Fix 2 — Casper-Native Upgradable Contracts (`add_contract_version`)
+
+Closes the review's Critical Fix 2: the "upgradable contracts" headline is now
+backed by a **real** `storage::add_contract_version()` upgrade, not a Var
+overwrite. A **v2** of `RiskPolicyManager` (`contracts/src/risk_policy_manager_v2.rs`)
+is installed as a new version under the **same contract package** as v1, with
+**shared state** and a **new entry point** `get_policy_with_reasoning`.
+
+**Build artifact:** `contracts/wasm/RiskPolicyManagerV2.wasm` (135.2 KB,
+bulk-memory-clean, exports `call` + all v1 entry points + `get_policy_with_reasoning`
++ `upgrade` + `migrate_events`).
+
+**Upgrade mechanism:** v2 Wasm deployed as session code with `odra_cfg_is_upgrade=true`
++ `odra_cfg_package_hash_to_upgrade=<v1 package hash>`; Odra's generated `call()`
+invokes `storage::add_contract_version(pkg, entry_points, named_keys, {})`
+on-chain. Full design + build + verification matrix:
+[`docs/UPGRADE_DEMO.md`](../docs/UPGRADE_DEMO.md).
+
+**On-chain status:** the upgrade mechanism was verified live on Casper Testnet
+(the v2 Wasm loads and `add_contract_version()` executes). Two issues were found
+and fixed in code: (1) payment raised from 100 → 300 CSPR (Wasm load +
+`add_contract_version` is gas-heavy); (2) `odra_cfg_create_upgrade_group=false`
+(v1 install already created `upgrader_group`; re-creating raises
+`ApiError::ContractHeader(3)` GroupAlreadyExists). The final on-chain commit is
+gated only on refilling the deployer account from the testnet faucet — see
+`docs/UPGRADE_DEMO.md` §6.
+
+**Reproduce the on-chain upgrade + verification:**
+```bash
+# After refueling the deployer account at https://testnet.cspr.live/tools/faucet:
+python3 scripts/demo_upgrade_contract.py
+# → deploys v2 via add_contract_version(), verifies 5 on-chain checks,
+#   writes proof/upgrade_hashes.json with all deploy/call hashes.
+```
+
+**Verification matrix (run by `scripts/demo_upgrade_contract.py`):**
+1. Package `versions[]` grows from 1 → 2 (`query_global_state`).
+2. v2 contract `entry_points[]` includes `get_policy_with_reasoning` (new) **and**
+   preserves all v1 entry points (superset).
+3. v2's `state` URef == v1's `state` URef `uref-dca768b2…117bf-007` (shared state,
+   structural proof).
+4. Calling `get_policy_with_reasoning` on v2 **succeeds** — functional proof of
+   shared state (it reads `current_policy` via `get_or_revert`; if state weren't
+   shared, it would revert with `User(1)`).
+5. Calling `get_current_policy` on v2 **succeeds** — v1 entry point still works on
+   the upgraded package.
