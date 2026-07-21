@@ -37,6 +37,7 @@ Design notes
 
 from __future__ import annotations
 
+import hmac
 import logging
 import os
 import time
@@ -107,16 +108,19 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 content={"detail": "Missing X-API-Key header"},
                 headers={"WWW-Authenticate": "X-API-Key"},
             )
-        if provided != expected:
-            # Constant-time-ish comparison to avoid trivial timing oracle.
-            import hmac
-
-            if not hmac.compare_digest(provided, expected):
-                return JSONResponse(
-                    status_code=401,
-                    content={"detail": "Invalid API key"},
-                    headers={"WWW-Authenticate": "X-API-Key"},
-                )
+        # Constant-time comparison ONLY — never use ``provided != expected``
+        # before this point, because Python's ``!=`` short-circuits on the
+        # first mismatched byte and leaks a timing oracle that lets an
+        # attacker recover the key byte-by-byte. ``hmac.compare_digest``
+        # always compares every byte in constant time regardless of where
+        # the first mismatch is, so the auth decision reveals nothing about
+        # *how* the supplied key differs from the expected one.
+        if not hmac.compare_digest(provided, expected):
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Invalid API key"},
+                headers={"WWW-Authenticate": "X-API-Key"},
+            )
 
         return await call_next(request)
 

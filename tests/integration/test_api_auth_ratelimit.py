@@ -94,6 +94,47 @@ def test_auth_does_not_leak_key_in_response(client, monkeypatch):
     assert "super-secret-do-not-leak" not in r2.text
 
 
+def test_auth_uses_constant_time_comparison(client, monkeypatch):
+    """AuthMiddleware must use ``hmac.compare_digest`` for the key check, NOT
+    Python's ``!=`` operator.
+
+    A non-constant-time ``!=`` short-circuits on the first mismatched byte,
+    leaking a timing oracle that lets an attacker recover the API key
+    byte-by-byte. This test patches ``hmac.compare_digest`` and asserts it is
+    actually called on the auth path — guarding against a regression that
+    reintroduces the early-exit ``!=`` short-circuit.
+    """
+    import api.security as security_mod
+    from unittest.mock import patch
+
+    monkeypatch.setenv("VAULTWATCH_API_KEY", "secret-key-123")
+
+    # Wrong key — must still go through compare_digest (and reject).
+    with patch.object(security_mod, "hmac") as fake_hmac:
+        # Make compare_digest behave like the real one (constant-time equal check).
+        import hmac as real_hmac
+
+        fake_hmac.compare_digest.side_effect = lambda a, b: real_hmac.compare_digest(a, b)
+        r = client.get("/risk/findings", headers={"X-API-Key": "wrong-key"})
+    assert r.status_code == 401
+    assert r.json()["detail"] == "Invalid API key"
+    # The middleware MUST have delegated to hmac.compare_digest — not used
+    # a bare ``!=`` short-circuit. This is the regression guard.
+    assert fake_hmac.compare_digest.called, (
+        "AuthMiddleware did not call hmac.compare_digest — a non-constant-time "
+        "``!=`` short-circuit may have been reintroduced, leaking a timing oracle."
+    )
+
+    # Correct key — must also go through compare_digest (and accept).
+    with patch.object(security_mod, "hmac") as fake_hmac:
+        import hmac as real_hmac
+
+        fake_hmac.compare_digest.side_effect = lambda a, b: real_hmac.compare_digest(a, b)
+        r2 = client.get("/risk/findings", headers={"X-API-Key": "secret-key-123"})
+    assert r2.status_code == 200
+    assert fake_hmac.compare_digest.called
+
+
 # ===========================================================================
 # RateLimitMiddleware — per-IP sliding window
 # ===========================================================================
