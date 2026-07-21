@@ -3,7 +3,10 @@
  *
  * Calls Groq directly from the frontend for real AI-powered risk analysis.
  * Uses CoinGecko for live CSPR price data.
- * Uses cspr.cloud REST API for live Casper network data.
+ * Uses cspr.cloud REST API for live Casper network data — but ALWAYS
+ * through the VaultWatch FastAPI reverse proxy (/api/cspr_cloud/*) so the
+ * CSPR.cloud Bearer token NEVER ships to the browser. See api/main.py
+ * §CSPR.cloud reverse proxy (Critical Fix 6).
  * All Casper contract transaction hashes link to testnet explorer for verification.
  */
 
@@ -11,8 +14,36 @@
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || ''
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 
-// cspr.cloud public testnet API — no key needed for basic queries
+// VaultWatch FastAPI base. In dev, Vite proxies /api/* -> http://localhost:8000/*
+// (see vite.config.js). In prod, set VITE_API_URL to the deployed API origin.
+const API_BASE = import.meta.env.VITE_API_URL || '/api'
+
+// Clarity event store (public, no auth) — kept direct. The cspr.cloud REST
+// API that requires a Bearer token is ALWAYS proxied through /api/cspr_cloud/*.
 const CSPR_CLOUD_BASE = 'https://event-store-api-clarity-testnet.make.services'
+
+/**
+ * Fetch from the CSPR.cloud reverse proxy. The proxy injects the Bearer token
+ * server-side, so the browser never sees the API key.
+ *
+ * @param {string} path  — the cspr.cloud REST path (e.g. 'blocks', 'accounts/<pk>/deploys')
+ * @param {string} [queryString] — optional query string WITHOUT the leading '?'
+ * @param {object} [init] — extra fetch init (signal, etc.)
+ * @returns {Promise<object>} parsed JSON response
+ */
+async function csprCloudGet(path, queryString = '', init = {}) {
+  const url = queryString
+    ? `${API_BASE}/cspr_cloud/${path}?${queryString}`
+    : `${API_BASE}/cspr_cloud/${path}`
+  const r = await fetch(url, {
+    ...init,
+    headers: { Accept: 'application/json', ...(init.headers || {}) },
+  })
+  if (!r.ok) {
+    throw new Error(`cspr.cloud proxy ${r.status} for ${path}`)
+  }
+  return r.json()
+}
 
 // Verified contract transaction hashes on Casper Testnet (protocol 2.2.2)
 // All 8 contracts SUCCESSFULLY DEPLOYED July 11, 2026 — verified with 16 named keys
@@ -117,62 +148,52 @@ export async function fetchNetworkInfo() {
     // fall through to fallback
   }
 
-  // Fallback: try cspr.cloud's primary API
+  // Fallback: try cspr.cloud's primary REST API — but THROUGH the
+  // VaultWatch FastAPI reverse proxy so the Bearer token stays server-side
+  // (Critical Fix 6). The proxy is at /api/cspr_cloud/blocks in dev (Vite
+  // proxy) or ${VITE_API_URL}/cspr_cloud/blocks in prod.
   try {
-    const r2 = await fetch('https://api.testnet.cspr.cloud/blocks?page_size=1', {
+    const d2 = await csprCloudGet('blocks', 'page_size=1', {
       signal: AbortSignal.timeout(6000),
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': 'Bearer 019ef63a-5ffc-7657-8627-d7436d9f0e8c',
-      },
     })
-    if (r2.ok) {
-      const d2 = await r2.json()
-      const block = d2?.data?.[0]
-      if (block) {
-        if (block.block_height && block.block_height > _blockHeight) {
-          _blockHeight = block.block_height
-          _blockTimestamp = Date.now()
-        }
-        _network_info = {
-          block_height:  block.block_height,
-          block_hash:    block.block_hash,
-          era_id:        block.era_id,
-          timestamp:     block.timestamp,
-          validator:     block.proposed_by?.slice(0, 20) + '…',
-          tx_count:      block.deploy_count ?? 0,
-          transfer_count: 0,
-        }
-        _network_last_fetched = now
-        return _network_info
+    const block = d2?.data?.[0]
+    if (block) {
+      if (block.block_height && block.block_height > _blockHeight) {
+        _blockHeight = block.block_height
+        _blockTimestamp = Date.now()
       }
+      _network_info = {
+        block_height:  block.block_height,
+        block_hash:    block.block_hash,
+        era_id:        block.era_id,
+        timestamp:     block.timestamp,
+        validator:     block.proposed_by?.slice(0, 20) + '…',
+        tx_count:      block.deploy_count ?? 0,
+        transfer_count: 0,
+      }
+      _network_last_fetched = now
+      return _network_info
     }
   } catch {
-    // ignore
+    // ignore — proxy may be unreachable or CSPR_CLOUD_API_KEY unset
   }
 
   return _network_info
 }
 
-// ─── cspr.cloud: account deploys ─────────────────────────────────────────────
+// ─── cspr.cloud: account deploys (via FastAPI reverse proxy) ────────────────
 export async function fetchAccountDeploys(limit = 10) {
   try {
-    const r = await fetch(
-      `https://api.testnet.cspr.cloud/accounts/${DEPLOYER_ACCOUNT}/deploys?page_size=${limit}&fields=deploy_hash,timestamp,cost,status`,
-      {
-        signal: AbortSignal.timeout(8000),
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': 'Bearer 019ef63a-5ffc-7657-8627-d7436d9f0e8c',
-        },
-      }
+    // Route through the VaultWatch FastAPI reverse proxy so the cspr.cloud
+    // Bearer token never reaches the browser (Critical Fix 6).
+    const d = await csprCloudGet(
+      `accounts/${DEPLOYER_ACCOUNT}/deploys`,
+      `page_size=${limit}&fields=deploy_hash,timestamp,cost,status`,
+      { signal: AbortSignal.timeout(8000) },
     )
-    if (r.ok) {
-      const d = await r.json()
-      return d?.data ?? []
-    }
+    return d?.data ?? []
   } catch {
-    // ignore
+    // ignore — proxy unreachable or key unset; fall through to known hashes
   }
   // Fallback: return known contract deploys
   return Object.entries(CONTRACT_HASHES).map(([name, hash], i) => ({

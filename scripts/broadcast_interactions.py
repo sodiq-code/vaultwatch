@@ -28,6 +28,7 @@ Usage:
 
 from __future__ import annotations
 import json
+import os
 import subprocess
 import sys
 import time
@@ -43,10 +44,14 @@ NODE_HELPER = ROOT / "scripts" / "casper_deploy.cjs"
 CONTRACT_HASHES_FILE = ROOT / "deploy_hashes_live.json"
 OUT_FILE = ROOT / "proof" / "interaction_hashes.json"
 
-# CSPR.cloud access token (official middleware, used as auth header on the
-# cspr.cloud RPC endpoint; harmless when targeting the public node which
-# ignores Authorization headers).
-CSPR_CLOUD_TOKEN = "019ef63a-5ffc-7657-8627-d7436d9f0e8c"
+# CSPR.cloud access token — read from env (Critical Fix 6: the previous key
+# was leaked in source and has been rotated; the new key MUST live in the
+# CSPR_CLOUD_API_KEY env var, never in code). The official public Casper
+# testnet node (node.testnet.casper.network/rpc) does NOT require this
+# header — it's only needed when targeting the cspr.cloud RPC middleware
+# (node.testnet.cspr.cloud). Empty string is safe: casper_deploy.cjs only
+# adds the Authorization header when auth_token is non-empty.
+CSPR_CLOUD_TOKEN = os.getenv("CSPR_CLOUD_API_KEY", "")
 
 # Payment: 5 CSPR per deploy. Casper refunds 99% of unspent gas, so actual
 # cost per deploy is ~0.5 CSPR. Account has ~464 CSPR — plenty for 21 deploys.

@@ -33,6 +33,7 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+import httpx
 from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -864,6 +865,174 @@ async def x402_status() -> Dict[str, Any]:
         "helperAvailable": _X402_HELPER.exists(),
         "signerPemAvailable": _DEFAULT_SIGNER_PEM.exists(),
     }
+
+
+# ===========================================================================
+# CSPR.cloud reverse proxy — keep the API key server-side (Critical Fix 6)
+# ===========================================================================
+#
+# The CSPR.cloud REST API (https://api.testnet.cspr.cloud) requires a Bearer
+# access token. Previously the key was hardcoded in dashboard/src/liveApi.js
+# and shipped to every browser — anyone with devtools open could lift it.
+#
+# This proxy keeps the key on the server. The dashboard (and any other
+# browser-side caller) hits `/cspr_cloud/<path>?<query>` on the FastAPI app;
+# the server injects `Authorization: Bearer $CSPR_CLOUD_API_KEY` and forwards
+# the request upstream, then streams the response back verbatim.
+#
+# Server-side scripts (broadcast_interactions.py, deploy_live.py, etc.) read
+# the same `CSPR_CLOUD_API_KEY` env var directly — they never need the proxy
+# because they already run in a trusted environment.
+#
+# Env:
+#   CSPR_CLOUD_API_KEY     — required (the rotated key)
+#   CSPR_CLOUD_API_URL     — optional, defaults to https://api.testnet.cspr.cloud
+#   CSPR_CLOUD_PROXY_TIMEOUT — optional seconds, default 15
+
+_CSPR_CLOUD_UPSTREAM = os.getenv("CSPR_CLOUD_API_URL", "https://api.testnet.cspr.cloud").rstrip("/")
+_CSPR_CLOUD_TIMEOUT = float(os.getenv("CSPR_CLOUD_PROXY_TIMEOUT", "15"))
+
+
+def _cspr_cloud_key() -> str:
+    """Return the CSPR.cloud API key from env, or empty string if unset.
+
+    Empty string is permitted so the proxy can still serve the public
+    (unauthenticated) endpoints on cspr.cloud — but authenticated endpoints
+    will return 401 from upstream. The /cspr_cloud/status route surfaces this.
+    """
+    return os.getenv("CSPR_CLOUD_API_KEY", "").strip()
+
+
+@app.get("/cspr_cloud/status", tags=["CSPR.cloud Proxy"])
+async def cspr_cloud_proxy_status() -> Dict[str, Any]:
+    """Report whether the CSPR.cloud proxy is configured correctly.
+
+    Does NOT echo the key — only whether one is set + the upstream base URL.
+    Useful for the dashboard health-check + for debugging 401s.
+    """
+    return {
+        "configured": bool(_cspr_cloud_key()),
+        "upstream": _CSPR_CLOUD_UPSTREAM,
+        "timeout_seconds": _CSPR_CLOUD_TIMEOUT,
+        "instructions": (
+            "Set CSPR_CLOUD_API_KEY in the server environment to enable "
+            "authenticated CSPR.cloud REST calls. The key is NEVER exposed "
+            "to the browser — all calls go through /cspr_cloud/<path>."
+        ),
+    }
+
+
+@app.get("/cspr_cloud/{path:path}", tags=["CSPR.cloud Proxy"])
+async def cspr_cloud_proxy_get(path: str, request: Request) -> Response:
+    """Forward a GET request to the CSPR.cloud REST API.
+
+    The browser-facing dashboard calls this endpoint as
+    `/api/cspr_cloud/blocks?page_size=1` (the vite dev proxy rewrites `/api/*`
+    to `/*` on the FastAPI app). The server injects the Bearer token from
+    `CSPR_CLOUD_API_KEY` and forwards to `{CSPR_CLOUD_API_URL}/{path}?{query}`.
+
+    Returns the upstream body, content-type, and status code verbatim. On
+    upstream failure returns 502 with a JSON error envelope.
+
+    Security notes:
+      * GET-only — no POST/PUT/DELETE surface (cspr.cloud REST is read-only
+        for our use case).
+      * No auth on the proxy itself — the dashboard is a public read-only
+        viewer of public chain data. If a route needs to be gated, gate it
+        with x402 (see /intel/{addr}) instead of the CSPR.cloud key.
+      * The key is read from env on every request — rotating it does not
+        require a redeploy, just a server env update + uvicorn reload.
+    """
+    with tracer.start_as_current_span("api.cspr_cloud_proxy") as span:
+        span.set_attribute("cspr_cloud.path", path)
+        upstream_url = f"{_CSPR_CLOUD_UPSTREAM}/{path}"
+        if request.url.query:
+            upstream_url = f"{upstream_url}?{request.url.query}"
+
+        headers = {"Accept": "application/json"}
+        key = _cspr_cloud_key()
+        if key:
+            headers["Authorization"] = f"Bearer {key}"
+        else:
+            span.set_attribute("cspr_cloud.key_missing", True)
+
+        try:
+            async with httpx.AsyncClient(timeout=_CSPR_CLOUD_TIMEOUT) as client:
+                resp = await client.get(upstream_url, headers=headers)
+        except httpx.TimeoutException as exc:
+            span.set_attribute("cspr_cloud.error", "timeout")
+            span.record_exception(exc)
+            raise HTTPException(status_code=504, detail=f"CSPR.cloud upstream timed out: {exc}")
+        except httpx.HTTPError as exc:
+            span.set_attribute("cspr_cloud.error", str(exc))
+            span.record_exception(exc)
+            raise HTTPException(status_code=502, detail=f"CSPR.cloud upstream error: {exc}")
+
+        span.set_attribute("cspr_cloud.upstream_status", resp.status_code)
+        # Forward the upstream body + content-type verbatim. We explictly
+        # exclude upstream's Authorization-echoing headers.
+        forwarded_headers = {
+            "Content-Type": resp.headers.get("Content-Type", "application/json"),
+        }
+        return Response(
+            content=resp.content,
+            status_code=resp.status_code,
+            headers=forwarded_headers,
+            media_type=resp.headers.get("Content-Type", "application/json"),
+        )
+
+
+@app.post("/cspr_cloud/rpc", tags=["CSPR.cloud Proxy"])
+async def cspr_cloud_proxy_rpc(request: Request) -> Response:
+    """Forward a JSON-RPC POST to the CSPR.cloud RPC endpoint.
+
+    The CSPR.cloud JSON-RPC proxy (`https://node.testnet.cspr.cloud/rpc`)
+    accepts the same Bearer token. The dashboard does not currently use
+    JSON-RPC directly (it uses the REST API), but this endpoint exists so
+    that any future browser-side RPC call can stay key-free.
+
+    The public Casper testnet node (`https://node.testnet.casper.network/rpc`)
+    does NOT require an Authorization header and is preferred for RPC when
+    available — use this proxy only when the cspr.cloud RPC middleware is
+    specifically needed.
+    """
+    with tracer.start_as_current_span("api.cspr_cloud_proxy_rpc") as span:
+        body = await request.body()
+        try:
+            payload = json.loads(body) if body else {}
+        except json.JSONDecodeError as exc:
+            raise HTTPException(status_code=400, detail=f"invalid JSON body: {exc}")
+
+        upstream_url = f"{_CSPR_CLOUD_UPSTREAM.rstrip('/')}/rpc"
+        # If CSPR_CLOUD_API_URL was overridden to point at the REST root,
+        # also accept an explicit RPC URL via CSPR_CLOUD_RPC_URL.
+        rpc_url = os.getenv("CSPR_CLOUD_RPC_URL", upstream_url)
+
+        headers = {"Content-Type": "application/json", "Accept": "application/json"}
+        key = _cspr_cloud_key()
+        if key:
+            headers["Authorization"] = f"Bearer {key}"
+
+        span.set_attribute("cspr_cloud.rpc_method", payload.get("method", ""))
+
+        try:
+            async with httpx.AsyncClient(timeout=_CSPR_CLOUD_TIMEOUT) as client:
+                resp = await client.post(rpc_url, content=body, headers=headers)
+        except httpx.TimeoutException as exc:
+            span.set_attribute("cspr_cloud.error", "timeout")
+            span.record_exception(exc)
+            raise HTTPException(status_code=504, detail=f"CSPR.cloud RPC timed out: {exc}")
+        except httpx.HTTPError as exc:
+            span.set_attribute("cspr_cloud.error", str(exc))
+            span.record_exception(exc)
+            raise HTTPException(status_code=502, detail=f"CSPR.cloud RPC error: {exc}")
+
+        span.set_attribute("cspr_cloud.upstream_status", resp.status_code)
+        return Response(
+            content=resp.content,
+            status_code=resp.status_code,
+            media_type="application/json",
+        )
 
 
 # ---------------------------------------------------------------------------

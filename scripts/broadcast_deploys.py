@@ -10,6 +10,7 @@ Usage:
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 import logging
@@ -27,7 +28,8 @@ logger = logging.getLogger("broadcast_deploys")
 
 DEPLOYS_DIR = Path(__file__).parent.parent / "deploys"
 NODE_URL = "https://node.testnet.cspr.cloud/rpc"
-API_KEY = "019ef63a-5ffc-7657-8627-d7436d9f0e8c"
+# Critical Fix 6: CSPR.cloud token is read from env, NOT hardcoded.
+API_KEY = os.getenv("CSPR_CLOUD_API_KEY", "")
 HEADERS = {"Content-Type": "application/json", "Authorization": API_KEY}
 
 CONTRACT_ORDER = [

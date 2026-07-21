@@ -51,8 +51,9 @@ WASM_DIR = ROOT / "contracts" / "wasm"
 OUT_FILE = ROOT / "deploy_hashes_live.json"
 
 RPC_URL = "https://node.testnet.cspr.cloud/rpc"
+# Critical Fix 6: CSPR.cloud token is read from env, NOT hardcoded.
 RPC_HEADERS = {
-    "Authorization": "019ef63a-5ffc-7657-8627-d7436d9f0e8c",
+    "Authorization": os.getenv("CSPR_CLOUD_API_KEY", ""),
     "Content-Type": "application/json",
 }
 CHAIN_NAME = "casper-test"
@@ -126,7 +127,7 @@ def rpc_call(method: str, params: dict) -> dict:
 def check_balance() -> int:
     r = requests.get(
         f"https://api.testnet.cspr.cloud/accounts/{NEW_ACCOUNT_PUBKEY}",
-        headers={"Authorization": "019ef63a-5ffc-7657-8627-d7436d9f0e8c"},
+        headers={"Authorization": os.getenv("CSPR_CLOUD_API_KEY", "")},
         timeout=10,
     )
     bal = int(r.json().get("data", {}).get("balance", 0))

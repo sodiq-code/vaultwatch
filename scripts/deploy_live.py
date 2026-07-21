@@ -7,6 +7,7 @@ Submits all 8 WASM contracts to Casper testnet via cspr.cloud JSON-RPC proxy.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 import requests
@@ -24,8 +25,9 @@ WASM_DIR = ROOT / "contracts" / "wasm"
 OUT_FILE = ROOT / "deploy_hashes_live.json"
 
 RPC_URL = "https://node.testnet.cspr.cloud/rpc"
+# Critical Fix 6: CSPR.cloud token is read from env, NOT hardcoded.
 RPC_HEADERS = {
-    "Authorization": "019ef63a-5ffc-7657-8627-d7436d9f0e8c",
+    "Authorization": os.getenv("CSPR_CLOUD_API_KEY", ""),
     "Content-Type": "application/json",
 }
 CHAIN_NAME = "casper-test"

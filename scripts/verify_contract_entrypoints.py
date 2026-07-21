@@ -13,15 +13,17 @@ Usage:
 from __future__ import annotations
 import argparse
 import json
+import os
 import sys
-import time
 from pathlib import Path
 
 import requests
 
 ROOT = Path(__file__).parent.parent
 DEFAULT_RPC = "https://node.testnet.cspr.cloud/rpc"
-DEFAULT_AUTH = "019ef63a-5ffc-7657-8627-d7436d9f0e8c"
+# Critical Fix 6: CSPR.cloud token is read from env, NOT hardcoded. The
+# previous key was leaked in source control and has been rotated.
+DEFAULT_AUTH = os.getenv("CSPR_CLOUD_API_KEY", "")
 
 # Expected entry points per contract (from Odra source analysis)
 EXPECTED_ENTRY_POINTS = {

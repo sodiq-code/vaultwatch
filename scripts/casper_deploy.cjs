@@ -21,8 +21,8 @@
  *     "entry_point": "record_finding",
  *     "payment_motes": 5000000000,
  *     "args": [ ["name", "String", "value"], ["n", "U8", 92], ... ],
- *     "rpc_url": "https://node.testnet.cspr.cloud/rpc",
- *     "auth_token": "019ef63a-..."
+ *     "rpc_url": "https://node.testnet.casper.network/rpc",
+ *     "auth_token": "<CSPR_CLOUD_API_KEY from env>"  // optional, only needed for cspr.cloud RPC
  *   }
  *
  * Output (JSON on stdout):

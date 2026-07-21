@@ -41,13 +41,76 @@ If you discover a security vulnerability in VaultWatch:
 - After deployment, the key file should be stored offline or in a secret
   manager (1Password, AWS Secrets Manager, etc.), not in the repo.
 
-### API Keys (Groq, etc.)
+### API Keys (Groq, CSPR.cloud, etc.)
 
-- API keys are read from environment variables (`GROQ_API_KEY`, etc.).
+- API keys are read from environment variables (`GROQ_API_KEY`,
+  `CSPR_CLOUD_API_KEY`, etc.).
 - The `.env.example` file documents required variables without containing
   real values.
 - In CI, secrets are injected via GitHub Actions secrets — never echoed
   to logs.
+
+### CSPR.cloud API Key — Reverse Proxy (Critical Fix 6)
+
+The CSPR.cloud REST API (`https://api.testnet.cspr.cloud`) requires a
+Bearer access token. Previously this key was hardcoded in
+`dashboard/src/liveApi.js` (browser-exposed — anyone with devtools open
+could lift it) and in several Python scripts. **The leaked key has been
+revoked and rotated.**
+
+Mitigations now in place:
+
+1. **The key lives only in the `CSPR_CLOUD_API_KEY` environment variable.**
+   It is never committed to source, never logged, and never echoed in API
+   responses. The `.env.example` documents the variable with a placeholder.
+
+2. **The dashboard never reads the key directly.** All CSPR.cloud REST
+   calls go through the VaultWatch FastAPI reverse proxy:
+   - Browser calls `GET /api/cspr_cloud/blocks?page_size=1` (in dev, the
+     Vite dev server proxies `/api/*` and `/cspr_cloud/*` to
+     `http://localhost:8000`; in production, set `VITE_API_URL` to the
+     deployed API origin).
+   - The FastAPI app (`api/main.py` → `cspr_cloud_proxy_get`) reads
+     `CSPR_CLOUD_API_KEY` from env, injects
+     `Authorization: Bearer $CSPR_CLOUD_API_KEY`, and forwards the
+     request to `https://api.testnet.cspr.cloud/<path>?<query>`. The
+     upstream response body, content-type, and status code are returned
+     verbatim.
+   - The key never appears in the browser bundle, the network tab, or
+     client-side JS.
+
+3. **Server-side scripts read the key from env directly.**
+   `scripts/broadcast_interactions.py`, `scripts/broadcast_transfers.py`,
+   `scripts/deploy_live.py`, `scripts/deploy_new_account.py`,
+   `scripts/broadcast_deploys.py`, and `scripts/verify_contract_entrypoints.py`
+   all use `os.getenv("CSPR_CLOUD_API_KEY", "")`. They run in a trusted
+   environment (deployer machine, CI), so they do not need the proxy.
+   Empty string is safe — the public Casper testnet node
+   (`node.testnet.casper.network/rpc`) does not require the header.
+
+4. **The proxy exposes a `/cspr_cloud/status` health endpoint** that
+   reports whether `CSPR_CLOUD_API_KEY` is set and what the upstream URL
+   is — without ever echoing the key itself. Useful for debugging 401s
+   and for the dashboard health-check.
+
+5. **A test (`tests/integration/test_cspr_cloud_proxy.py`) verifies**:
+   - The leaked key prefix does not appear in any tracked source file.
+   - The proxy injects the Bearer header from env when forwarding.
+   - The `/cspr_cloud/status` endpoint does not leak the key.
+   - `dashboard/src/liveApi.js` does not contain the key and does not
+     call `api.testnet.cspr.cloud` directly.
+
+### Rotation procedure
+
+If the CSPR.cloud key is ever compromised again:
+
+1. Revoke it immediately at https://cspr.cloud/account/settings/tokens.
+2. Generate a new token with the same scope.
+3. Update `CSPR_CLOUD_API_KEY` in the server environment (`.env` locally,
+   Vercel/Render env vars in production, GitHub Actions secret in CI).
+4. Restart the FastAPI app (uvicorn picks up the new env on reload — no
+   code change or redeploy needed).
+5. Run `pytest tests/integration/test_cspr_cloud_proxy.py` to verify.
 
 ### Smart Contract Security
 

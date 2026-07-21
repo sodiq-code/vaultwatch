@@ -593,6 +593,10 @@ CASPER_CHAIN_NAME=casper-test
 CASPER_ACCOUNT_SECRET_KEY=your_key   # For live testnet interactions
 
 # CSPR.cloud (enables contract state queries + live block data)
+# SECURITY (Critical Fix 6): the key MUST live in this env var only — never
+# in source. The dashboard never reads it directly; all cspr.cloud REST
+# calls go through the FastAPI reverse proxy at /api/cspr_cloud/* (dev) or
+# ${VITE_API_URL}/cspr_cloud/* (prod). See SECURITY.md for the full policy.
 CSPR_CLOUD_API_URL=https://api.testnet.cspr.cloud
 CSPR_CLOUD_API_KEY=your_key
 
