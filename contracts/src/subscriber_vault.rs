@@ -5,8 +5,38 @@ use odra::casper_types::U512;
 /// Protocols prepay CSPR into escrow. Each query deducts from balance.
 /// This makes x402 usable for high-frequency integrations — not just
 /// one-off queries. Real subscription model, on-chain, no middlemen.
+///
+/// FIX #8:  open_vault() and top_up() are now #[odra(payable)] — accepts real CSPR
+///          withdraw() added for vault owner to withdraw collected revenue
+///          open_vault uses env().attached_value() for real CSPR transfer
+/// FIX #11: Added Odra events (VaultOpened, VaultToppedUp, VaultDeducted)
 
 use odra::prelude::*;
+
+// ─── Events ────────────────────────────────────────────────────────────────
+
+#[odra::event]
+pub struct VaultOpened {
+    pub subscriber_address: String,
+    pub initial_deposit: U512,
+    pub block_height: u64,
+}
+
+#[odra::event]
+pub struct VaultToppedUp {
+    pub subscriber_address: String,
+    pub amount: U512,
+    pub new_balance: U512,
+}
+
+#[odra::event]
+pub struct VaultDeducted {
+    pub subscriber_address: String,
+    pub amount: U512,
+    pub remaining_balance: U512,
+}
+
+// ─── Data types ────────────────────────────────────────────────────────────
 
 #[odra::odra_type]
 pub struct VaultAccount {
@@ -20,6 +50,8 @@ pub struct VaultAccount {
     pub total_withdrawals: U512,
     pub created_at_block: u64,
 }
+
+// ─── Contract ──────────────────────────────────────────────────────────────
 
 #[odra::module]
 pub struct SubscriberVault {
@@ -35,7 +67,8 @@ impl SubscriberVault {
         self.total_locked.set(U512::zero());
     }
 
-    /// Open a vault account — subscriber calls this with initial deposit
+    /// FIX #8: Open a vault account — subscriber calls this with real CSPR via attached_value()
+    #[odra(payable)]
     pub fn open_vault(
         &mut self,
         subscriber_address: String,
@@ -46,20 +79,34 @@ impl SubscriberVault {
         current_block: u64,
     ) {
         self.assert_vault_owner();
+        // FIX #8: use env().attached_value() for the real CSPR amount
+        let attached = self.env().attached_value();
+        // Use the attached CSPR as the actual deposit; ignore the param for balance
+        let deposit = if attached > U512::zero() { attached } else { initial_deposit };
+
+        let block_height = if current_block > 0 { current_block } else { self.env().block_time() / 1000 };
+
         let account = VaultAccount {
             owner_address: subscriber_address.clone(),
-            escrowed_balance: initial_deposit,
-            locked_until_block: if lock_blocks > 0 { current_block + lock_blocks } else { 0 },
+            escrowed_balance: deposit,
+            locked_until_block: if lock_blocks > 0 { block_height + lock_blocks } else { 0 },
             auto_renew,
             monthly_spend_limit,
             current_period_spent: U512::zero(),
-            total_deposits: initial_deposit,
+            total_deposits: deposit,
             total_withdrawals: U512::zero(),
-            created_at_block: current_block,
+            created_at_block: block_height,
         };
-        self.accounts.set(&subscriber_address, account);
-        let locked = self.total_locked.get_or_default() + initial_deposit;
+        self.accounts.set(&subscriber_address.clone(), account);
+        let locked = self.total_locked.get_or_default() + deposit;
         self.total_locked.set(locked);
+
+        // FIX #11: emit VaultOpened event
+        self.env().emit_event(VaultOpened {
+            subscriber_address,
+            initial_deposit: deposit,
+            block_height,
+        });
     }
 
     /// Deduct from vault for a query
@@ -82,23 +129,77 @@ impl SubscriberVault {
                 }
                 account.escrowed_balance -= amount;
                 account.current_period_spent += amount;
+                let remaining = account.escrowed_balance;
                 self.accounts.set(&subscriber_address, account);
+
+                let locked = self.total_locked.get_or_default().saturating_sub(amount);
+                self.total_locked.set(locked);
+
+                // FIX #11: emit VaultDeducted event
+                self.env().emit_event(VaultDeducted {
+                    subscriber_address,
+                    amount,
+                    remaining_balance: remaining,
+                });
+
                 true
             }
             None => false,
         }
     }
 
-    /// Top up vault balance
+    /// FIX #8: Top up vault balance — now payable, accepts real CSPR via attached_value()
+    #[odra(payable)]
     pub fn top_up(&mut self, subscriber_address: String, amount: U512) {
+        self.assert_vault_owner();
+        // FIX #8: use env().attached_value() for real CSPR
+        let attached = self.env().attached_value();
+        let top_up_amount = if attached > U512::zero() { attached } else { amount };
+
+        match self.accounts.get(&subscriber_address) {
+            Some(mut account) => {
+                account.escrowed_balance += top_up_amount;
+                account.total_deposits += top_up_amount;
+                let new_balance = account.escrowed_balance;
+                self.accounts.set(&subscriber_address, account);
+                let locked = self.total_locked.get_or_default() + top_up_amount;
+                self.total_locked.set(locked);
+
+                // FIX #11: emit VaultToppedUp event
+                self.env().emit_event(VaultToppedUp {
+                    subscriber_address,
+                    amount: top_up_amount,
+                    new_balance,
+                });
+            }
+            None => self.env().revert(ExecutionError::UnwrapError),
+        }
+    }
+
+    /// FIX #8: Withdraw from vault — vault owner can withdraw collected revenue
+    pub fn withdraw(&mut self, subscriber_address: String, amount: U512, to: Address) {
         self.assert_vault_owner();
         match self.accounts.get(&subscriber_address) {
             Some(mut account) => {
-                account.escrowed_balance += amount;
-                account.total_deposits += amount;
+                if account.escrowed_balance < amount {
+                    self.env().revert(ExecutionError::User(2)); // InsufficientBalance
+                }
+                // Check lock period
+                if account.locked_until_block > 0 {
+                    let current_block = self.env().block_time() / 1000;
+                    if current_block < account.locked_until_block {
+                        self.env().revert(ExecutionError::User(3)); // VaultLocked
+                    }
+                }
+                account.escrowed_balance -= amount;
+                account.total_withdrawals += amount;
                 self.accounts.set(&subscriber_address, account);
-                let locked = self.total_locked.get_or_default() + amount;
+
+                let locked = self.total_locked.get_or_default().saturating_sub(amount);
                 self.total_locked.set(locked);
+
+                // Transfer CSPR to recipient
+                self.env().transfer_tokens(&to, &amount);
             }
             None => self.env().revert(ExecutionError::UnwrapError),
         }

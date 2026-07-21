@@ -4,8 +4,26 @@
 /// Protocols register their webhook endpoints here. When a CRITICAL finding
 /// is confirmed, the IntelAgent reads this registry and pushes alerts to
 /// every registered subscriber. On-chain subscriber management — no database.
+///
+/// FIX #11: Added Odra events (SentinelRegistered, SentinelDeregistered)
 
 use odra::prelude::*;
+
+// ─── Events ────────────────────────────────────────────────────────────────
+
+#[odra::event]
+pub struct SentinelRegistered {
+    pub address: String,
+    pub webhook_url: String,
+    pub timestamp: u64,
+}
+
+#[odra::event]
+pub struct SentinelDeregistered {
+    pub address: String,
+}
+
+// ─── Data types ────────────────────────────────────────────────────────────
 
 #[odra::odra_type]
 pub struct Subscriber {
@@ -16,6 +34,8 @@ pub struct Subscriber {
     pub registered_at: u64,
     pub alert_count: u64,
 }
+
+// ─── Contract ──────────────────────────────────────────────────────────────
 
 #[odra::module]
 pub struct SentinelRegistry {
@@ -41,7 +61,7 @@ impl SentinelRegistry {
     ) {
         let sub = Subscriber {
             address: address.clone(),
-            webhook_url,
+            webhook_url: webhook_url.clone(),
             min_severity,
             active: true,
             registered_at: timestamp,
@@ -50,6 +70,13 @@ impl SentinelRegistry {
         self.subscribers.set(&address, sub);
         let count = self.subscriber_count.get_or_default() + 1;
         self.subscriber_count.set(count);
+
+        // FIX #11: emit SentinelRegistered event
+        self.env().emit_event(SentinelRegistered {
+            address,
+            webhook_url,
+            timestamp,
+        });
     }
 
     /// Deactivate a subscriber
@@ -58,6 +85,11 @@ impl SentinelRegistry {
             Some(mut sub) => {
                 sub.active = false;
                 self.subscribers.set(&address, sub);
+
+                // FIX #11: emit SentinelDeregistered event
+                self.env().emit_event(SentinelDeregistered {
+                    address,
+                });
             }
             None => self.env().revert(ExecutionError::UnwrapError),
         }
