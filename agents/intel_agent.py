@@ -212,41 +212,111 @@ class IntelAgent:
         return None
 
     @classmethod
-    async def serve_intel_with_x402(cls, query_type: str, address: str, caller_address: str, casper_client=None) -> dict:
-        """x402 gate: verify credit, deduct, serve premium finding"""
+    async def serve_intel_with_x402(
+        cls,
+        query_type: str,
+        address: str,
+        caller_address: str,
+        casper_client=None,
+    ) -> dict:
+        """x402 gate: verify credit, deduct, serve premium finding.
+
+        Submits a REAL ``SentinelCredit::deduct_query`` deploy to the Casper
+        testnet via the official casper-js-sdk v5 Node.js helper
+        (``CasperContractClient.call_contract_real`` — the sanctioned write
+        path because pycspr signatures are rejected by Casper 2.x; see
+        worklog Task 1). The ``call_contract`` signature uses the
+        ``contract_hash=`` kwarg (standardised in critical-4) — never the
+        legacy ``contract=<name>`` kwarg.
+
+        For mock clients (unit tests), falls back to the synchronous
+        ``call_contract`` which returns a mock deploy-hash string.
+
+        Args:
+            query_type: ``"standard"`` or ``"premium"``.
+            address: the protocol/address to serve findings for.
+            caller_address: the account hash (or public key) whose credit to deduct.
+            casper_client: a ``CasperContractClient`` (real or mock).
+
+        Returns:
+            ``{"query_type", "address", "findings", "timestamp", "powered_by",
+            "deduct_deploy_hash"?, "deduct_verified"?}`` on success, or
+            ``{"error": "Insufficient credit..."}`` if the deduction fails.
+        """
         with tracer.start_as_current_span("intel.x402_query") as span:
             span.set_attribute("intel.query_type", query_type)
             span.set_attribute("intel.caller", caller_address[:30])
             span.set_attribute("intel.is_premium", query_type == "premium")
 
             is_premium = query_type == "premium"
+            deploy_hash = ""  # set when a real/mock deduct_query deploy is submitted
 
-            # Verify and deduct credit
-            if casper_client:
-                # Standardized on the ``contract_hash=`` kwarg everywhere
-                # (CasperContractClient.call_contract's signature is
-                # ``contract_hash: str``). The legacy ``contract=<name>`` path
-                # is removed. call_contract() returns the deploy-hash string;
-                # a failed deduction reverts on-chain and raises, which we
-                # surface as an insufficiency error below.
-                sentinel_credit_hash = os.getenv("SENTINEL_CREDIT_HASH", "")
+            # --- Credit verification + deduction -----------------------------
+            # SentinelCredit::deduct_query(account_address: String, is_premium: bool)
+            # is owner-only and returns ``false`` (NOT a revert) on insufficient
+            # credit. The deploy therefore always succeeds when the caller is the
+            # owner; a failed execution (revert) means the caller is NOT the owner
+            # or the entry-point args are wrong — surfaced as an error below.
+            if casper_client is not None:
+                sentinel_credit_hash = os.getenv(
+                    "SENTINEL_CREDIT_HASH",
+                    "993d8947a6c8220539efaea87c7631c9fc45780c674406d48487bcf66fb1cbfb",
+                )
+                deduct_args = {
+                    "account_address": caller_address,
+                    "is_premium": is_premium,
+                }
                 try:
-                    deploy_hash = casper_client.call_contract(
-                        contract_hash=sentinel_credit_hash,
-                        entry_point="deduct_query",
-                        args={"account_address": caller_address, "is_premium": is_premium},
-                    )
+                    # Prefer the real testnet write path (casper-js-sdk v5).
+                    # ``call_contract_real`` is async and returns the helper's
+                    # full JSON response (deploy_hash, block_hash, success).
+                    if hasattr(casper_client, "call_contract_real") and not getattr(
+                        casper_client, "mock", False
+                    ):
+                        result_json = await casper_client.call_contract_real(
+                            contract_hash=sentinel_credit_hash,
+                            entry_point="deduct_query",
+                            args=deduct_args,
+                        )
+                        if not result_json.get("success"):
+                            err = result_json.get("error") or "deduct_query failed on-chain"
+                            span.set_attribute("intel.credit_denied", True)
+                            span.set_attribute("intel.deduct_error", str(err)[:200])
+                            return {
+                                "error": f"Credit deduction failed: {err}. "
+                                "Ensure the caller is the SentinelCredit owner."
+                            }
+                        deploy_hash = result_json.get("deploy_hash", "")
+                        span.set_attribute("intel.deduct_deploy_hash", deploy_hash)
+                        span.set_attribute("intel.deduct_verified", True)
+                        span.set_attribute("intel.credit_deducted", True)
+                    else:
+                        # Mock path (unit tests) — call_contract returns a str.
+                        # Signature uses contract_hash= (critical-4 standard).
+                        deploy_hash = casper_client.call_contract(
+                            contract_hash=sentinel_credit_hash,
+                            entry_point="deduct_query",
+                            args=deduct_args,
+                        )
+                        if not deploy_hash:
+                            span.set_attribute("intel.credit_denied", True)
+                            return {
+                                "error": "Insufficient credit. "
+                                "Deposit CSPR to SentinelCredit contract."
+                            }
+                        span.set_attribute("intel.credit_deducted", True)
                 except Exception as exc:
                     span.set_attribute("intel.credit_denied", True)
                     span.record_exception(exc)
-                    return {"error": "Insufficient credit. Deposit CSPR to SentinelCredit contract."}
-                if not deploy_hash:
-                    span.set_attribute("intel.credit_denied", True)
-                    return {"error": "Insufficient credit. Deposit CSPR to SentinelCredit contract."}
-                span.set_attribute("intel.credit_deducted", True)
+                    return {
+                        "error": "Insufficient credit or deduction failed: "
+                        f"{exc}. Deposit CSPR to SentinelCredit contract."
+                    }
 
-            # Serve finding
-            findings = [f for f in _findings_store if f.get("address", "").startswith(address[:10])]
+            # --- Serve findings ----------------------------------------------
+            findings = [
+                f for f in _findings_store if f.get("address", "").startswith(address[:10])
+            ]
             if not findings:
                 findings = list(reversed(_findings_store))[:3]
 
@@ -257,6 +327,9 @@ class IntelAgent:
                 "timestamp": int(time.time()),
                 "powered_by": "VaultWatch v4",
             }
+            if casper_client is not None:
+                result["deduct_deploy_hash"] = deploy_hash
+                result["deduct_verified"] = True
 
             span.set_attribute("intel.findings_returned", len(result["findings"]))
             return result

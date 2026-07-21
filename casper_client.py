@@ -6,6 +6,7 @@ Wraps casper-python-sdk (pycspr 1.2.0) for deploy + contract call operations.
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import time
 import logging
@@ -265,6 +266,93 @@ class CasperContractClient:
             span.set_attribute("deploy_hash", deploy_hash)
             return deploy_hash
 
+    async def call_contract_real(
+        self,
+        contract_hash: str,
+        entry_point: str,
+        args: Dict[str, Any],
+        payment_amount: int = 5_000_000_000,
+        typed_args: Optional[Dict[str, Dict[str, Any]]] = None,
+    ) -> Dict[str, Any]:
+        """Submit a REAL stored-contract deploy to Casper testnet via the
+        official casper-js-sdk v5 Node.js helper.
+
+        ``CasperContractClient.call_contract`` (above) uses pycspr, whose
+        deploy signatures Casper 2.x rejects with "invalid approval" (see
+        worklog Task 1). The sanctioned path for real writes is to shell out
+        to ``scripts/casper_call.cjs`` (casper-js-sdk v5 ContractCallBuilder)
+        — the same helper the MCP server uses for all real deploys.
+
+        Args:
+            contract_hash: 64-hex contract hash (with or without ``hash-`` prefix).
+            entry_point: the contract entry-point name.
+            args: plain dict of {name: value}. If ``typed_args`` is None, the
+                values are typed heuristically (str→string, bool→bool,
+                int→u512/u64). For exact control, pass ``typed_args`` with
+                the explicit {name: {"type": "string|bool|u8|u64|u512", "value": "..."}}.
+            payment_amount: gas payment in motes (default 5 CSPR).
+            typed_args: explicit typed args (overrides ``args`` when provided).
+
+        Returns:
+            The helper's JSON response: ``{"success": bool, "deploy_hash": str,
+            "block_hash": str, "cost_motes": str, "link": str, "error": str|None}``.
+
+        Raises:
+            RuntimeError: if the helper is missing or the deploy fails to submit.
+        """
+        with tracer.start_as_current_span("casper.call_contract_real") as span:
+            span.set_attribute("contract_hash", contract_hash)
+            span.set_attribute("entry_point", entry_point)
+
+            helper = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                "scripts",
+                "casper_call.cjs",
+            )
+            if not os.path.exists(helper):
+                raise RuntimeError(f"casper_call.cjs helper not found: {helper}")
+
+            # Build typed args — prefer explicit typed_args, else infer from plain dict
+            if typed_args is None:
+                typed_args = _infer_typed_args(args)
+
+            payload: Dict[str, Any] = {
+                "contract_hash": contract_hash.replace("hash-", ""),
+                "entry_point": entry_point,
+                "args": typed_args,
+                "payment_motes": payment_amount,
+            }
+            # Attach the operator signing key if available
+            pem = self.signing_key_path or os.getenv("CASPER_SIGNING_KEY_PATH", "")
+            if pem and os.path.exists(pem):
+                payload["signer_pem_path"] = pem
+            if os.getenv("CASPER_RPC_URL"):
+                payload["rpc_url"] = os.environ["CASPER_RPC_URL"]
+            if os.getenv("VAULTWATCH_SIGNER_ALGO"):
+                payload["key_algorithm"] = os.environ["VAULTWATCH_SIGNER_ALGO"]
+
+            span.set_attribute("args_count", len(typed_args))
+
+            proc = await asyncio.create_subprocess_exec(
+                "node",
+                helper,
+                cwd=os.path.dirname(os.path.abspath(__file__)),
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await proc.communicate(
+                json.dumps(payload).encode("utf-8")
+            )
+            if proc.returncode != 0:
+                err = stderr.decode("utf-8", errors="replace").strip()[:500]
+                span.set_attribute("error", err)
+                raise RuntimeError(f"casper_call.cjs exited {proc.returncode}: {err}")
+            result = json.loads(stdout.decode("utf-8"))
+            span.set_attribute("deploy_hash", result.get("deploy_hash", ""))
+            span.set_attribute("success", result.get("success", False))
+            return result
+
     def query_contract_state(
         self,
         contract_hash: str,
@@ -340,3 +428,31 @@ class CasperContractClient:
             except Exception as exc:
                 logger.error("get_account_balance failed: %s", exc)
                 return 0
+
+
+# ---------------------------------------------------------------------------
+# Typed-args inference for the Node.js helper (casper_call.cjs)
+# ---------------------------------------------------------------------------
+def _infer_typed_args(args: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    """Convert a plain ``{name: value}`` dict into the typed-args schema
+    expected by ``scripts/casper_call.cjs``.
+
+    Mapping (matches the CL types accepted by casper-js-sdk v5):
+      - ``bool``   → ``{"type": "bool",   "value": str(bool).lower()}``
+      - ``int``    → ``{"type": "u512",   "value": str(int)}``  (large ints default to u512)
+      - ``str``    → ``{"type": "string", "value": str}``
+      - already-typed ``{"type": ..., "value": ...}`` dicts are passed through.
+    """
+    typed: Dict[str, Dict[str, Any]] = {}
+    for name, value in (args or {}).items():
+        if isinstance(value, dict) and "type" in value and "value" in value:
+            typed[name] = value
+            continue
+        if isinstance(value, bool):
+            typed[name] = {"type": "bool", "value": "true" if value else "false"}
+        elif isinstance(value, int):
+            # u512 covers the full u64/u128 range; casper_call.cjs accepts decimal strings.
+            typed[name] = {"type": "u512", "value": str(value)}
+        else:
+            typed[name] = {"type": "string", "value": str(value)}
+    return typed

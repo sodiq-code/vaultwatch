@@ -24,6 +24,7 @@ from agents.rwa_agent import RWAAgent
 from agents.safety_guard import SafetyGuard
 from agents.audit_agent import AuditAgent
 from agents.intel_agent import IntelAgent
+from agents.policy_reader import make_policy_reader
 
 # Sidecar
 from streaming.sidecar_client import SidecarClient
@@ -76,11 +77,18 @@ class VaultWatchPipeline:
             url=os.getenv("CASPER_SIDECAR_URL", "http://localhost:9999/events/main"),
         )
 
+        # Live on-chain policy reader — queries RiskPolicyManager.get_current_policy
+        # via query_global_state on every decision cycle (free, read-only).
+        # SelfCorrectionAgent + SafetyGuard consume it instead of a static config.
+        policy_reader = make_policy_reader()
+
         self.scanner = ScannerAgent(groq_api_key=groq_key)
         self.anomaly = AnomalyAgent(groq_api_key=groq_key)
-        self.correction = SelfCorrectionAgent(groq_api_key=groq_key)
+        self.correction = SelfCorrectionAgent(
+            groq_api_key=groq_key, policy_reader=policy_reader
+        )
         self.rwa = RWAAgent(groq_api_key=groq_key)
-        self.safety = SafetyGuard(groq_api_key=groq_key)
+        self.safety = SafetyGuard(groq_api_key=groq_key, policy_reader=policy_reader)
         self.audit = AuditAgent(casper_client=self.casper)
         self.intel = IntelAgent(groq_api_key=groq_key)
 
