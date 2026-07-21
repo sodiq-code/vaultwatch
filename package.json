@@ -1,7 +1,7 @@
 {
   "name": "vaultwatch",
   "version": "4.0.0",
-  "description": "VaultWatch \u2014 DeFi Risk Intelligence on Casper",
+  "description": "VaultWatch — DeFi Risk Intelligence on Casper",
   "private": false,
   "scripts": {
     "record:demo": "python scripts/record_demo.py",
@@ -9,6 +9,7 @@
     "demo:rwa": "python scripts/demo_rwa.py",
     "demo:upgrade-policy": "python scripts/demo_upgrade_policy.py",
     "deploy:contracts": "python scripts/deploy_contracts.py",
+    "broadcast:interactions": "python scripts/broadcast_interactions.py",
     "api:dev": "uvicorn api.main:app --reload --host 0.0.0.0 --port 8000",
     "pipeline:start": "python pipeline.py",
     "mcp:start": "python vaultwatch_mcp/server.py",
@@ -42,5 +43,8 @@
   },
   "devDependencies": {
     "npm-run-all": "^4.1.5"
+  },
+  "dependencies": {
+    "casper-js-sdk": "^5.0.12"
   }
 }

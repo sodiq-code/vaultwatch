@@ -31,3 +31,4 @@ tx_hashes/
 htmlcov/
 secret_key.pem
 dashboard/.env.local
+.tmp_deploy_request.json

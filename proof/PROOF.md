@@ -10,7 +10,7 @@
 > `RUSTFLAGS=-C target-feature=-bulk-memory` + `wasm-opt --enable-bulk-memory=no`.
 > See `DEPLOYMENT_GUIDE.md` and `scripts/check_wasm_bulk_memory.py`.
 >
-> **21 verified-success interaction deploys** were executed on **July 19, 2026**,
+> **21 verified-success interaction deploys** were executed on **July 21, 2026**,
 > each calling correct entry points (`record_finding`, `log_alert`, `register`,
 > `deposit`, `record_decision`, `upgrade_policy`, `open_vault`, `update_score`)
 > that exist on the deployed Odra contracts. Every deploy hash below resolves to
@@ -128,7 +128,7 @@ Every push to `main` runs: lint → unit tests → integration tests → contrac
 
 ## 8. Contract Interactions — 21 Verified-Success On-Chain TX Hashes
 
-21 interaction deploys broadcast to Casper testnet on **July 19, 2026**, all
+21 interaction deploys broadcast to Casper testnet on **July 21, 2026**, all
 calling **correct entry points** that exist on the deployed Odra contracts.
 Every deploy was **verified on-chain** with `Success` execution result before
 recording. Total on-chain TX hashes: **29** (8 contract deploys + 21 verified
@@ -154,31 +154,30 @@ interactions).
 > recording it. Output is saved to `proof/interaction_hashes.json`.
 
 <!-- INTERACTION_HASHES_TABLE_START -->
-<!-- Hashes populated by scripts/broadcast_interactions.py -->
-<!-- Run the script, then replace this section with generated content -->
+<!-- Auto-populated by scripts/broadcast_interactions.py on 2026-07-21 -->
 | # | Interaction | Status | Transaction Hash |
 |---|-------------|--------|-------------------|
-| 1 | AuditTrail::record_finding[anomaly_scan_CasperSwap] | verified_success | *(run broadcast_interactions.py)* |
-| 2 | AuditTrail::record_finding[rwa_treasury_scan] | verified_success | *(run broadcast_interactions.py)* |
-| 3 | AuditTrail::record_finding[liquidity_monitor] | verified_success | *(run broadcast_interactions.py)* |
-| 4 | RiskOracle::update_score[CasperSwap_HIGH] | verified_success | *(run broadcast_interactions.py)* |
-| 5 | RiskOracle::update_score[CasperLend_MEDIUM] | verified_success | *(run broadcast_interactions.py)* |
-| 6 | RiskOracle::update_score[Treasury_LOW] | verified_success | *(run broadcast_interactions.py)* |
-| 7 | SentinelAlertLog::log_alert[HIGH_price_crash] | verified_success | *(run broadcast_interactions.py)* |
-| 8 | SentinelAlertLog::log_alert[MEDIUM_collateral] | verified_success | *(run broadcast_interactions.py)* |
-| 9 | SentinelAlertLog::log_alert[LOW_liquidity] | verified_success | *(run broadcast_interactions.py)* |
-| 10 | SentinelAlertLog::log_alert[HIGH_rwa_compliance] | verified_success | *(run broadcast_interactions.py)* |
-| 11 | SentinelRegistry::register[pipeline_v3] | verified_success | *(run broadcast_interactions.py)* |
-| 12 | SentinelRegistry::register[mcp_v3] | verified_success | *(run broadcast_interactions.py)* |
-| 13 | SentinelCredit::deposit[pipeline_account] | verified_success | *(run broadcast_interactions.py)* |
-| 14 | SentinelCredit::deposit[mcp_account] | verified_success | *(run broadcast_interactions.py)* |
-| 15 | AgentBehaviorIndex::record_decision[anomaly_classify] | verified_success | *(run broadcast_interactions.py)* |
-| 16 | AgentBehaviorIndex::record_decision[correction_skip] | verified_success | *(run broadcast_interactions.py)* |
-| 17 | AgentBehaviorIndex::record_decision[safety_reject] | verified_success | *(run broadcast_interactions.py)* |
-| 18 | RiskPolicyManager::upgrade_policy[v2_conservative] | verified_success | *(run broadcast_interactions.py)* |
-| 19 | RiskPolicyManager::upgrade_policy[v3_aggressive] | verified_success | *(run broadcast_interactions.py)* |
-| 20 | SubscriberVault::open_vault[pro_30d] | verified_success | *(run broadcast_interactions.py)* |
-| 21 | SubscriberVault::open_vault[basic_7d] | verified_success | *(run broadcast_interactions.py)* |
+| 1 | AuditTrail::record_finding[anomaly_scan_CasperSwap] | verified_success | [`86d00025e95dea72…`](https://testnet.cspr.live/deploy/86d00025e95dea720e2b693e6188c3aa2271854d887674241912b7c1b70b5dd3) |
+| 2 | AuditTrail::record_finding[rwa_treasury_scan] | verified_success | [`66317cc6e500c22e…`](https://testnet.cspr.live/deploy/66317cc6e500c22ea902456c88c0f91f83e460bb521aa532b543db103b7b2203) |
+| 3 | AuditTrail::record_finding[liquidity_monitor] | verified_success | [`64fd34dd9bca6d5d…`](https://testnet.cspr.live/deploy/64fd34dd9bca6d5d92379d0ba26a4d47383018951fabccf1f7b4946688141b04) |
+| 4 | RiskOracle::update_score[CasperSwap_HIGH] | verified_success | [`c22b90c085ed393c…`](https://testnet.cspr.live/deploy/c22b90c085ed393c49d160e0048a5b525cbe9168029ea63bdbdec0f9dd6a267a) |
+| 5 | RiskOracle::update_score[CasperLend_MEDIUM] | verified_success | [`9b639792e864321b…`](https://testnet.cspr.live/deploy/9b639792e864321be75a4ff1ee75ae60e5e2acb0e71671520427536bc7deba29) |
+| 6 | RiskOracle::update_score[Treasury_LOW] | verified_success | [`ad24b32f936208ff…`](https://testnet.cspr.live/deploy/ad24b32f936208ff65a69ade8c0aeca8f64352cbfe7e745fd198def109dea509) |
+| 7 | SentinelAlertLog::log_alert[HIGH_price_crash] | verified_success | [`c4e8bb8ea80ef200…`](https://testnet.cspr.live/deploy/c4e8bb8ea80ef2002ad3998bbfa29c62c3f4dbd2a0ecd7eeec3aae720dea9c41) |
+| 8 | SentinelAlertLog::log_alert[MEDIUM_collateral] | verified_success | [`c5c22bcc94fd0d16…`](https://testnet.cspr.live/deploy/c5c22bcc94fd0d16e4c8614a844bb665e14ffa1347371a54697b0b31a43b6500) |
+| 9 | SentinelAlertLog::log_alert[LOW_liquidity] | verified_success | [`7f683c5cf448e7d5…`](https://testnet.cspr.live/deploy/7f683c5cf448e7d583e55583a0a5b2557c702cf3da5e3f2996672356153720e3) |
+| 10 | SentinelAlertLog::log_alert[HIGH_rwa_compliance] | verified_success | [`60bf62fd56cb6481…`](https://testnet.cspr.live/deploy/60bf62fd56cb6481f798a9e0327a5354772855706b021af181cf50d119403fa4) |
+| 11 | SentinelRegistry::register[pipeline_v3] | verified_success | [`7899efd9a50b48b9…`](https://testnet.cspr.live/deploy/7899efd9a50b48b985dc94ed6d4c754874d5d0db36776e10f17494303c63512d) |
+| 12 | SentinelRegistry::register[mcp_v3] | verified_success | [`892f31975cae02fd…`](https://testnet.cspr.live/deploy/892f31975cae02fd77706803418946c95a1ee63f96e988b998868aabd055a6a3) |
+| 13 | SentinelCredit::deposit[pipeline_account] | verified_success | [`ce5e4e5752b75baf…`](https://testnet.cspr.live/deploy/ce5e4e5752b75baf913fed550f6b3686c668138b2379b2911fc91cbd3be48593) |
+| 14 | SentinelCredit::deposit[mcp_account] | verified_success | [`1f25bd1c4f1a426d…`](https://testnet.cspr.live/deploy/1f25bd1c4f1a426dc393fd34e4f2159697c32463a7cfaa47e236e5a6fc2a71c7) |
+| 15 | AgentBehaviorIndex::record_decision[anomaly_classify] | verified_success | [`d8c4fa752d453034…`](https://testnet.cspr.live/deploy/d8c4fa752d453034a91b52f921b2564b4917e6aa7c5c0e8f9dd91552e21f42b9) |
+| 16 | AgentBehaviorIndex::record_decision[correction_skip] | verified_success | [`5e125cca3aa41df1…`](https://testnet.cspr.live/deploy/5e125cca3aa41df18f1c62684fd52716adada69d06612d8147fb81fc2f0d0c35) |
+| 17 | AgentBehaviorIndex::record_decision[safety_reject] | verified_success | [`7d297d8196135f67…`](https://testnet.cspr.live/deploy/7d297d8196135f67094d16cae7f719f84947962feb530f0629b93bd7447ebbf4) |
+| 18 | RiskPolicyManager::upgrade_policy[v2_conservative] | verified_success | [`a6b9dad28323894f…`](https://testnet.cspr.live/deploy/a6b9dad28323894ff3e2c0b8440bc9953f83498a49410e3d46347e9ec5143f81) |
+| 19 | RiskPolicyManager::upgrade_policy[v3_aggressive] | verified_success | [`effe124f23754b16…`](https://testnet.cspr.live/deploy/effe124f23754b16ed9ce4daa342a14b565f2986fb309983949e29b434bf66c9) |
+| 20 | SubscriberVault::open_vault[pro_30d] | verified_success | [`47b96facf685059f…`](https://testnet.cspr.live/deploy/47b96facf685059f81375335b8298544854420f378b6a1c7a5a03d8764dd5a7f) |
+| 21 | SubscriberVault::open_vault[basic_7d] | verified_success | [`5e09a0fcc9ccc8aa…`](https://testnet.cspr.live/deploy/5e09a0fcc9ccc8aab086be601925d4851a63e5c2cf8f887435567a55e43ae25e) |
 <!-- INTERACTION_HASHES_TABLE_END -->
 
 **Total: 29 on-chain TX hashes (8 contract deploys + 21 verified interactions) ✓**

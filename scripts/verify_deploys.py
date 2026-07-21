@@ -41,7 +41,7 @@ OLD_DEPLOYER = "0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea
 def rpc(node_url: str, method: str, params: dict) -> dict:
     import httpx
 
-    body = {"jsonrpc": "2.0", "id": 1, "method": method, "params": [params]}
+    body = {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}
     r = httpx.post(node_url, json=body, timeout=30)
     r.raise_for_status()
     j = r.json()
@@ -51,21 +51,50 @@ def rpc(node_url: str, method: str, params: dict) -> dict:
 
 
 def verify_deploy(node_url: str, deploy_hash: str) -> dict:
-    """Check 1: info_get_transaction shows Success execution result."""
+    """Check 1: info_get_deploy shows a successful execution result.
+
+    Handles both Casper 1.x (execution_results[].result.Success/Failure) and
+    Casper 2.x (execution_info.execution_result.Version2.error_message) formats.
+    """
     try:
-        result = rpc(node_url, "info_get_transaction", {"deploy_hash": deploy_hash})
+        result = rpc(node_url, "info_get_deploy", {"deploy_hash": deploy_hash})
+        # Casper 2.x: top-level execution_info
+        exec_info = result.get("execution_info")
+        if exec_info:
+            block_hash = exec_info.get("block_hash", "")
+            exec_result = exec_info.get("execution_result", {})
+            v2 = exec_result.get("Version2")
+            if v2 is not None:
+                err = v2.get("error_message")
+                if err is None:
+                    return {"deploy_hash": deploy_hash, "status": "success",
+                            "block_hash": block_hash, "gas": str(v2.get("cost", "0"))}
+                return {"deploy_hash": deploy_hash, "status": "failed",
+                        "block_hash": block_hash, "error": err}
+            # 1.x-style Success/Failure nested under execution_result
+            if "Success" in exec_result:
+                return {"deploy_hash": deploy_hash, "status": "success",
+                        "block_hash": block_hash,
+                        "gas": exec_result["Success"].get("cost", "0")}
+            if "Failure" in exec_result:
+                return {"deploy_hash": deploy_hash, "status": "failed",
+                        "block_hash": block_hash,
+                        "error": exec_result["Failure"].get("error_message", "unknown")}
+        # Casper 1.x: deploy.execution_results[]
         deploy = result.get("deploy", {})
         exec_results = deploy.get("execution_results", [])
-        if not exec_results:
-            return {"deploy_hash": deploy_hash, "status": "pending", "detail": "included but not yet executed (or never executed)"}
-        outcome = exec_results[0].get("result", {})
-        block_hash = exec_results[0].get("block_hash", "")
-        if "Success" in outcome:
-            return {"deploy_hash": deploy_hash, "status": "success", "block_hash": block_hash, "gas": outcome["Success"].get("cost", "0")}
-        elif "Failure" in outcome:
-            err = outcome["Failure"].get("error_message", "unknown")
-            return {"deploy_hash": deploy_hash, "status": "failed", "block_hash": block_hash, "error": err}
-        return {"deploy_hash": deploy_hash, "status": "unknown", "block_hash": block_hash, "raw": outcome}
+        if exec_results:
+            outcome = exec_results[0].get("result", {})
+            block_hash = exec_results[0].get("block_hash", "")
+            if "Success" in outcome:
+                return {"deploy_hash": deploy_hash, "status": "success",
+                        "block_hash": block_hash, "gas": outcome["Success"].get("cost", "0")}
+            elif "Failure" in outcome:
+                err = outcome["Failure"].get("error_message", "unknown")
+                return {"deploy_hash": deploy_hash, "status": "failed",
+                        "block_hash": block_hash, "error": err}
+        return {"deploy_hash": deploy_hash, "status": "pending",
+                "detail": "accepted but not yet executed"}
     except Exception as e:
         return {"deploy_hash": deploy_hash, "status": "error", "error": str(e)}
 
