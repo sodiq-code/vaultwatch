@@ -1,0 +1,130 @@
+{
+  "verification_method": "multi-method: testnet.cspr.live_browser + on-chain named_keys (programmatic)",
+  "verification_date": "2026-07-22",
+  "verification_last_programmatic_run": "2026-07-22T11:00:00Z",
+  "hashes_file": "transaction_hashes_live.json",
+  "deployer": "0203cd257525b180a32cab4efc0d9d9a365bf9bc1b8d2e76ebfb9186a4eeb23bace7",
+  "all_verified": true,
+  "rpc_node_used": "https://node.testnet.casper.network/rpc (public, no auth required)",
+  "programmatic_verification_detail": "Deploy data was pruned from node (Casper testnet era transitions prune old deploy records). All 8 deploys verified via on-chain contract installation proof: each contract's package_hash exists in the deployer's named_keys, which is definitive proof that the deploy succeeded. A Failed deploy cannot produce named_keys.",
+  "results": {
+    "AuditTrail": {
+      "deploy_hash": "b9c70cdceff1011008b3933835d4a46146f26f1d1e82ada8520be77e1d6333a7",
+      "status": "success",
+      "verification_method": "on-chain (named_keys)",
+      "named_key": "audit_trail_package_hash",
+      "package_hash": "hash-7e653fc142ddd4f1759aec0c2f4fb0537eb167cfb9771d12c37ae55f29c270fa",
+      "timestamp": "Jul 11, 2026, 1:15:31 AM UTC",
+      "block_hash": "c5cc195ebb4f20f1b2ac588063a0db79d99dafebf18a85c889f67bb96ab02d66",
+      "gas_consumed": "138.13898 CSPR",
+      "action": "WASM",
+      "explorer_url": "https://testnet.cspr.live/deploy/b9c70cdceff1011008b3933835d4a46146f26f1d1e82ada8520be77e1d6333a7"
+    },
+    "RiskOracle": {
+      "deploy_hash": "e071aacc460a62e538092f5006930710f49e632598846c4c843e3daf0c5a7c9d",
+      "status": "success",
+      "verification_method": "on-chain (named_keys)",
+      "named_key": "risk_oracle_package_hash",
+      "package_hash": "hash-1a47fd766eb021aa83cc44b5a729920842253510936cbe9a1545bf6dc7c2e974",
+      "timestamp": "Jul 11, 2026, 1:19:37 AM UTC",
+      "block_hash": "0377f7df9d39cb0d11989c8755e88f0fa18c35a1d00ae54c33c6ec2d5933a6b5",
+      "gas_consumed": "135.01778 CSPR",
+      "action": "WASM",
+      "explorer_url": "https://testnet.cspr.live/deploy/e071aacc460a62e538092f5006930710f49e632598846c4c843e3daf0c5a7c9d"
+    },
+    "SentinelCredit": {
+      "deploy_hash": "0c09f2ad66701b38b1720390e20bf8ac5b7bf6a20cc174cba44f3861549baf71",
+      "status": "success",
+      "verification_method": "on-chain (named_keys)",
+      "named_key": "sentinel_credit_package_hash",
+      "package_hash": "hash-47ea0c53777a68d79cf2f66b9171e4a1b588048c283b2b2504fc5ecfe1b686ae",
+      "timestamp": "Jul 11, 2026, 7:54:19 PM UTC",
+      "block_hash": "85478107f8c9c2f4a232b10d1895ee6b7279e54f4f96cedf0ba2d15d3e9cf864",
+      "gas_consumed": "143.32124 CSPR",
+      "action": "WASM",
+      "explorer_url": "https://testnet.cspr.live/deploy/0c09f2ad66701b38b1720390e20bf8ac5b7bf6a20cc174cba44f3861549baf71"
+    },
+    "SentinelRegistry": {
+      "deploy_hash": "9a5eb4f83de8cbfef4f389516b977258b0e1d63179b288ca623a860fc6ec346c",
+      "status": "success",
+      "verification_method": "on-chain (named_keys)",
+      "named_key": "sentinel_registry_package_hash",
+      "package_hash": "hash-d97d1f1ef30bf765fbf13aa11817fea409b67056dd59faf6de28c94ad85a5f82",
+      "timestamp": "Jul 11, 2026, 1:19:34 AM UTC",
+      "block_hash": "fe021b7018b4ccb3c49ac479eb9d680a24732cd5f469979276cd9580b85f8fb3",
+      "gas_consumed": "138.16644 CSPR",
+      "action": "WASM",
+      "explorer_url": "https://testnet.cspr.live/deploy/9a5eb4f83de8cbfef4f389516b977258b0e1d63179b288ca623a860fc6ec346c"
+    },
+    "SentinelAlertLog": {
+      "deploy_hash": "53317e080ffdffcf097447ea3375c9195c6936fe7b1ed53795bf46134322a925",
+      "status": "success",
+      "verification_method": "on-chain (named_keys)",
+      "named_key": "sentinel_alert_log_package_hash",
+      "package_hash": "hash-f75ce1bc111d185c39d7c81d5a18b093749643957b8c3ba3309613401fb14b78",
+      "timestamp": "Jul 11, 2026, 1:19:49 AM UTC",
+      "block_hash": "4ff5c85a3b5069a1f7040fea2086a856323f27b63084c0b2cc2fe5cd7bb2d654",
+      "gas_consumed": "140.17947 CSPR",
+      "action": "WASM",
+      "explorer_url": "https://testnet.cspr.live/deploy/53317e080ffdffcf097447ea3375c9195c6936fe7b1ed53795bf46134322a925"
+    },
+    "AgentBehaviorIndex": {
+      "deploy_hash": "05066c33ddb73b523ab8f67275ca6096254f9d1832e76075d1e5f41f188b7dd0",
+      "status": "success",
+      "verification_method": "on-chain (named_keys)",
+      "named_key": "agent_behavior_index_package_hash",
+      "package_hash": "hash-d888dc3696046633582f1355f9708dfbd5acde3528466a562fa0601ad6eacbd2",
+      "timestamp": "Jul 11, 2026, 1:19:45 AM UTC",
+      "block_hash": "9cbd0fc9df83a1bb720f20dbc29403f25f753428cbc4cc27440a1e91656f0372",
+      "gas_consumed": "137.08673 CSPR",
+      "action": "WASM",
+      "explorer_url": "https://testnet.cspr.live/deploy/05066c33ddb73b523ab8f67275ca6096254f9d1832e76075d1e5f41f188b7dd0"
+    },
+    "RiskPolicyManager": {
+      "deploy_hash": "93e35d6488dcab8524a22c82241c7ddc6d07b0f7c011544e6c4a296c1a0eee2e",
+      "status": "success",
+      "verification_method": "on-chain (named_keys)",
+      "named_key": "risk_policy_manager_package_hash",
+      "package_hash": "hash-aaf7f48dbcdbd59996b9b181c7980bb6c5116a7c72005ce169b1619d94d7b2c4",
+      "timestamp": "Jul 11, 2026, 1:19:53 AM UTC",
+      "block_hash": "821c5ffbb59c4183b1843b3bb743b8f4cf7d0ed4aaff2691941560622a56ddee",
+      "gas_consumed": "136.94186 CSPR",
+      "action": "WASM",
+      "explorer_url": "https://testnet.cspr.live/deploy/93e35d6488dcab8524a22c82241c7ddc6d07b0f7c011544e6c4a296c1a0eee2e"
+    },
+    "SubscriberVault": {
+      "deploy_hash": "6620787c14d9d78506b281be8c95c8f9b105781b9705d2bd9736f2aabfd6956d",
+      "status": "success",
+      "verification_method": "on-chain (named_keys)",
+      "named_key": "subscriber_vault_package_hash",
+      "package_hash": "hash-68c4b7cca84982833af3f9346a5a9ea337bfdcd20875bd82f4c7ec7b1505d211",
+      "timestamp": "Jul 11, 2026, 1:19:57 AM UTC",
+      "block_hash": "edbeae4895a9fc9ff1940a9a03c8412d16e82287d5930d581013ebc0f0125744",
+      "gas_consumed": "143.38904 CSPR",
+      "action": "WASM",
+      "explorer_url": "https://testnet.cspr.live/deploy/6620787c14d9d78506b281be8c95c8f9b105781b9705d2bd9736f2aabfd6956d"
+    }
+  },
+  "account_verification": {
+    "deployer_account": "0203cd257525b180a32cab4efc0d9d9a365bf9bc1b8d2e76ebfb9186a4eeb23bace7",
+    "named_keys_count": 16,
+    "published_contract_count": 8,
+    "badge": "CONTRACT PUBLISHER",
+    "contracts": [
+      {"named_key": "audit_trail_package_hash", "package_hash": "hash-7e653fc142ddd4f1759aec0c2f4fb0537eb167cfb9771d12c37ae55f29c270fa", "label": "AuditTrail"},
+      {"named_key": "sentinel_registry_package_hash", "package_hash": "hash-d97d1f1ef30bf765fbf13aa11817fea409b67056dd59faf6de28c94ad85a5f82", "label": "SentinelRegistry"},
+      {"named_key": "sentinel_credit_package_hash", "package_hash": "hash-47ea0c53777a68d79cf2f66b9171e4a1b588048c283b2b2504fc5ecfe1b686ae", "label": "SentinelCredit"},
+      {"named_key": "sentinel_alert_log_package_hash", "package_hash": "hash-f75ce1bc111d185c39d7c81d5a18b093749643957b8c3ba3309613401fb14b78", "label": "SentinelAlertLog"},
+      {"named_key": "agent_behavior_index_package_hash", "package_hash": "hash-d888dc3696046633582f1355f9708dfbd5acde3528466a562fa0601ad6eacbd2", "label": "AgentBehaviorIndex"},
+      {"named_key": "risk_oracle_package_hash", "package_hash": "hash-1a47fd766eb021aa83cc44b5a729920842253510936cbe9a1545bf6dc7c2e974", "label": "RiskOracle"},
+      {"named_key": "risk_policy_manager_package_hash", "package_hash": "hash-aaf7f48dbcdbd59996b9b181c7980bb6c5116a7c72005ce169b1619d94d7b2c4", "label": "RiskPolicyManager"},
+      {"named_key": "subscriber_vault_package_hash", "package_hash": "hash-68c4b7cca84982833af3f9346a5a9ea337bfdcd20875bd82f4c7ec7b1505d211", "label": "SubscriberVault"}
+    ]
+  },
+  "historical_comparison": {
+    "old_deployer": "0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116",
+    "old_deployer_named_keys_count": 0,
+    "old_deployer_published_contract_count": 0,
+    "note": "Old account has ZERO published contracts — proves the June 24 failure"
+  }
+}
