@@ -1,12 +1,70 @@
-=== BUILD OUTPUT ===
-Captured: 2026-07-22 01:05:53 UTC
-Repo:     /home/z/my-project/vaultwatch
+=== BUILD OUTPUT — VaultWatch RBAC contracts ===
+Captured: 2026-07-22 02:49:33 UTC
+Repo: /home/z/my-project/vaultwatch
+Toolchain: rustc 1.94.0-nightly (8d670b93d 2025-12-31)
 
 Command(s) used to produce this file:
-  $ RUSTFLAGS='-C target-feature=-bulk-memory' cargo build --target wasm32-unknown-unknown --lib --release
-  $ wasm-opt --enable-bulk-memory-opt --llvm-memory-copy-fill-lowering -Oz contracts/wasm/RiskPolicyManagerV2.raw.wasm -o contracts/wasm/RiskPolicyManagerV2.wasm
-  $ python3 scripts/check_wasm_bulk_memory.py contracts/wasm/
+  $ ODRA_MODULE=<Contract> cargo build --lib --release   (per contract, sets cfg(odra_module))
+  $ python3 scripts/patch_bulk_memory.py wasm/<C>.wasm wasm/<C>.patched.wasm  (replace memory.copy/fill → custom memcpy/memset)
+  $ wasm-opt wasm/<C>.wasm --disable-bulk-memory -Oz --strip-debug --strip-producers -o wasm/<C>.opt.wasm
+  $ python3 scripts/check_wasm_bulk_memory.py wasm/    (verify zero bulk-memory opcodes)
+  $ python3 scripts/rename_main_to_call.py wasm/       (Casper 2.x: rename main export → call)
 
 ------------------------------------------------------------------------------
 
-[SKIPPED via --skip-build]
+=== Step 1: cargo build --lib --release (ODRA_MODULE=AuditTrail, representative) ===
+$ ODRA_MODULE=AuditTrail cargo build --lib --release
+   Compiling vaultwatch-contracts v0.1.0 (/home/z/my-project/vaultwatch/contracts)
+    Finished `release` profile [optimized] target(s) in 3.54s
+
+=== Step 1b: raw lib wasm size (before optimization) ===
+  raw: 306748 bytes
+
+=== Step 2: bulk-memory patcher (representative: AuditTrail) ===
+$ python3 ../scripts/patch_bulk_memory.py wasm/AuditTrail.wasm wasm/AuditTrail.patched.wasm
+Found memcpy=194, memset=196
+Patched: memory.copy=353 memory.fill=14 table.fill=0
+
+=== Step 3: wasm-opt --disable-bulk-memory -Oz (representative) ===
+$ wasm-opt /tmp/AuditTrail.patched.wasm --disable-bulk-memory -Oz --strip-debug --strip-producers -o wasm/AuditTrail.wasm
+  optimized: 183135 bytes
+
+=== Step 4: bulk-memory check (all 9 wasms) ===
+$ python3 ../scripts/check_wasm_bulk_memory.py wasm/
+[check_wasm_bulk_memory] scanning 9 WASM file(s)…
+  ✅ AgentBehaviorIndex.wasm           177.7 KB  clean
+  ✅ AuditTrail.wasm                   178.8 KB  clean
+  ✅ RiskOracle.wasm                   176.5 KB  clean
+  ✅ RiskPolicyManager.wasm            177.7 KB  clean
+  ✅ RiskPolicyManagerV2.wasm          180.4 KB  clean
+  ✅ SentinelAlertLog.wasm             180.6 KB  clean
+  ✅ SentinelCredit.wasm               181.9 KB  clean
+  ✅ SentinelRegistry.wasm             178.0 KB  clean
+  ✅ SubscriberVault.wasm              184.0 KB  clean
+
+✅ PASS — all 9 WASM files are Casper-compatible (no bulk-memory opcodes).
+
+=== Step 5: rename main→call ===
+$ python3 ../scripts/rename_main_to_call.py wasm/
+[rename] processing 9 WASM file(s)…
+  ⏭️  AgentBehaviorIndex.wasm        already has 'call'
+  ⏭️  AuditTrail.wasm                already has 'call'
+  ⏭️  RiskOracle.wasm                already has 'call'
+  ⏭️  RiskPolicyManager.wasm         already has 'call'
+  ⏭️  RiskPolicyManagerV2.wasm       already has 'call'
+  ⏭️  SentinelAlertLog.wasm          already has 'call'
+  ⏭️  SentinelCredit.wasm            already has 'call'
+  ⏭️  SentinelRegistry.wasm          already has 'call'
+  ⏭️  SubscriberVault.wasm           already has 'call'
+✅ Done
+
+=== Final: all 9 RBAC wasm artifacts ===
+  AuditTrail.wasm             183135 bytes  sha256:02c9c65b04600b92...
+  RiskOracle.wasm             180699 bytes  sha256:c9d798b48e73c7a9...
+  SentinelCredit.wasm         186311 bytes  sha256:5c07290bc00c8abb...
+  SentinelRegistry.wasm       182299 bytes  sha256:0b9bb6a2d7051d9e...
+  SentinelAlertLog.wasm       184952 bytes  sha256:33500be9598adad6...
+  AgentBehaviorIndex.wasm     181954 bytes  sha256:f54355835883ca14...
+  RiskPolicyManager.wasm      181952 bytes  sha256:7903bfdb788893e2...
+  RiskPolicyManagerV2.wasm    184717 bytes  sha256:ff50d717936d9582...
+  SubscriberVault.wasm        188467 bytes  sha256:caf2207d0e6afe58...

@@ -7,6 +7,12 @@ from .rwa_agent import RWAAgent, EnrichedFinding
 from .safety_guard import SafetyGuard, SafetyResult
 from .audit_agent import AuditAgent, OnChainRecord
 from .intel_agent import IntelAgent, IntelResponse
+from .agent_wallet import (
+    AgentWallet,
+    AgentWalletError,
+    AgentWalletUnfunded,
+    get_agent_wallet,
+)
 
 __all__ = [
     "ScannerAgent",
@@ -23,4 +29,9 @@ __all__ = [
     "OnChainRecord",
     "IntelAgent",
     "IntelResponse",
+    # CSPR.click AI Agent Skill — server-side agent wallet abstraction
+    "AgentWallet",
+    "AgentWalletError",
+    "AgentWalletUnfunded",
+    "get_agent_wallet",
 ]

@@ -22,6 +22,7 @@ pub fn user_err(code: u16) -> OdraError {
     }
 }
 
+pub mod rbac;
 pub mod audit_trail;
 pub mod risk_oracle;
 pub mod sentinel_credit;

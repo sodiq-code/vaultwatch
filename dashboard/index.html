@@ -7,6 +7,16 @@
     <link rel="icon" type="image/svg+xml" href="/vaultwatch.svg" />
   </head>
   <body>
+    <!-- CSPR.click UI container. Per the official CSPR.click AI Agent Skill
+         ("as close as possible to the opening body tag"), this is the FIRST
+         child of <body>. The CDN runtime mounts the CSPR.click top bar and
+         modal windows here. The id MUST match window.clickUIOptions.uiContainer.
+
+         NOTE: per the skill's "Inject CDN script dynamically" constraint, the
+         CSPR.click runtime <script> is intentionally NOT included here — it
+         is injected dynamically from src/csprclick.js once
+         window.clickUIOptions / window.clickSDKOptions are assigned. -->
+    <div id="csprclick-ui"></div>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

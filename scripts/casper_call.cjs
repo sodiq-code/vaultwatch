@@ -56,6 +56,7 @@
 'use strict';
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const {
   PrivateKey,
@@ -63,12 +64,35 @@ const {
   Args,
   CLValue,
   ContractCallBuilder,
+  NativeTransferBuilder,
 } = require('casper-js-sdk');
 
 const CHAIN_NAME = 'casper-test';
 const DEFAULT_RPC = 'https://node.testnet.casper.network/rpc';
 const DEFAULT_PAYMENT_MOTES = 5_000_000_000; // 5 CSPR
 const DEFAULT_VERIFY_TIMEOUT_MS = 240_000; // 4 min
+
+// ---------------------------------------------------------------------------
+// Agent wallet integration (CSPR.click AI Agent Skill)
+// ---------------------------------------------------------------------------
+// When ``signer_source: "agent_wallet"`` is set (or no signer is provided),
+// the helper auto-loads the programmatically-created agent key from
+// ``$VAULTWATCH_AGENT_KEY_PATH`` (default ``~/.vaultwatch/agent_key.pem``).
+// This replaces the prior "manual key management" flow where callers had to
+// pass ``signer_pem_path`` on every request. See
+// ``scripts/csprclick_agent_wallet.cjs`` for the wallet-creation helper.
+function defaultAgentKeyPath() {
+  const p = process.env.VAULTWATCH_AGENT_KEY_PATH;
+  if (p && p.trim()) return path.resolve(p);
+  return path.join(os.homedir(), '.vaultwatch', 'agent_key.pem');
+}
+
+function resolveSignerPemPath(request) {
+  if (request.signer_pem) return null; // raw PEM content takes precedence
+  if (request.signer_pem_path) return path.resolve(request.signer_pem_path);
+  // Auto-load the agent wallet — this is the new default behavior.
+  return defaultAgentKeyPath();
+}
 
 // ---------------------------------------------------------------------------
 // Direct JSON-RPC helpers (same pattern as casper_install.cjs)
@@ -133,18 +157,38 @@ function buildCLValue(type, value) {
 
 async function executeCall(request) {
   const rpcUrl = request.rpc_url || DEFAULT_RPC;
+  const isTransfer = request.transfer === true;
   const contractHash = request.contract_hash;
   const entryPoint = request.entry_point;
   const typedArgs = request.args || {};
 
-  if (!contractHash) throw new Error('contract_hash is required');
-  if (!entryPoint) throw new Error('entry_point is required');
+  if (!isTransfer) {
+    if (!contractHash) throw new Error('contract_hash is required (or set transfer:true)');
+    if (!entryPoint) throw new Error('entry_point is required (or set transfer:true)');
+  } else {
+    if (!request.to_public_key) throw new Error('to_public_key is required for transfers');
+    if (!request.amount_motes) throw new Error('amount_motes is required for transfers');
+  }
 
-  // 1. Load deployer private key
-  const pemPath = request.signer_pem_path || path.resolve('secret_key.pem');
-  const pemContent = request.signer_pem || fs.readFileSync(pemPath, 'utf8');
+  // 1. Load deployer private key.
+  //    NEW: when no signer is provided, auto-load the programmatically-created
+  //    agent wallet from $VAULTWATCH_AGENT_KEY_PATH (default ~/.vaultwatch/agent_key.pem).
+  //    This is the CSPR.click AI Agent Skill integration point — replaces
+  //    manual key management. See scripts/csprclick_agent_wallet.cjs.
+  const pemPath = resolveSignerPemPath(request);
+  let pemContent = request.signer_pem;
+  if (!pemContent) {
+    if (!fs.existsSync(pemPath)) {
+      throw new Error(
+        `Agent wallet not found at ${pemPath}. Run ` +
+        `\`node scripts/csprclick_agent_wallet.cjs create\` first ` +
+        `(or set VAULTWATCH_AGENT_KEY_PATH, or pass signer_pem_path).`
+      );
+    }
+    pemContent = fs.readFileSync(pemPath, 'utf8');
+  }
   const keyAlgo =
-    (request.key_algorithm || 'secp256k1').toLowerCase() === 'ed25519'
+    (request.key_algorithm || process.env.VAULTWATCH_AGENT_KEY_ALGO || 'secp256k1').toLowerCase() === 'ed25519'
       ? KeyAlgorithm.ED25519
       : KeyAlgorithm.SECP256K1;
   const privateKey = PrivateKey.fromPem(pemContent, keyAlgo);
@@ -158,40 +202,57 @@ async function executeCall(request) {
       .map((b) => b.toString(16).padStart(2, '0'))
       .join('');
 
-  // 2. Build runtime args from the typed-args dict
-  const argsMap = {};
-  for (const [name, desc] of Object.entries(typedArgs)) {
-    // Accept both { type, value } and a shorthand scalar (string)
-    if (typeof desc === 'object' && desc !== null && 'type' in desc) {
-      argsMap[name] = buildCLValue(desc.type, desc.value);
+  if (process.env.DEBUG) {
+    if (isTransfer) {
+      process.stderr.write(
+        `[casper_call] TRANSFER to=${request.to_public_key} ` +
+        `amount=${request.amount_motes} deployer=${deployerAccountHash}\n`
+      );
     } else {
-      // Shorthand: treat as string
-      argsMap[name] = CLValue.newCLString(String(desc));
+      process.stderr.write(
+        `[casper_call] contract=${contractHash} entry_point=${entryPoint} ` +
+        `args=${JSON.stringify(Object.keys(typedArgs))} deployer=${deployerAccountHash}\n`
+      );
     }
   }
-  const runtimeArgs = Args.fromMap(argsMap);
 
-  if (process.env.DEBUG) {
-    process.stderr.write(
-      `[casper_call] contract=${contractHash} entry_point=${entryPoint} ` +
-        `args=${JSON.stringify(Object.keys(typedArgs))} deployer=${deployerAccountHash}\n`
-    );
+  // 2. Build the deploy (stored-contract call OR native transfer)
+  let transaction;
+  if (isTransfer) {
+    // Native CSPR transfer via NativeTransferBuilder (casper-js-sdk v5).
+    transaction = new NativeTransferBuilder()
+      .from(publicKey)
+      .to(request.to_public_key)
+      .amount(String(request.amount_motes))
+      .payment(String(request.payment_motes || DEFAULT_PAYMENT_MOTES))
+      .chainName(request.chain_name || CHAIN_NAME)
+      .buildFor1_5();
+  } else {
+    // Stored-contract call via ContractCallBuilder (same builder that produced
+    // the 21 verified-success deploys + the x402 open_vault payment — see
+    // proof/PROOF.md §8 + §11).
+    const argsMap = {};
+    for (const [name, desc] of Object.entries(typedArgs)) {
+      // Accept both { type, value } and a shorthand scalar (string)
+      if (typeof desc === 'object' && desc !== null && 'type' in desc) {
+        argsMap[name] = buildCLValue(desc.type, desc.value);
+      } else {
+        // Shorthand: treat as string
+        argsMap[name] = CLValue.newCLString(String(desc));
+      }
+    }
+    const runtimeArgs = Args.fromMap(argsMap);
+    transaction = new ContractCallBuilder()
+      .from(publicKey)
+      .byHash(contractHash)
+      .entryPoint(entryPoint)
+      .runtimeArgs(runtimeArgs)
+      .payment(String(request.payment_motes || DEFAULT_PAYMENT_MOTES))
+      .chainName(CHAIN_NAME)
+      .buildFor1_5();
   }
 
-  // 3. Build the stored-contract-call deploy via ContractCallBuilder
-  //    (same builder that produced the 21 verified-success deploys + the
-  //     x402 open_vault payment — see proof/PROOF.md §8 + §11).
-  //    .byHash() takes the 64-hex contract hash (with or without 'hash-' prefix).
-  const transaction = new ContractCallBuilder()
-    .from(publicKey)
-    .byHash(contractHash)
-    .entryPoint(entryPoint)
-    .runtimeArgs(runtimeArgs)
-    .payment(String(request.payment_motes || DEFAULT_PAYMENT_MOTES))
-    .chainName(CHAIN_NAME)
-    .buildFor1_5();
-
-  // 4. Sign
+  // 3. Sign
   transaction.sign(privateKey);
 
   const deployJson = transaction.toJSON();
@@ -203,7 +264,7 @@ async function executeCall(request) {
     process.stderr.write(`[casper_call] built+signed deploy ${deployHash}\n`);
   }
 
-  // 5. Submit via account_put_deploy
+  // 4. Submit via account_put_deploy
   const submitResult = await rpcPost(rpcUrl, 'account_put_deploy', {
     deploy: deployJson,
   });
@@ -217,7 +278,7 @@ async function executeCall(request) {
     process.stderr.write(`[casper_call] submitted ${returnedHash}\n`);
   }
 
-  // 6. Verify on-chain execution (Casper 2.x Version2 format)
+  // 5. Verify on-chain execution (Casper 2.x Version2 format)
   const deadline = Date.now() + (request.verify_timeout_ms || DEFAULT_VERIFY_TIMEOUT_MS);
   let lastError = null;
   while (Date.now() < deadline) {

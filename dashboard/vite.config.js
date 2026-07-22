@@ -3,6 +3,15 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  // The dashboard ships plain CSS (no Tailwind / PostCSS plugins). Without an
+  // explicit inline PostCSS config, Vite's postcss-load-config walks up the
+  // directory tree and picks up the parent Next.js project's postcss.config.mjs
+  // (which references @tailwindcss/postcss, not installed in this package) and
+  // the build fails. Setting an empty inline config scopes PostCSS to this
+  // package and prevents the upward search.
+  css: {
+    postcss: { plugins: [] },
+  },
   server: {
     port: 5173,
     proxy: {

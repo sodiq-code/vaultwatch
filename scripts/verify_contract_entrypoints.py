@@ -25,7 +25,21 @@ DEFAULT_RPC = "https://node.testnet.cspr.cloud/rpc"
 # previous key was leaked in source control and has been rotated.
 DEFAULT_AUTH = os.getenv("CSPR_CLOUD_API_KEY", "")
 
-# Expected entry points per contract (from Odra source analysis)
+# Expected entry points per contract (from Odra source analysis).
+#
+# NOTE (RBAC migration): The on-chain contracts were deployed 2026-07-11 from
+# the pre-RBAC single-owner source, so the sets below match the ON-CHAIN
+# entry points (the legacy `transfer_ownership` is retained as a backward-compat
+# shim). The current source (contracts/src/*.rs) has migrated from single-owner
+# to role-based access control (OPERATOR / ADMIN / PAUSER + emergency pause).
+# Each contract now ALSO exposes these 10 RBAC entry points, which will appear
+# on-chain after the RBAC wasms are redeployed:
+#
+#   grant_role, revoke_role, renounce_role, has_role, get_roles,
+#   get_role_admin, transfer_role_admin, pause, unpause, is_paused
+#
+# (transfer_ownership is preserved as an ADMIN-gated compat shim that grants
+# ROLE_ALL + transfers role_admin.) See CONTRACT_AUDIT.md §3 and contracts/src/rbac.rs.
 EXPECTED_ENTRY_POINTS = {
     "AuditTrail": ["init", "record_finding", "get_finding", "get_count", "transfer_ownership"],
     "RiskOracle": ["init", "update_score", "get_risk_score", "is_high_risk", "transfer_ownership"],

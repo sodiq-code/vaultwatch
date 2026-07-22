@@ -12,12 +12,29 @@ Because each write deploy consumes gas (~0.5 CSPR each, 5 CSPR payment),
 the suite is OPT-IN: pass ``--run-e2e`` to enable it. By default it is
 SKIPPED so a normal ``pytest tests/`` run does NOT touch the network.
 
+CSPR.click AI Agent Skill integration (Task CSPRCLICK-1)
+--------------------------------------------------------
+The suite now uses the :class:`vaultwatch.agents.agent_wallet.AgentWallet`
+abstraction for wallet creation + signing, replacing the prior "manual key
+management" flow (where a hardcoded ``secret_key.pem`` was required at the
+repo root).
+
+The new flow:
+  1. If ``$VAULTWATCH_AGENT_KEY_PATH`` is set (or ``--e2e-signer-pem`` is
+     passed), the suite LOADS that key as the agent wallet. This is the
+     backward-compat path — the existing funded Account-2 key continues to
+     work when ``VAULTWATCH_AGENT_KEY_PATH`` points at it.
+  2. Otherwise, the suite auto-creates a NEW agent wallet at
+     ``~/.vaultwatch/agent_key.pem`` via ``PrivateKey.generate()`` and
+     prints the public key + faucet URL. The user funds it once via the
+     testnet faucet, then re-runs the suite.
+
 Required environment
 --------------------
-* ``secret_key.pem`` at the repo root — funded Casper testnet account
-  (Account 2; the v1 AuditTrail / RiskOracle / SentinelRegistry /
-  SentinelAlertLog / AgentBehaviorIndex / SentinelCredit owner).
-  Balance verified > 4000 CSPR as of 2026-07-21.
+* One of:
+    - ``$VAULTWATCH_AGENT_KEY_PATH`` pointing at a funded agent key PEM, OR
+    - ``secret_key.pem`` at the repo root (legacy, funded Account-2 key), OR
+    - nothing (the suite auto-creates a new wallet + prints the faucet URL)
 * ``node.testnet.casper.network`` reachable (HTTPS POST JSON-RPC 2.0).
 
 Optional env
@@ -37,9 +54,12 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 import pytest
+
+if TYPE_CHECKING:
+    from agents.agent_wallet import AgentWallet
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
@@ -251,14 +271,79 @@ def rpc_url(request: pytest.FixtureRequest) -> str:
 
 @pytest.fixture(scope="session")
 def signer_pem(request: pytest.FixtureRequest) -> str:
-    """Path to the deployer secret key PEM file (asserts the file exists)."""
+    """Path to the deployer secret key PEM file (asserts the file exists).
+
+    CSPR.click AI Agent Skill integration: this fixture now resolves the
+    agent wallet key path via (in priority order):
+      1. ``--e2e-signer-pem`` CLI option
+      2. ``$VAULTWATCH_AGENT_KEY_PATH`` env var
+      3. ``$HOME/.vaultwatch/agent_key.pem`` (auto-created on first run)
+      4. ``<repo-root>/secret_key.pem`` (legacy fallback for Account-2)
+
+    If none exist, a NEW agent wallet is programmatically created at the
+    default path and the faucet URL is printed. The wallet must then be
+    funded manually before re-running the suite.
+    """
     pem = request.config.getoption("--e2e-signer-pem")
-    assert os.path.exists(pem), (
-        f"Deployer secret key not found at {pem}. "
-        "Place the Account-2 PEM at vaultwatch/secret_key.pem "
-        "(see proof/PROOF.md §1 for the deployer public key)."
+    if pem and os.path.exists(pem):
+        return pem
+    # Try env var
+    env_pem = os.getenv("VAULTWATCH_AGENT_KEY_PATH")
+    if env_pem and os.path.exists(env_pem):
+        return env_pem
+    # Try default agent wallet path
+    default_pem = os.path.expanduser("~/.vaultwatch/agent_key.pem")
+    if os.path.exists(default_pem):
+        return default_pem
+    # Legacy fallback — repo-root secret_key.pem (Account-2)
+    legacy_pem = str(ROOT / "secret_key.pem")
+    if os.path.exists(legacy_pem):
+        return legacy_pem
+    # No key found — auto-create a new agent wallet via the Node helper
+    helper = ROOT / "scripts" / "csprclick_agent_wallet.cjs"
+    if helper.exists():
+        import subprocess
+        proc = subprocess.run(
+            ["node", str(helper), "create"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if proc.returncode == 0:
+            info = json.loads(proc.stdout)
+            print(
+                "\n[CSPR.click AI Agent Skill] Created NEW agent wallet:\n"
+                f"  public_key: {info.get('public_key')}\n"
+                f"  account_hash: {info.get('account_hash')}\n"
+                f"  key_path: {info.get('key_path')}\n"
+                f"  Faucet: {info.get('faucet_url')} (paste the public key above)\n"
+                f"  Explorer: {info.get('explorer_url')}\n"
+                "Fund the wallet, then re-run with --run-e2e.\n"
+            )
+        pytest.skip(
+            "Auto-created a NEW agent wallet — fund it at the faucet URL "
+            "above, then re-run with --run-e2e."
+        )
+    assert False, (
+        "Deployer secret key not found. Place the Account-2 PEM at "
+        "vaultwatch/secret_key.pem, OR set VAULTWATCH_AGENT_KEY_PATH, OR "
+        "run `node scripts/csprclick_agent_wallet.cjs create` to auto-create."
     )
-    return pem
+
+
+@pytest.fixture(scope="session")
+def agent_wallet(signer_pem: str, rpc_url: str) -> "AgentWallet":
+    """Session-scoped :class:`AgentWallet` instance — the CSPR.click AI Agent
+    Skill abstraction over the deployer key.
+
+    Replaces direct PEM-path manipulation throughout the e2e suite. The
+    wallet is loaded from the same path as :func:`signer_pem` (which
+    auto-discovers or auto-creates the agent key per the priority order
+    documented above).
+    """
+    from agents.agent_wallet import AgentWallet  # local import to avoid SDK dep at module load
+
+    return AgentWallet.load(key_path=Path(signer_pem), rpc_url=rpc_url)
 
 
 @pytest.fixture(scope="session")

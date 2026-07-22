@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { CSPRClickProvider } from './csprclick.js'
+import WalletBar from './components/WalletBar.jsx'
 import RiskPanel from './components/RiskPanel.jsx'
 import AnomalyPanel from './components/AnomalyPanel.jsx'
 import RWAPanel from './components/RWAPanel.jsx'
@@ -151,7 +153,7 @@ export default function App() {
   const liveHeight   = network?.block_height ?? blockHeight
 
   return (
-    <>
+    <CSPRClickProvider>
       {/* Ticker animation keyframes */}
       <style>{`
         @keyframes ticker {
@@ -165,6 +167,13 @@ export default function App() {
       `}</style>
 
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+
+        {/* ── CSPR.click Wallet Bar (above the alert ticker) ────────────────
+            Renders the wallet connect/disconnect controls. The official
+            CSPR.click top bar itself mounts into <div id="csprclick-ui">
+            in index.html (first child of <body>), per the skill's "as close
+            as possible to the opening body tag" constraint. */}
+        <WalletBar />
 
         {/* ── Top Alert Ticker ────────────────────────────────────────────── */}
         <div style={{
@@ -346,6 +355,6 @@ export default function App() {
           </main>
         </div>
       </div>
-    </>
+    </CSPRClickProvider>
   )
 }

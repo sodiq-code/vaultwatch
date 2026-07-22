@@ -1,6 +1,17 @@
 """
 VaultWatch — Casper Contract Client
 Wraps casper-python-sdk (pycspr 1.2.0) for deploy + contract call operations.
+
+CSPR.click AI Agent Skill integration (Task CSPRCLICK-1):
+    The ``CasperContractClient`` now accepts an optional ``agent_wallet``
+    parameter (an :class:`vaultwatch.agents.agent_wallet.AgentWallet`
+    instance). When provided, all real writes (``call_contract_real``)
+    delegate signing to the agent wallet — NO manual ``signing_key_path``
+    required. This replaces the prior "manual key management" flow where
+    callers had to pass a PEM path on every request.
+
+    The legacy ``signing_key_path`` parameter is retained for backward
+    compatibility — if both are provided, ``agent_wallet`` takes precedence.
 """
 
 from __future__ import annotations
@@ -11,9 +22,12 @@ import os
 import time
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from opentelemetry import trace
+
+if TYPE_CHECKING:
+    from agents.agent_wallet import AgentWallet
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer("vaultwatch.casper_client")
@@ -54,6 +68,12 @@ class CasperContractClient:
         Network identifier — ``casper-test`` for testnet.
     signing_key_path : str
         Path to the operator secret key (PEM format, SECP256K1).
+        **Deprecated** — prefer ``agent_wallet``. Retained for backward compat.
+    agent_wallet : AgentWallet, optional
+        Server-side agent wallet (CSPR.click AI Agent Skill integration).
+        When provided, all real writes delegate signing to this wallet —
+        no manual ``signing_key_path`` required. Takes precedence over
+        ``signing_key_path`` when both are provided.
     mock : bool
         If *True* all blockchain calls are no-ops — useful for unit tests.
     """
@@ -64,11 +84,16 @@ class CasperContractClient:
         chain_name: str = "casper-test",
         signing_key_path: str = "",
         mock: bool = False,
+        agent_wallet: Optional["AgentWallet"] = None,
     ) -> None:
         self.node_url = node_url or os.getenv("CASPER_NODE_URL", "http://node.testnet.casper.network")
         self.chain_name = chain_name or os.getenv("CASPER_CHAIN_NAME", "casper-test")
         self.signing_key_path = signing_key_path or os.getenv("CASPER_SIGNING_KEY_PATH", "")
         self.mock = mock or not _SDK_AVAILABLE
+
+        # CSPR.click AI Agent Skill — server-side agent wallet abstraction.
+        # When provided, this takes precedence over the legacy signing_key_path.
+        self.agent_wallet = agent_wallet
 
         self._client: Optional[Any] = None
         self._account_key: Optional[Any] = None
@@ -322,14 +347,24 @@ class CasperContractClient:
                 "args": typed_args,
                 "payment_motes": payment_amount,
             }
-            # Attach the operator signing key if available
-            pem = self.signing_key_path or os.getenv("CASPER_SIGNING_KEY_PATH", "")
-            if pem and os.path.exists(pem):
-                payload["signer_pem_path"] = pem
-            if os.getenv("CASPER_RPC_URL"):
+            # CSPR.click AI Agent Skill: prefer the agent wallet for signing.
+            # When agent_wallet is set, pass its key path + algorithm — the
+            # Node helper (casper_call.cjs) auto-loads it. This replaces the
+            # prior "manual signing_key_path" flow.
+            if self.agent_wallet is not None:
+                payload["signer_pem_path"] = str(self.agent_wallet.key_path)
+                payload["key_algorithm"] = self.agent_wallet.key_algorithm
+                if not payload.get("rpc_url"):
+                    payload["rpc_url"] = self.agent_wallet.rpc_url
+            else:
+                # Backward compat — legacy manual key path.
+                pem = self.signing_key_path or os.getenv("CASPER_SIGNING_KEY_PATH", "")
+                if pem and os.path.exists(pem):
+                    payload["signer_pem_path"] = pem
+                if os.getenv("VAULTWATCH_SIGNER_ALGO"):
+                    payload["key_algorithm"] = os.environ["VAULTWATCH_SIGNER_ALGO"]
+            if os.getenv("CASPER_RPC_URL") and not payload.get("rpc_url"):
                 payload["rpc_url"] = os.environ["CASPER_RPC_URL"]
-            if os.getenv("VAULTWATCH_SIGNER_ALGO"):
-                payload["key_algorithm"] = os.environ["VAULTWATCH_SIGNER_ALGO"]
 
             span.set_attribute("args_count", len(typed_args))
 

@@ -1,59 +1,26 @@
 === ENVIRONMENT ===
-Captured: 2026-07-22 01:05:53 UTC
-Repo:     /home/z/my-project/vaultwatch
+Captured: 2026-07-22 02:53:49 UTC
+Repo: /home/z/my-project/vaultwatch
 
-Command(s) used to produce this file:
-  $ rustc --version
-  $ cargo --version
-  $ wasm-opt --version
-  $ wasm-objdump --version
-  $ wasm-validate --version
-  $ node --version
-  $ npm --version
-  $ python3 --version
-  $ pytest --version
-  $ ruff --version
-  $ git --version
-
-------------------------------------------------------------------------------
-
-$ rustc --version  (exit=0)
-rustc 1.97.1 (8bab26f4f 2026-07-14)
-
-$ cargo --version  (exit=0)
-cargo 1.97.1 (c980f4866 2026-06-30)
-
-$ wasm-opt --version  (exit=0)
+--- OS ---
+Linux c-6a5f7e59-144c75ca-b7c59c9854fe 5.10.134-013.8.3.kangaroo.al8.x86_64 #1 SMP Fri May 29 08:22:43 UTC 2026 x86_64 GNU/Linux
+--- Rust ---
+rustc 1.94.0-nightly (8d670b93d 2025-12-31)
+cargo 1.94.0-nightly (b54051b15 2025-12-30)
+toolchain: nightly-2026-01-01
+--- wasm-opt ---
 wasm-opt version 120 (version_120)
-
-$ wasm-objdump --version  (exit=0)
-1.0.36
-
-$ wasm-validate --version  (exit=0)
-1.0.36
-
-$ node --version  (exit=0)
-v24.18.0
-
-$ npm --version  (exit=0)
-11.16.0
-
-$ python3 --version  (exit=0)
+--- Python ---
 Python 3.12.13
-
-$ pytest --version  (exit=0)
+pip 25.1.1 from /usr/lib/python3/dist-packages/pip (python 3.13)
+--- pytest ---
 pytest 9.0.2
-
-$ ruff --version  (exit=0)
-ruff 0.15.22
-
-$ git --version  (exit=0)
+--- git ---
 git version 2.47.3
-
-
---- Casper Testnet Node ---
-chainspec_name: casper-test
-api_version: 2.0.0
-build_version: 2.2.2-d4becff
-peers: 101
-last_block_height: 8582696
+main
+e9bb2f4
+--- contract source files ---
+11
+  (rbac.rs + 9 contract modules + lib.rs)
+--- wasm artifacts ---
+9
