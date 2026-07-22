@@ -1,0 +1,36 @@
+{
+  "name": "vaultwatch-rwa-mcp",
+  "version": "1.0.0",
+  "description": "Domain-specific MCP server wrapping the VaultWatch RWA / risk smart contracts on Casper testnet — exposes AuditTrail, RiskOracle, RiskPolicyManager, SentinelAlertLog, SentinelCredit, SentinelRegistry, SubscriberVault, and AgentBehaviorIndex to any LLM agent (Claude Desktop, Cursor, Continue, Cody).",
+  "main": "index.js",
+  "bin": {
+    "vaultwatch-rwa-mcp": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "casper",
+    "casper-blockchain",
+    "rwa",
+    "real-world-assets",
+    "risk",
+    "vaultwatch",
+    "ai-agent",
+    "llm",
+    "claude-desktop",
+    "odra"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sodiq-code/vaultwatch",
+    "directory": "vaultwatch_rwa_mcp"
+  },
+  "homepage": "https://github.com/sodiq-code/vaultwatch#readme"
+}

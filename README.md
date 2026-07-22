@@ -110,6 +110,43 @@ pip install casper-sentinel
 npm install -g casper-sentinel-mcp
 ```
 
+### Domain-Specific MCP Server — `vaultwatch-rwa-mcp` v1.0.0
+
+A focused [Model Context Protocol](https://modelcontextprotocol.io) server that wraps the 8 RWA / risk contracts and exposes them to any LLM agent (Claude Desktop, Cursor, Continue, Cody). **Casper ecosystem contribution** — designed so any agent can query or transact with the on-chain RWA contract layer without the market-data / Groq / sidecar noise of the general server.
+
+- **39 tools** — every contract entry point + field read (AuditTrail, RiskOracle, RiskPolicyManager, SentinelAlertLog, SentinelCredit, SentinelRegistry, SubscriberVault, AgentBehaviorIndex)
+- **3 resources** — `rwa://contracts`, `rwa://policy/current`, `rwa://audit/count`
+- **4 prompts** — explain contracts, audit summary, risk assessment, policy review
+- **Reads** — free `query_global_state` calls with the exact Odra 2.9.0 storage-key derivation + bytesrepr decoders for every value type
+- **Writes** — REAL deploys signed via the [CSPR.click AI Agent Skill](skills/csprclick-skill/SKILL.md) (`AgentWallet` → `casper-js-sdk` v5); payable `open_vault` routes through the official `@make-software/casper-x402` helper
+
+```bash
+# Run over stdio (the standard MCP transport)
+python -m vaultwatch_rwa_mcp.server
+# Or via the npm launcher
+npx vaultwatch-rwa-mcp
+
+# Smoke-test flags (introspection without speaking the MCP protocol):
+python -m vaultwatch_rwa_mcp.server --list-tools    # JSON dump of all 39 tools / 3 resources / 4 prompts
+python -m vaultwatch_rwa_mcp.server --smoke-read    # live AuditTrail finding_count read against Casper testnet
+```
+
+Connect from Claude Desktop / Cursor / Continue:
+
+```json
+{
+  "mcpServers": {
+    "vaultwatch-rwa": {
+      "command": "python",
+      "args": ["-m", "vaultwatch_rwa_mcp.server"],
+      "cwd": "/path/to/vaultwatch"
+    }
+  }
+}
+```
+
+See **[`vaultwatch_rwa_mcp/README.md`](vaultwatch_rwa_mcp/README.md)** for the full tool catalogue, test guide, and CSPR.click wallet setup.
+
 ---
 
 ## Architecture
@@ -282,11 +319,12 @@ pytest tests/ -v
 ```
 
 ```
-tests/unit/           77 tests  — agents, SDK, safety guard, contracts
-tests/integration/    37 tests  — API endpoints, MCP tools, pipeline, streaming
+tests/unit/          113 tests  — agents, SDK, safety guard, contracts, RWA-MCP readers
+tests/integration/    64 tests  — API endpoints, MCP tools, pipeline, RWA-MCP tools
+tests/e2e/            17 tests  — real Casper testnet reads (+ RWA-MCP e2e, opt-in)
 tests/demo/            4 tests  — end-to-end scenario walkthroughs
 ──────────────────────────────
-Total:               100+ tests  — all passing
+Total:              198+ tests  — all passing
 ```
 
 | File | Tests | Coverage |
@@ -304,6 +342,9 @@ Total:               100+ tests  — all passing
 | `test_risk_oracle_contract.py` | 5 | Risk score storage + retrieval |
 | `test_sentinel_registry_contract.py` | 7 | Register/deactivate sentinels |
 | `test_mcp_tools.py` | 9 | Every MCP tool exercised |
+| `test_rwa_mcp_readers.py` | 36 | RWA-MCP bytesrepr parsers + Odra key derivation |
+| `test_rwa_mcp_tools.py` | 27 | RWA-MCP 39 tools + resources + prompts (mocked RPC/wallet) |
+| `test_rwa_mcp_real_rpc.py` | 9 | RWA-MCP live testnet reads (opt-in `--run-e2e`) |
 | `test_demo_scenario.py` | 7 | Full pipeline demo scenarios |
 
 ---
@@ -532,8 +573,16 @@ vaultwatch/
 │   └── wasm/                     # 8 compiled WASM artifacts
 │
 ├── vaultwatch_mcp/
-│   ├── server.py                 # FastMCP — 20 tools
+│   ├── server.py                 # FastMCP — 20 tools (general server)
 │   └── __init__.py
+│
+├── vaultwatch_rwa_mcp/            # Domain-specific MCP server (Casper ecosystem contribution)
+│   ├── server.py                 # FastMCP — 39 tools wrapping the 8 RWA contracts
+│   ├── contracts.py              # Contract registry (hashes, entry points, field indices)
+│   ├── readers.py                # Odra-aware on-chain readers + bytesrepr decoders
+│   ├── writers.py                # CSPR.click AgentWallet write wrappers
+│   ├── index.js                  # Node launcher (npx vaultwatch-rwa-mcp)
+│   └── package.json              # npm launcher package
 │
 ├── api/
 │   ├── main.py                   # FastAPI + OTel instrumentation
@@ -673,6 +722,13 @@ asyncio.run(main())
 OTEL_EXPORTER_OTLP_ENDPOINT=http://your-grafana-agent:4317 python pipeline.py
 ```
 
+**LLM agent integration** — the domain-specific [`vaultwatch-rwa-mcp`](vaultwatch_rwa_mcp/README.md) MCP server lets any Claude Desktop / Cursor / Continue / Cody agent query and transact with the 8 on-chain RWA contracts directly (no REST API in the middle):
+
+```bash
+# Exposes 39 tools + 3 resources + 4 prompts over the MCP stdio transport
+python -m vaultwatch_rwa_mcp.server
+```
+
 ---
 
 ## Long-Term Launch Plan & Ecosystem Impact
@@ -699,6 +755,7 @@ VaultWatch is designed as permanent Casper infrastructure. Four deployment phase
 | Live Dashboard | https://dashboard-rho-amber-89.vercel.app |
 | Python SDK (PyPI) | https://pypi.org/project/casper-sentinel/4.0.0/ |
 | MCP Package (npm) | https://www.npmjs.com/package/casper-sentinel-mcp |
+| Domain MCP Server | [`vaultwatch-rwa-mcp`](vaultwatch_rwa_mcp/README.md) — 39 tools wrapping the 8 RWA contracts |
 | Deployer Account | https://testnet.cspr.live/account/0203cd257525b180a32cab4efc0d9d9a365bf9bc1b8d2e76ebfb9186a4eeb23bace7 |
 | Casper Testnet Explorer | https://testnet.cspr.live/ |
 | Casper Developer Docs | https://docs.casper.network/ |
