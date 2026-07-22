@@ -37,6 +37,7 @@ from agents.agent_wallet import (  # noqa: E402
 # Skip marker: Node.js helper unavailable in CI (npm packages not installed)
 # ---------------------------------------------------------------------------
 
+
 def _node_helper_available() -> bool:
     """Check whether the agent_wallet.cjs Node helper can run.
 
