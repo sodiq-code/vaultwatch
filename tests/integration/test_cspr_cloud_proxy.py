@@ -168,17 +168,21 @@ def test_dashboard_liveapi_uses_proxy():
 @pytest.mark.parametrize(
     "script_rel",
     [
-        "scripts/broadcast_interactions.py",
-        "scripts/broadcast_transfers.py",
-        "scripts/deploy_live.py",
-        "scripts/deploy_new_account.py",
-        "scripts/broadcast_deploys.py",
-        "scripts/verify_contract_entrypoints.py",
+        "scripts/_archived/broadcast_interactions.py",
+        "scripts/_archived/broadcast_transfers.py",
+        "scripts/_archived/deploy_live.py",
+        "scripts/_archived/deploy_new_account.py",
+        "scripts/_archived/broadcast_deploys.py",
+        "scripts/_archived/verify_contract_entrypoints.py",
     ],
 )
 def test_script_reads_key_from_env(script_rel):
     """Every server-side script that previously hardcoded the leaked key
-    must now read it from CSPR_CLOUD_API_KEY env var."""
+    must now read it from CSPR_CLOUD_API_KEY env var.
+
+    Note: These scripts were archived to scripts/_archived/ as one-off
+    demo/fix scripts. They are still verified for key hygiene even though
+    they're no longer in the main scripts/ directory."""
     script = ROOT / script_rel
     assert script.exists(), f"{script_rel} not found"
     text = script.read_text(encoding="utf-8")
