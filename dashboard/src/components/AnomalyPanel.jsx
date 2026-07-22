@@ -1,24 +1,15 @@
 import { useState } from 'react'
 import { CONTRACT_HASHES } from '../liveApi.js'
-
-const CARD = {
-  background: 'var(--surface)',
-  border: '1px solid var(--border)',
-  borderRadius: 'var(--radius)',
-  padding: 20,
-  marginBottom: 16,
-}
-
-const INPUT = {
-  background: 'var(--surface2)',
-  border: '1px solid var(--border)',
-  borderRadius: 8,
-  color: 'var(--text)',
-  padding: '9px 12px',
-  fontSize: 13,
-  outline: 'none',
-  width: '100%',
-}
+import { GlassCard } from '../ui/GlassCard.jsx'
+import { StatCard } from '../ui/StatCard.jsx'
+import { SkeletonCard, SkeletonLine } from '../ui/Skeleton.jsx'
+import { GradientBtn } from '../ui/GradientBtn.jsx'
+import { Input } from '../ui/Input.jsx'
+import { Badge, SourceBadge } from '../ui/Badge.jsx'
+import { PageHeader } from '../ui/PageHeader.jsx'
+import { AnimatedCounter } from '../ui/AnimatedCounter.jsx'
+import { RiskGaugeChart } from '../charts/RiskGaugeChart.jsx'
+import { AnomalyBarChart } from '../charts/AnomalyBarChart.jsx'
 
 const DEFAULT_METRICS = {
   protocol:         'CasperSwap',
@@ -38,32 +29,21 @@ const FIELDS = [
   { key: 'liquidity_ratio',  label: 'Liquidity Ratio (0–1)', type: 'number' },
 ]
 
-function RiskGauge({ score }) {
-  const color = score >= 70 ? 'var(--danger)' : score >= 40 ? 'var(--warning)' : 'var(--success)'
-  const label = score >= 70 ? 'HIGH RISK' : score >= 40 ? 'ELEVATED' : 'NORMAL'
-  return (
-    <div style={{ textAlign: 'center', marginBottom: 16 }}>
-      <div style={{ fontSize: 56, fontWeight: 800, color, lineHeight: 1 }}>{Math.round(score)}</div>
-      <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 2 }}>/ 100 risk score</div>
-      <div style={{
-        display: 'inline-block', marginTop: 8,
-        background: color + '22', color, borderRadius: 4,
-        padding: '3px 12px', fontSize: 12, fontWeight: 700, letterSpacing: 0.5,
-      }}>{label}</div>
-      {/* bar */}
-      <div style={{ marginTop: 12, height: 6, borderRadius: 3, background: 'var(--surface2)', overflow: 'hidden' }}>
-        <div style={{
-          height: '100%', borderRadius: 3,
-          width: `${score}%`,
-          background: `linear-gradient(90deg, #22c55e, ${color})`,
-          transition: 'width 0.6s ease',
-        }} />
-      </div>
-    </div>
-  )
+// Build AnomalyBarChart data from anomaly result
+function buildBarData(result) {
+  if (!result?.anomalies?.length) return []
+  return result.anomalies.map(a => {
+    const text = typeof a === 'string' ? a : `${a.metric}: ${a.value} (threshold ${a.threshold}, ${a.severity})`
+    const sev = typeof a === 'object' ? a.severity : 'MEDIUM'
+    const color = sev === 'HIGH' || sev === 'CRITICAL' ? '#ef4444' : sev === 'MEDIUM' ? '#f59e0b' : '#22c55e'
+    const metric = typeof a === 'object' ? a.metric : text.split(':')[0]
+    const value = typeof a === 'object' ? a.value : 50
+    const threshold = typeof a === 'object' ? a.threshold : null
+    return { metric, value, threshold, color, unit: typeof a === 'object' ? '' : '' }
+  })
 }
 
-export default function AnomalyPanel({ api }) {
+export default function AnomalyPanel({ api, addToast }) {
   const [metrics, setMetrics] = useState(DEFAULT_METRICS)
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -85,8 +65,10 @@ export default function AnomalyPanel({ api }) {
         liquidity_ratio:  parseFloat(metrics.liquidity_ratio),
       })
       setResult(data)
+      addToast({ type: 'success', message: 'Anomaly detection completed' })
     } catch (e) {
       setError(e.message)
+      addToast({ type: 'error', message: `Anomaly detection failed: ${e.message}` })
     } finally {
       setLoading(false)
     }
@@ -94,126 +76,120 @@ export default function AnomalyPanel({ api }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Anomaly Detection</h1>
-        <span style={{
-          background: '#0a2a0a', border: '1px solid #22c55e40',
-          color: '#22c55e', fontSize: 10, fontWeight: 700,
-          padding: '3px 8px', borderRadius: 4, letterSpacing: 0.5,
-        }}>
-          ● LIVE GROQ AI
-        </span>
-      </div>
-      <p style={{ color: 'var(--text-muted)', marginBottom: 20, fontSize: 13 }}>
-        AnomalyAgent (llama-3.3-70b-versatile) with SelfCorrectionAgent loop · findings written to AuditTrail + RiskOracle on Casper.
-      </p>
+      <PageHeader
+        icon="⚡"
+        badge="DETECT"
+        title="Anomaly Detection"
+        subtitle="AnomalyAgent (llama-3.3-70b-versatile) with SelfCorrectionAgent loop · findings written to AuditTrail + RiskOracle on Casper."
+      />
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)' }}>
         {/* Input */}
-        <div style={CARD}>
-          <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 14 }}>Protocol Metrics</h2>
-          <div style={{ display: 'grid', gap: 10 }}>
+        <GlassCard>
+          <h2 style={{ fontSize: 'var(--font-size-md)', fontWeight: 'var(--font-weight-semibold)', marginBottom: 'var(--space-md)' }}>
+            Protocol Metrics
+          </h2>
+          <div style={{ display: 'grid', gap: 'var(--space-sm)' }}>
             {FIELDS.map(field => (
-              <div key={field.key}>
-                <label style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
-                  {field.label}
-                </label>
-                <input
-                  type={field.type}
-                  value={metrics[field.key]}
-                  onChange={e => update(field.key, e.target.value)}
-                  style={INPUT}
-                  step={field.type === 'number' ? 'any' : undefined}
-                />
-              </div>
+              <Input
+                key={field.key}
+                label={field.label}
+                type={field.type}
+                value={metrics[field.key]}
+                onChange={e => update(field.key, e.target.value)}
+                step={field.type === 'number' ? 'any' : undefined}
+              />
             ))}
           </div>
-          <button
+          <GradientBtn
             onClick={handleDetect}
             disabled={loading}
-            style={{
-              marginTop: 14, width: '100%',
-              background: 'var(--accent)', color: '#fff',
-              border: 'none', borderRadius: 8,
-              padding: '11px 0', cursor: 'pointer',
-              fontSize: 14, fontWeight: 600,
-              opacity: loading ? 0.5 : 1,
-            }}
+            loading={loading}
+            style={{ marginTop: 'var(--space-md)', width: '100%' }}
           >
-            {loading ? '⟳ Calling AnomalyAgent via Groq...' : 'Detect Anomalies'}
-          </button>
+            {loading ? 'Calling AnomalyAgent via Groq...' : 'Detect Anomalies'}
+          </GradientBtn>
           {error && (
-            <div style={{ marginTop: 8, color: 'var(--danger)', fontSize: 13 }}>
-              ⚠ {error}
-            </div>
+            <GlassCard glow="danger" style={{ marginTop: 'var(--space-sm)', padding: 'var(--space-sm)' }}>
+              <span style={{ color: 'var(--danger)', fontSize: 'var(--font-size-sm)' }}>⚠ {error}</span>
+            </GlassCard>
           )}
-        </div>
+        </GlassCard>
 
         {/* Result */}
-        <div style={CARD}>
-          <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 14 }}>
+        <GlassCard>
+          <h2 style={{ fontSize: 'var(--font-size-md)', fontWeight: 'var(--font-weight-semibold)', marginBottom: 'var(--space-md)' }}>
             AnomalyAgent Result
           </h2>
-          {result ? (
+          {loading && !result ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)', paddingTop: 20 }}>
+              <SkeletonLine width="60%" height={80} />
+              <SkeletonLine width="100%" height={20} />
+              <SkeletonLine width="80%" height={20} />
+              <SkeletonLine width="100%" height={40} />
+            </div>
+          ) : result ? (
             <>
-              <RiskGauge score={result.risk_score ?? 0} />
+              {/* RiskGaugeChart replaces manual RiskGauge */}
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 'var(--space-md)' }}>
+                <RiskGaugeChart score={Math.round(result.risk_score ?? 0)} size={160} />
+              </div>
 
-              {result.anomalies && result.anomalies.length > 0 ? (
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              {/* AnomalyBarChart for metric visualization */}
+              {result.anomalies && result.anomalies.length > 0 && (
+                <div style={{ marginBottom: 'var(--space-md)' }}>
+                  <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', marginBottom: 'var(--space-sm)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                     Detected Anomalies
                   </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 'var(--space-sm)' }}>
                     {result.anomalies.map((a, i) => {
-                      // AnomalyAgent returns either a plain string or a
-                      // {metric, value, threshold, severity} object. Render
-                      // objects as a readable one-liner so React never tries
-                      // to render a raw object child (which throws error #31).
                       const text = typeof a === 'string'
                         ? a
                         : `${a.metric}: ${a.value} (threshold ${a.threshold}, ${a.severity})`
-                      return (
-                        <span key={i} style={{
-                          background: '#3a1a1a', color: 'var(--danger)',
-                          borderRadius: 4, padding: '4px 10px', fontSize: 12, fontWeight: 600,
-                        }}>
-                          {text}
-                        </span>
-                      )
+                      const sev = typeof a === 'object' ? a.severity : 'MEDIUM'
+                      return <Badge key={i} variant={sev === 'HIGH' || sev === 'CRITICAL' ? 'danger' : sev === 'MEDIUM' ? 'warning' : 'success'} size="sm">{text}</Badge>
                     })}
                   </div>
+                  <AnomalyBarChart metrics={buildBarData(result)} height={160} />
                 </div>
-              ) : (
-                <p style={{ color: 'var(--success)', fontSize: 13, marginBottom: 12 }}>
-                  ✓ No anomalies detected
-                </p>
+              )}
+
+              {(!result.anomalies || result.anomalies.length === 0) && (
+                <GlassCard glow="success" style={{ padding: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
+                  <span style={{ color: 'var(--success)', fontSize: 'var(--font-size-sm)' }}>
+                    ✓ No anomalies detected
+                  </span>
+                </GlassCard>
               )}
 
               {result.recommendation && (
-                <div style={{ background: 'var(--surface2)', borderRadius: 8, padding: '10px 12px', fontSize: 13, marginBottom: 10 }}>
-                  <strong style={{ color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Recommendation</strong>
-                  <p style={{ marginTop: 4, lineHeight: 1.5 }}>{result.recommendation}</p>
-                </div>
+                <GlassCard style={{ padding: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
+                  <strong style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-xs)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Recommendation</strong>
+                  <p style={{ marginTop: 4, lineHeight: 1.5, fontSize: 'var(--font-size-sm)' }}>{result.recommendation}</p>
+                </GlassCard>
               )}
 
               {result.self_correction_applied && (
-                <div style={{ background: '#0a1a2a', borderRadius: 6, padding: '6px 10px', fontSize: 11, color: '#3b82f6', marginBottom: 8 }}>
+                <Badge variant="info" size="md" style={{ marginBottom: 'var(--space-sm)', display: 'inline-flex' }}>
                   ⟳ SelfCorrectionAgent applied — confidence re-evaluated
-                </div>
+                </Badge>
               )}
 
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {result.confidence !== undefined && (
-                  <span>Confidence: <strong style={{ color: 'var(--text)' }}>{(result.confidence * 100).toFixed(0)}%</strong></span>
+                  <span>Confidence: <strong style={{ color: 'var(--text)' }}>
+                    <AnimatedCounter value={result.confidence * 100} formatter={v => `${Math.round(v)}%`} />
+                  </strong></span>
                 )}
                 {result.agent && <span>Agent: {result.agent}</span>}
+                {result._source && <span>Data source: <SourceBadge source={result._source} /></span>}
                 {result.on_chain_contract && (
                   <span>
                     On-chain:{' '}
                     <a
                       href={`https://testnet.cspr.live/deploy/${CONTRACT_HASHES.SentinelAlertLog}`}
                       target="_blank" rel="noopener noreferrer"
-                      style={{ color: 'var(--accent)', fontFamily: 'monospace' }}
+                      style={{ color: 'var(--accent)', fontFamily: 'var(--font)' }}
                     >
                       AuditTrail deploy ↗
                     </a>
@@ -222,13 +198,13 @@ export default function AnomalyPanel({ api }) {
               </div>
             </>
           ) : (
-            <div style={{ color: 'var(--text-muted)', textAlign: 'center', paddingTop: 40, fontSize: 13 }}>
+            <div style={{ color: 'var(--text-muted)', textAlign: 'center', paddingTop: 40, fontSize: 'var(--font-size-sm)' }}>
               <div style={{ fontSize: 36, marginBottom: 8 }}>⚠</div>
               Enter protocol metrics and click detect<br />
-              <span style={{ fontSize: 11 }}>Real Groq AI · llama-3.3-70b-versatile</span>
+              <span style={{ fontSize: 'var(--font-size-xs)' }}>Real Groq AI · llama-3.3-70b-versatile</span>
             </div>
           )}
-        </div>
+        </GlassCard>
       </div>
     </div>
   )

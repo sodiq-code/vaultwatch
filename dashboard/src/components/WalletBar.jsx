@@ -1,8 +1,6 @@
-// WalletBar — top-of-dashboard CSPR.click wallet connection bar.
+// WalletBar — premium glass top-of-dashboard CSPR.click wallet connection bar.
 //
-// Renders the CSPR.click UI mount point (the SDK injects the official top bar
-// into <div id="csprclick-ui"> already present in index.html), plus our own
-// compact status strip showing:
+// Renders the CSPR.click status indicator plus our own compact status strip showing:
 //   * the connected account's truncated public key + wallet name, with a
 //     "Disconnect" button, OR
 //   * a "Connect Wallet" button that calls clickRef.connect('casper-wallet'),
@@ -14,11 +12,32 @@
 // `signOut()`) per the "signOut() ≠ disconnect()" constraint.
 
 import { useClickRef, truncatePublicKey, connectCasperWallet, disconnectWallet } from '../csprclick.js'
+import { GradientBtn } from '../ui/GradientBtn.jsx'
+import { Badge } from '../ui/Badge.jsx'
+import { useResponsive } from '../hooks/useResponsive.js'
 
 const SUPPORTED_WALLET_LABEL = 'Casper Wallet'
 
+// Wallet SVG icon (inline, no external dependency)
+const WalletIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="2" y="6" width="20" height="14" rx="2" />
+    <path d="M16 14h2v-2h-2" />
+    <path d="M6 6V4a2 2 0 012-2h8a2 2 0 012 2v2" />
+  </svg>
+)
+
+// Disconnect SVG icon
+const DisconnectIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M18 6L6 18" />
+    <path d="M6 6l12 12" />
+  </svg>
+)
+
 export default function WalletBar() {
   const { clickRef, isLoaded, activeAccount, publicKey, provider } = useClickRef()
+  const { isMobile } = useResponsive()
 
   const connected = !!(activeAccount && publicKey)
   // Pretty wallet label — fall back to the provider key or the canonical
@@ -56,24 +75,43 @@ export default function WalletBar() {
       role="region"
       aria-label="Wallet connection"
       style={{
-        background: 'linear-gradient(90deg, #0d0f1a 0%, #161929 100%)',
-        borderBottom: '1px solid var(--border)',
-        padding: '6px 16px',
+        // ── Glass bar background ──
+        background: 'var(--glass-bg)',
+        backdropFilter: 'blur(var(--glass-blur)) saturate(var(--glass-saturate))',
+        WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(var(--glass-saturate))',
+        // ── Glass borders (gradient bottom border applied via overlay div) ──
+        border: '1px solid var(--glass-border)',
+        boxShadow: 'var(--shadow-md), var(--shadow-inner)',
+        padding: isMobile ? '6px 10px' : '8px var(--space-lg)',
         display: 'flex',
         alignItems: 'center',
-        gap: 12,
+        gap: isMobile ? 8 : 12,
         flexShrink: 0,
-        minHeight: 36,
-        fontSize: 12,
+        minHeight: isMobile ? 40 : 44,
+        fontSize: 'var(--font-size-sm)',
         zIndex: 5,
+        position: 'relative',
       }}
     >
-      {/* CSPR.click UI mount point. The SDK injects the official top bar / wallet
-          menu here. This div is ALSO present in index.html as the first child
-          of <body> (per the SKILL.md "as close as possible to the opening body
-          tag" constraint); rendering it again here would create a duplicate id,
-          so we only render a fallback notice when the SDK has not yet mounted
-          its UI. */}
+      {/* ── Gradient accent bottom border overlay ──
+          Using a positioned overlay div because CSS border-image
+          is incompatible with border-radius. This div renders the
+          gradient at the bar's bottom edge while keeping rounded corners. */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          bottom: -1,
+          left: -1,
+          right: -1,
+          height: 2,
+          background: 'var(--gradient-accent)',
+          borderRadius: '0 0 var(--radius-md) var(--radius-md)',
+          zIndex: 1,
+        }}
+      />
+
+      {/* ── CSPR.click status indicator ── */}
       <span
         aria-hidden="true"
         title="CSPR.click top bar mounts into #csprclick-ui in index.html"
@@ -82,154 +120,206 @@ export default function WalletBar() {
           alignItems: 'center',
           gap: 6,
           color: 'var(--text-muted)',
-          fontSize: 10,
+          fontSize: 'var(--font-size-xs)',
           flexShrink: 0,
+          fontFamily: 'var(--font)',
         }}
       >
+        {/* Status dot — glowPulse animation when connected */}
         <span
           style={{
-            width: 6,
-            height: 6,
+            width: 7,
+            height: 7,
             borderRadius: '50%',
-            background: isLoaded ? 'var(--success)' : 'var(--text-muted)',
-            boxShadow: isLoaded ? '0 0 6px #22c55e80' : 'none',
+            background: connected
+              ? 'var(--success)'
+              : isLoaded
+                ? 'var(--success)'
+                : 'var(--text-muted)',
+            boxShadow: connected
+              ? '0 0 8px rgba(34, 197, 94, 0.4), 0 0 16px rgba(34, 197, 94, 0.2)'
+              : isLoaded
+                ? '0 0 6px rgba(34, 197, 94, 0.3)'
+                : 'none',
+            animation: connected ? 'glowPulseGreen 2s ease-in-out infinite' : 'none',
             flexShrink: 0,
+            transition: 'all var(--transition-normal)',
           }}
         />
-        {isLoaded ? 'CSPR.click ready' : 'Loading CSPR.click…'}
+        {isMobile
+          ? (isLoaded ? 'Ready' : 'Loading…')
+          : (isLoaded ? 'CSPR.click ready' : 'Loading CSPR.click…')
+        }
       </span>
 
       <div style={{ flex: 1 }} />
 
-      {/* Connected account chip OR connect button */}
+      {/* ── Connected account chip OR connect button ── */}
       {connected ? (
         <div
           style={{
-            display: 'flex',
+            display: 'inline-flex',
             alignItems: 'center',
-            gap: 8,
-            background: 'var(--surface2)',
-            border: '1px solid var(--border)',
-            borderRadius: 8,
-            padding: '3px 8px 3px 10px',
-            fontSize: 11,
+            gap: isMobile ? 6 : 10,
+            // ── Glass chip with accent glow ──
+            background: 'var(--glass-bg)',
+            backdropFilter: 'blur(var(--glass-blur)) saturate(var(--glass-saturate))',
+            WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(var(--glass-saturate))',
+            border: '1px solid var(--glass-border)',
+            borderRadius: 'var(--radius-md)',
+            padding: isMobile ? '4px 10px 4px 12px' : '5px 14px 5px 16px',
+            fontSize: 'var(--font-size-xs)',
+            boxShadow: 'var(--shadow-glow), var(--shadow-inner)',
+            animation: 'glowPulse 3s ease-in-out infinite',
+            transition: 'all var(--transition-normal)',
           }}
         >
+          {/* Wallet label */}
           <span
             title={`Connected via ${walletLabel}`}
             style={{
               color: 'var(--text-muted)',
-              fontSize: 10,
+              fontSize: 'var(--font-size-xs)',
               textTransform: 'uppercase',
               letterSpacing: 0.5,
+              fontFamily: 'var(--font)',
+              fontWeight: 'var(--font-weight-medium)',
+              display: isMobile ? 'none' : 'inline',
             }}
           >
             {walletLabel}
           </span>
+
+          {/* Truncated public key */}
           <code
             title={publicKey}
             style={{
               color: 'var(--text)',
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-              fontSize: 11,
+              fontFamily: 'var(--font-mono)',
+              fontSize: 'var(--font-size-xs)',
+              fontWeight: 'var(--font-weight-medium)',
+              letterSpacing: '0.3px',
             }}
           >
             {truncatePublicKey(publicKey)}
           </code>
-          <button
-            type="button"
+
+          {/* Disconnect button — GradientBtn ghost with danger hover glow */}
+          <GradientBtn
+            variant="ghost"
+            size="sm"
             onClick={onDisconnect}
             aria-label="Disconnect wallet"
             style={{
-              background: 'transparent',
-              border: '1px solid var(--border)',
-              color: 'var(--text-muted)',
-              borderRadius: 6,
-              padding: '2px 8px',
-              fontSize: 10,
-              cursor: 'pointer',
-              transition: 'all 0.15s',
+              fontSize: 'var(--font-size-xs)',
+              padding: '3px 10px',
+              borderRadius: 'var(--radius-sm)',
+              boxShadow: 'none',
+              transition: 'all var(--transition-fast)',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.color = 'var(--danger)'
-              e.currentTarget.style.borderColor = 'var(--danger)'
+              const btn = e.currentTarget
+              btn.style.color = 'var(--danger)'
+              btn.style.borderColor = 'var(--danger)'
+              btn.style.background = 'rgba(239, 68, 68, 0.12)'
+              btn.style.boxShadow = 'var(--shadow-glow-danger)'
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.color = 'var(--text-muted)'
-              e.currentTarget.style.borderColor = 'var(--border)'
+              const btn = e.currentTarget
+              btn.style.color = 'var(--text-muted)'
+              btn.style.borderColor = 'var(--glass-border)'
+              btn.style.background = 'var(--surface3)'
+              btn.style.boxShadow = 'none'
             }}
           >
-            Disconnect
-          </button>
+            <DisconnectIcon />
+            {isMobile ? '' : 'Disconnect'}
+          </GradientBtn>
         </div>
       ) : (
-        <button
-          type="button"
+        <GradientBtn
+          variant="accent"
+          size="sm"
           onClick={onConnect}
           disabled={!isLoaded}
           aria-label="Connect Casper wallet"
           style={{
-            background: isLoaded ? 'var(--accent)' : 'var(--surface2)',
-            border: '1px solid var(--accent)',
-            color: isLoaded ? '#fff' : 'var(--text-muted)',
-            borderRadius: 8,
-            padding: '4px 14px',
-            fontSize: 12,
-            fontWeight: 600,
-            cursor: isLoaded ? 'pointer' : 'not-allowed',
-            transition: 'all 0.15s',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
+            boxShadow: isLoaded ? 'var(--shadow-glow)' : 'none',
+            transition: 'all var(--transition-normal)',
           }}
           onMouseEnter={(e) => {
             if (!isLoaded) return
-            e.currentTarget.style.background = 'var(--accent2)'
-            e.currentTarget.style.borderColor = 'var(--accent2)'
+            const btn = e.currentTarget
+            btn.style.boxShadow = 'var(--shadow-glow), 0 0 30px rgba(79, 124, 255, 0.4)'
           }}
           onMouseLeave={(e) => {
-            if (!isLoaded) return
-            e.currentTarget.style.background = 'var(--accent)'
-            e.currentTarget.style.borderColor = 'var(--accent)'
+            const btn = e.currentTarget
+            btn.style.boxShadow = isLoaded ? 'var(--shadow-glow)' : 'none'
           }}
         >
-          <span aria-hidden="true">🔗</span>
-          Connect Wallet
-        </button>
+          <WalletIcon />
+          {isMobile ? 'Connect' : 'Connect Wallet'}
+        </GradientBtn>
       )}
 
-      {/* "Powered by CSPR.click" badge */}
-      <a
-        href="https://cspr.build/cspr-click"
-        target="_blank"
-        rel="noopener noreferrer"
-        title="Powered by CSPR.click — open in a new tab"
+      {/* ── "Powered by CSPR.click" badge ── */}
+      <Badge
+        variant="default"
+        size="sm"
+        pulse={false}
         style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 4,
+          // ── Glass badge with subtle accent glow ──
+          background: 'var(--glass-bg)',
+          backdropFilter: 'blur(var(--glass-blur)) saturate(var(--glass-saturate))',
+          WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(var(--glass-saturate))',
+          border: '1px solid var(--glass-border)',
+          boxShadow: '0 0 12px rgba(79, 124, 255, 0.15), var(--shadow-inner)',
           color: 'var(--text-muted)',
-          fontSize: 10,
-          textDecoration: 'none',
-          border: '1px solid var(--border)',
-          borderRadius: 6,
-          padding: '2px 7px',
-          background: 'var(--surface)',
+          textTransform: 'none',
+          letterSpacing: '0',
+          fontWeight: 'var(--font-weight-medium)',
+          cursor: 'pointer',
+          transition: 'all var(--transition-normal)',
           flexShrink: 0,
-          transition: 'all 0.15s',
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.color = 'var(--accent)'
-          e.currentTarget.style.borderColor = 'var(--accent)'
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.color = 'var(--text-muted)'
-          e.currentTarget.style.borderColor = 'var(--border)'
         }}
       >
-        Powered by
-        <strong style={{ color: 'var(--text)', fontWeight: 700 }}>CSPR.click</strong>
-      </a>
+        <a
+          href="https://cspr.build/cspr-click"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Powered by CSPR.click — open in a new tab"
+          style={{
+            color: 'inherit',
+            textDecoration: 'none',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+          }}
+          onMouseEnter={(e) => {
+            const badge = e.currentTarget.closest('span')
+            if (badge) {
+              badge.style.color = 'var(--accent)'
+              badge.style.borderColor = 'var(--accent)'
+              badge.style.boxShadow = 'var(--shadow-glow)'
+            }
+          }}
+          onMouseLeave={(e) => {
+            const badge = e.currentTarget.closest('span')
+            if (badge) {
+              badge.style.color = 'var(--text-muted)'
+              badge.style.borderColor = 'var(--glass-border)'
+              badge.style.boxShadow = '0 0 12px rgba(79, 124, 255, 0.15), var(--shadow-inner)'
+            }
+          }}
+        >
+          {isMobile ? 'CSPR.click' : (
+            <>
+              Powered by
+              <strong style={{ color: 'var(--text)', fontWeight: 'var(--font-weight-bold)' }}>CSPR.click</strong>
+            </>
+          )}
+        </a>
+      </Badge>
     </div>
   )
 }

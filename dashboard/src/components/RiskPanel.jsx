@@ -1,23 +1,12 @@
 import { useState, useEffect } from 'react'
-
-const CARD = {
-  background: 'var(--surface)',
-  border: '1px solid var(--border)',
-  borderRadius: 'var(--radius)',
-  padding: 20,
-  marginBottom: 16,
-}
-
-const BTN = {
-  background: 'var(--accent)',
-  color: '#fff',
-  border: 'none',
-  borderRadius: 8,
-  padding: '10px 20px',
-  cursor: 'pointer',
-  fontSize: 14,
-  fontWeight: 600,
-}
+import { GlassCard } from '../ui/GlassCard.jsx'
+import { StatCard } from '../ui/StatCard.jsx'
+import { SkeletonCard, SkeletonLine } from '../ui/Skeleton.jsx'
+import { GradientBtn } from '../ui/GradientBtn.jsx'
+import { Input } from '../ui/Input.jsx'
+import { Badge, SourceBadge } from '../ui/Badge.jsx'
+import { PageHeader } from '../ui/PageHeader.jsx'
+import { AnimatedCounter } from '../ui/AnimatedCounter.jsx'
 
 const SEVERITY_COLOR = {
   CRITICAL: '#ef4444',
@@ -26,68 +15,58 @@ const SEVERITY_COLOR = {
   LOW:      '#22c55e',
 }
 
-const SEVERITY_BG = {
-  CRITICAL: '#3a0a0a',
-  HIGH:     '#2a1a00',
-  MEDIUM:   '#0a1a3a',
-  LOW:      '#0a2a0a',
+const SEVERITY_GLOW = {
+  CRITICAL: 'danger',
+  HIGH:     'warning',
+  MEDIUM:   undefined,
+  LOW:      'success',
 }
 
 function FindingCard({ f }) {
   const color = SEVERITY_COLOR[f.severity] || '#64748b'
-  const bg = SEVERITY_BG[f.severity] || '#1a1a1a'
+  const glow = SEVERITY_GLOW[f.severity]
   const age = Math.round((Date.now() - f.timestamp) / 60000)
   const ageStr = age < 60 ? `${age}m ago` : `${Math.round(age / 60)}h ago`
 
   return (
-    <div style={{
-      padding: '14px 16px',
-      background: 'var(--surface2)',
-      borderRadius: 8,
-      marginBottom: 8,
-      fontSize: 13,
-      borderLeft: `3px solid ${color}`,
-    }}>
+    <GlassCard glow={glow} style={{ padding: 'var(--space-md)', marginBottom: 'var(--space-sm)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontWeight: 700, fontSize: 14 }}>{f.protocol}</span>
-          <span style={{ fontFamily: 'monospace', fontSize: 10, color: 'var(--text-muted)' }}>{f.id}</span>
+          <span style={{ fontWeight: 'var(--font-weight-bold)', fontSize: 'var(--font-size-md)' }}>{f.protocol}</span>
+          <span style={{ fontFamily: 'var(--font)', fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>{f.id}</span>
+          {f.source && <SourceBadge source={f.source} />}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>{ageStr}</span>
-          <span style={{
-            fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
-            background: color + '22', color,
-          }}>{f.severity}</span>
+          <span style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-xs)' }}>{ageStr}</span>
+          <Badge>{f.severity}</Badge>
         </div>
       </div>
-      <div style={{ color: 'var(--text-muted)', marginBottom: 8, lineHeight: 1.5 }}>{f.summary}</div>
+      <div style={{ color: 'var(--text-muted)', marginBottom: 8, lineHeight: 1.5, fontSize: 'var(--font-size-sm)' }}>{f.summary}</div>
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        {/* Contract link — clearly labeled as contract verification */}
         <a
           href={`https://testnet.cspr.live/deploy/${f.contract_hash}`}
           target="_blank" rel="noopener noreferrer"
           style={{
-            color: 'var(--accent)', fontSize: 11, fontFamily: 'monospace',
+            color: 'var(--accent)', fontSize: 'var(--font-size-xs)', fontFamily: 'var(--font)',
             textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4,
           }}
         >
           ⬡ {f.contract} deploy ↗
         </a>
-        <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>
+        <span style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-xs)' }}>
           Via: {f.agent}
         </span>
         {f.confidence && (
-          <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>
+          <span style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-xs)' }}>
             Confidence: {(f.confidence * 100).toFixed(0)}%
           </span>
         )}
       </div>
-    </div>
+    </GlassCard>
   )
 }
 
-export default function RiskPanel({ api }) {
+export default function RiskPanel({ api, addToast }) {
   const [query, setQuery] = useState('')
   const [protocol, setProtocol] = useState('')
   const [result, setResult] = useState(null)
@@ -95,12 +74,14 @@ export default function RiskPanel({ api }) {
   const [error, setError] = useState(null)
   const [findings, setFindings] = useState([])
   const [findingsLoading, setFindingsLoading] = useState(false)
+  const [findingsSource, setFindingsSource] = useState('seed')
 
   const loadFindings = async () => {
     setFindingsLoading(true)
     try {
       const data = await api.getFindings(20)
       setFindings(data.findings || [])
+      setFindingsSource(data._source || data.source || 'seed')
     } catch {
       setFindings([])
     } finally {
@@ -118,8 +99,10 @@ export default function RiskPanel({ api }) {
     try {
       const data = await api.riskQuery({ query, protocol: protocol || undefined })
       setResult(data.result)
+      addToast({ type: 'success', message: 'Risk analysis completed successfully' })
     } catch (e) {
       setError(e.message)
+      addToast({ type: 'error', message: `Risk query failed: ${e.message}` })
     } finally {
       setLoading(false)
     }
@@ -127,103 +110,86 @@ export default function RiskPanel({ api }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Risk Intelligence</h1>
-        <span style={{
-          background: '#0a2a0a', border: '1px solid #22c55e40',
-          color: '#22c55e', fontSize: 10, fontWeight: 700,
-          padding: '3px 8px', borderRadius: 4, letterSpacing: 0.5,
-        }}>
-          ● LIVE GROQ AI
-        </span>
-      </div>
-      <p style={{ color: 'var(--text-muted)', marginBottom: 20, fontSize: 13 }}>
-        Real-time DeFi risk analysis powered by llama-3.3-70b-versatile + Casper Testnet · Results written to RiskOracle contract.
-      </p>
+      <PageHeader
+        icon="🔍"
+        badge="AI"
+        title="Risk Intelligence"
+        subtitle="Real-time DeFi risk analysis powered by llama-3.3-70b-versatile + Casper Testnet · Results written to RiskOracle contract."
+      />
 
       {/* Query box */}
-      <div style={CARD}>
-        <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 14 }}>Query VaultWatch AI Agent</h2>
-        <textarea
+      <GlassCard>
+        <h2 style={{ fontSize: 'var(--font-size-md)', fontWeight: 'var(--font-weight-semibold)', marginBottom: 'var(--space-md)' }}>
+          Query VaultWatch AI Agent
+        </h2>
+        <Input
+          type="textarea"
           value={query}
           onChange={e => setQuery(e.target.value)}
-          placeholder="e.g. What are the main risk factors for CasperSwap?&#10;e.g. Analyze governance risks on CasperLend&#10;e.g. Is the CSPR/USDC liquidity pool safe for large positions?"
-          style={{
-            width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)',
-            borderRadius: 8, color: 'var(--text)', padding: 12, fontSize: 13,
-            resize: 'vertical', minHeight: 88, outline: 'none', marginBottom: 10,
-            boxSizing: 'border-box', lineHeight: 1.5,
-          }}
+          placeholder="e.g. What are the main risk factors for CasperSwap?\ne.g. Analyze governance risks on CasperLend\ne.g. Is the CSPR/USDC liquidity pool safe for large positions?"
+          style={{ marginBottom: 'var(--space-sm)' }}
           onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleQuery() }}
         />
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <input
+          <Input
             value={protocol}
             onChange={e => setProtocol(e.target.value)}
             placeholder="Protocol (optional)"
-            style={{
-              background: 'var(--surface2)', border: '1px solid var(--border)',
-              borderRadius: 8, color: 'var(--text)', padding: '10px 12px',
-              fontSize: 13, outline: 'none', width: 180,
-            }}
+            style={{ width: 180 }}
           />
-          <button
+          <GradientBtn
             onClick={handleQuery}
             disabled={loading || !query.trim()}
-            style={{ ...BTN, opacity: loading || !query.trim() ? 0.5 : 1 }}
+            loading={loading}
           >
-            {loading ? (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 12 }}>⟳</span> Analyzing via Groq...
-              </span>
-            ) : 'Analyze Risk'}
-          </button>
-          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Ctrl+Enter</span>
+            {loading ? 'Analyzing via Groq...' : 'Analyze Risk'}
+          </GradientBtn>
+          <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>Ctrl+Enter</span>
         </div>
-      </div>
+      </GlassCard>
 
       {error && (
-        <div style={{ ...CARD, borderColor: 'var(--danger)', background: '#1a0a0a', marginBottom: 16 }}>
-          <span style={{ color: 'var(--danger)', fontSize: 13 }}>⚠ {error}</span>
-        </div>
+        <GlassCard glow="danger" style={{ marginBottom: 'var(--space-md)' }}>
+          <span style={{ color: 'var(--danger)', fontSize: 'var(--font-size-sm)' }}>⚠ {error}</span>
+        </GlassCard>
+      )}
+
+      {loading && !result && (
+        <SkeletonCard style={{ marginBottom: 'var(--space-md)' }} />
       )}
 
       {result && (
-        <div style={{ ...CARD, borderColor: 'var(--accent)', borderWidth: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--accent)' }}>
+        <GlassCard glow={result.severity ? SEVERITY_GLOW[result.severity] : undefined} style={{ marginBottom: 'var(--space-md)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 'var(--space-md)' }}>
+            <h3 style={{ fontSize: 'var(--font-size-md)', fontWeight: 'var(--font-weight-bold)', margin: 0, color: 'var(--accent)' }}>
               Live Analysis Result
             </h3>
-            {result.severity && (
-              <span style={{
-                fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
-                background: (SEVERITY_COLOR[result.severity] || '#64748b') + '22',
-                color: SEVERITY_COLOR[result.severity] || 'var(--text-muted)',
-              }}>{result.severity}</span>
-            )}
+            {result.severity && <Badge>{result.severity}</Badge>}
+            {result._source && <SourceBadge source={result._source} />}
             {result.groq_model && (
-              <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--text-muted)', marginLeft: 'auto' }}>
+              <span style={{ fontWeight: 'var(--font-weight-normal)', fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', marginLeft: 'auto' }}>
                 {result.groq_model}
               </span>
             )}
           </div>
 
-          <p style={{ marginBottom: 12, lineHeight: 1.6, fontSize: 13 }}>
+          <p style={{ marginBottom: 'var(--space-md)', lineHeight: 1.6, fontSize: 'var(--font-size-sm)' }}>
             {result.summary || result.content}
           </p>
 
           {result.risk_factors && result.risk_factors.length > 0 && (
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            <div style={{ marginBottom: 'var(--space-md)' }}>
+              <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                 Risk Factors Identified
               </div>
               {result.risk_factors.map((f, i) => (
                 <div key={i} style={{
                   display: 'flex', alignItems: 'flex-start', gap: 8,
-                  padding: '6px 0', borderBottom: i < result.risk_factors.length - 1 ? '1px solid var(--border)' : 'none',
-                  fontSize: 13,
+                  padding: 'var(--space-xs) 0',
+                  borderBottom: i < result.risk_factors.length - 1 ? '1px solid var(--border)' : 'none',
+                  fontSize: 'var(--font-size-sm)',
                 }}>
-                  <span style={{ color: '#f59e0b', flexShrink: 0, marginTop: 1 }}>▸</span>
+                  <span style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 1 }}>▸</span>
                   <span style={{ color: 'var(--text)' }}>{f}</span>
                 </div>
               ))}
@@ -231,15 +197,17 @@ export default function RiskPanel({ api }) {
           )}
 
           {result.recommendation && (
-            <div style={{ background: 'var(--surface2)', borderRadius: 8, padding: '10px 12px', marginBottom: 10, fontSize: 13 }}>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Recommendation · </span>
-              {result.recommendation}
-            </div>
+            <GlassCard glow="success" style={{ padding: 'var(--space-md)', marginBottom: 'var(--space-sm)' }}>
+              <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Recommendation · </span>
+              <span style={{ fontSize: 'var(--font-size-sm)' }}>{result.recommendation}</span>
+            </GlassCard>
           )}
 
-          <div style={{ display: 'flex', gap: 16, fontSize: 11, color: 'var(--text-muted)', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 16, fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', alignItems: 'center', flexWrap: 'wrap' }}>
             {result.confidence !== undefined && (
-              <span>Confidence: <strong style={{ color: 'var(--text)' }}>{(result.confidence * 100).toFixed(0)}%</strong></span>
+              <span>Confidence: <strong style={{ color: 'var(--text)' }}>
+                <AnimatedCounter value={result.confidence * 100} formatter={v => `${Math.round(v)}%`} />
+              </strong></span>
             )}
             {result.on_chain_contract && (
               <span>
@@ -247,36 +215,48 @@ export default function RiskPanel({ api }) {
                 <a
                   href={`https://testnet.cspr.live/deploy/${result.on_chain_hash}`}
                   target="_blank" rel="noopener noreferrer"
-                  style={{ color: 'var(--accent)', fontFamily: 'monospace' }}
+                  style={{ color: 'var(--accent)', fontFamily: 'var(--font)' }}
                 >
                   {result.on_chain_contract} deploy ↗
                 </a>
               </span>
             )}
           </div>
-        </div>
+        </GlassCard>
       )}
 
       {/* Findings feed */}
-      <div style={CARD}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <h2 style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>
+      <GlassCard>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-md)' }}>
+          <h2 style={{ fontSize: 'var(--font-size-md)', fontWeight: 'var(--font-weight-semibold)', margin: 0 }}>
             Agent Pipeline Findings
-            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400, marginLeft: 8 }}>
+            <SourceBadge source={findingsSource} />
+            <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', fontWeight: 'var(--font-weight-normal)', marginLeft: 8 }}>
               logged to Casper contracts
             </span>
           </h2>
-          <button onClick={loadFindings} disabled={findingsLoading}
-            style={{ ...BTN, padding: '6px 14px', fontSize: 12, background: 'var(--surface2)', color: 'var(--text)' }}>
-            {findingsLoading ? '...' : 'Refresh'}
-          </button>
+          <GradientBtn
+            variant="ghost"
+            size="sm"
+            onClick={loadFindings}
+            disabled={findingsLoading}
+            loading={findingsLoading}
+          >
+            Refresh
+          </GradientBtn>
         </div>
-        {findings.length === 0 ? (
-          <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Loading findings from pipeline...</p>
+        {findingsLoading && findings.length === 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+            <SkeletonLine width="100%" height={60} />
+            <SkeletonLine width="100%" height={60} />
+            <SkeletonLine width="80%" height={60} />
+          </div>
+        ) : findings.length === 0 ? (
+          <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-sm)' }}>Loading findings from pipeline...</p>
         ) : (
           findings.map((f, i) => <FindingCard key={i} f={f} />)
         )}
-      </div>
+      </GlassCard>
     </div>
   )
 }

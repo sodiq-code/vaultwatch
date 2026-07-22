@@ -1,9 +1,28 @@
 import { useState, useEffect } from 'react'
 import { CONTRACT_HASHES } from '../liveApi.js'
-
-const CARD = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 20, marginBottom: 16 }
+import { GlassCard } from '../ui/GlassCard.jsx'
+import { StatCard } from '../ui/StatCard.jsx'
+import { SkeletonCard, SkeletonLine, SkeletonTable } from '../ui/Skeleton.jsx'
+import { GradientBtn } from '../ui/GradientBtn.jsx'
+import { Input } from '../ui/Input.jsx'
+import { Badge, SourceBadge } from '../ui/Badge.jsx'
+import { PageHeader } from '../ui/PageHeader.jsx'
+import { AnimatedCounter } from '../ui/AnimatedCounter.jsx'
 
 const ACTION_COLORS = {
+  scan_complete:     'accent',
+  finding_written:   'success',
+  risk_score_updated:'success',
+  alert_dispatched:  'danger',
+  self_correction:   'warning',
+  rwa_assessed:      'info',
+  policy_updated:    'info',
+  x402_payment:      'warning',
+  behavior_indexed:  'accent',
+  safety_blocked:    'danger',
+}
+
+const ACTION_HEX = {
   scan_complete:     '#3b82f6',
   finding_written:   '#22c55e',
   risk_score_updated:'#22c55e',
@@ -16,12 +35,11 @@ const ACTION_COLORS = {
   safety_blocked:    '#ef4444',
 }
 
-export default function AuditPanel({ api }) {
+export default function AuditPanel({ api, addToast }) {
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(false)
   const [limit, setLimit] = useState(50)
   const [writeForm, setWriteForm] = useState({ action: '', actor: '', details: '' })
-  const [writeResult, setWriteResult] = useState(null)
   const [writing, setWriting] = useState(false)
 
   const loadLog = async () => {
@@ -41,11 +59,15 @@ export default function AuditPanel({ api }) {
   const handleWrite = async () => {
     if (!writeForm.action || !writeForm.actor) return
     setWriting(true)
-    setWriteResult(null)
     try {
       const data = await api.writeAudit(writeForm)
-      setWriteResult(data)
+      addToast({
+        type: 'success',
+        message: `Entry submitted — deploy hash: ${data.deploy_hash?.slice(0, 32)}… · Block #${data.block_height?.toLocaleString()} · Contract: AuditTrail`,
+      })
       loadLog()
+    } catch (e) {
+      addToast({ type: 'error', message: `Write failed: ${e.message}` })
     } finally {
       setWriting(false)
     }
@@ -53,70 +75,84 @@ export default function AuditPanel({ api }) {
 
   return (
     <div>
-      <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Audit Log</h1>
-      <p style={{ color: 'var(--text-muted)', marginBottom: 20, fontSize: 13 }}>
-        On-chain audit trail — all agent actions recorded via AuditTrail contract on Casper Testnet.{' '}
-        <a
-          href={`https://testnet.cspr.live/deploy/${CONTRACT_HASHES.AuditTrail}`}
-          target="_blank" rel="noopener noreferrer"
-          style={{ color: 'var(--accent)', fontSize: 12 }}
-        >
-          View AuditTrail deploy ↗
-        </a>
-      </p>
+      <PageHeader
+        icon="📋"
+        badge="AUDIT"
+        title="Audit Log"
+        subtitle={
+          <>
+            On-chain audit trail — all agent actions recorded via AuditTrail contract on Casper Testnet.{' '}
+            <a
+              href={`https://testnet.cspr.live/deploy/${CONTRACT_HASHES.AuditTrail}`}
+              target="_blank" rel="noopener noreferrer"
+              style={{ color: 'var(--accent)', fontSize: 'var(--font-size-xs)' }}
+            >
+              View AuditTrail deploy ↗
+            </a>
+          </>
+        }
+      />
 
       {/* Agent pipeline activity */}
-      <div style={CARD}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-          <h2 style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>
-            Pipeline Activity Log <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-muted)' }}>({entries.length} entries)</span>
+      <GlassCard>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-md)' }}>
+          <h2 style={{ fontSize: 'var(--font-size-md)', fontWeight: 'var(--font-weight-semibold)', margin: 0 }}>
+            Pipeline Activity Log <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 'var(--font-weight-normal)', color: 'var(--text-muted)' }}>({entries.length} entries)</span>
           </h2>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <select value={limit} onChange={e => setLimit(Number(e.target.value))}
-              style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', padding: '6px 10px', fontSize: 13, outline: 'none' }}>
+          <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'center' }}>
+            <Input
+              type="select"
+              value={limit}
+              onChange={e => setLimit(Number(e.target.value))}
+              style={{ width: 120 }}
+            >
               {[10, 25, 50, 100].map(n => <option key={n} value={n}>Last {n}</option>)}
-            </select>
-            <button onClick={loadLog} disabled={loading}
-              style={{ background: 'var(--surface2)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 13 }}>
-              {loading ? '...' : 'Refresh'}
-            </button>
+            </Input>
+            <GradientBtn
+              variant="ghost"
+              size="sm"
+              onClick={loadLog}
+              disabled={loading}
+              loading={loading}
+            >
+              Refresh
+            </GradientBtn>
           </div>
         </div>
 
-        {entries.length === 0 ? (
-          <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>No audit entries.</p>
+        {loading && entries.length === 0 ? (
+          <SkeletonTable rows={6} cols={4} />
+        ) : entries.length === 0 ? (
+          <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-sm)' }}>No audit entries.</p>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--font-size-sm)' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)', textAlign: 'left' }}>
-                  <th style={{ padding: '8px 12px', width: 40 }}>#</th>
-                  <th style={{ padding: '8px 12px' }}>Action</th>
-                  <th style={{ padding: '8px 12px' }}>Agent</th>
-                  <th style={{ padding: '8px 12px' }}>Details</th>
+                  <th style={{ padding: 'var(--space-sm) var(--space-md)', width: 40 }}>#</th>
+                  <th style={{ padding: 'var(--space-sm) var(--space-md)' }}>Action</th>
+                  <th style={{ padding: 'var(--space-sm) var(--space-md)' }}>Agent</th>
+                  <th style={{ padding: 'var(--space-sm) var(--space-md)' }}>Details</th>
                 </tr>
               </thead>
               <tbody>
                 {entries.map((e, i) => {
-                  const actionColor = ACTION_COLORS[e.action] || 'var(--accent)'
+                  const actionVariant = ACTION_COLORS[e.action] || 'accent'
                   return (
-                    <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '8px 12px', color: 'var(--text-muted)', fontSize: 12 }}>{e.id || i + 1}</td>
-                      <td style={{ padding: '8px 12px' }}>
-                        <span style={{
-                          fontFamily: 'monospace', fontSize: 11,
-                          background: actionColor + '18', color: actionColor,
-                          padding: '2px 8px', borderRadius: 4, fontWeight: 600,
-                        }}>
-                          {e.action}
-                        </span>
+                    <tr key={i} className="glass-row-hover" style={{
+                      borderBottom: '1px solid var(--border)',
+                      transition: 'background var(--transition-normal)',
+                    }}>
+                      <td style={{ padding: 'var(--space-sm) var(--space-md)', color: 'var(--text-muted)', fontSize: 'var(--font-size-xs)' }}>{e.id || i + 1}</td>
+                      <td style={{ padding: 'var(--space-sm) var(--space-md)' }}>
+                        <Badge variant={actionVariant} size="sm">{e.action}</Badge>
                       </td>
-                      <td style={{ padding: '8px 12px', fontWeight: 600, fontSize: 12 }}>{e.actor}</td>
+                      <td style={{ padding: 'var(--space-sm) var(--space-md)', fontWeight: 'var(--font-weight-semibold)', fontSize: 'var(--font-size-xs)' }}>{e.actor}</td>
                       <td style={{
-                        padding: '8px 12px', color: 'var(--text-muted)',
+                        padding: 'var(--space-sm) var(--space-md)', color: 'var(--text-muted)',
                         maxWidth: 320, overflow: 'hidden',
                         textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        fontSize: 12,
+                        fontSize: 'var(--font-size-xs)',
                       }} title={e.details}>
                         {e.details}
                       </td>
@@ -127,12 +163,12 @@ export default function AuditPanel({ api }) {
             </table>
           </div>
         )}
-      </div>
+      </GlassCard>
 
       {/* Write demo */}
-      <div style={CARD}>
-        <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>Write Audit Entry</h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 14 }}>
+      <GlassCard>
+        <h2 style={{ fontSize: 'var(--font-size-md)', fontWeight: 'var(--font-weight-semibold)', marginBottom: 6 }}>Write Audit Entry</h2>
+        <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-xs)', marginBottom: 'var(--space-md)' }}>
           Simulates AuditAgent writing to the{' '}
           <a href={`https://testnet.cspr.live/deploy/${CONTRACT_HASHES.AuditTrail}`}
             target="_blank" rel="noopener noreferrer"
@@ -141,52 +177,34 @@ export default function AuditPanel({ api }) {
           </a>{' '}
           on Casper Testnet.
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-          <div>
-            <label style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Action</label>
-            <input value={writeForm.action} onChange={e => setWriteForm(f => ({ ...f, action: e.target.value }))}
-              placeholder="e.g. policy_update"
-              style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', padding: '9px 12px', fontSize: 13, outline: 'none', width: '100%' }} />
-          </div>
-          <div>
-            <label style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Actor (Agent)</label>
-            <input value={writeForm.actor} onChange={e => setWriteForm(f => ({ ...f, actor: e.target.value }))}
-              placeholder="e.g. AuditAgent"
-              style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', padding: '9px 12px', fontSize: 13, outline: 'none', width: '100%' }} />
-          </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-sm)', marginBottom: 'var(--space-sm)' }}>
+          <Input
+            label="Action"
+            value={writeForm.action}
+            onChange={e => setWriteForm(f => ({ ...f, action: e.target.value }))}
+            placeholder="e.g. policy_update"
+          />
+          <Input
+            label="Actor (Agent)"
+            value={writeForm.actor}
+            onChange={e => setWriteForm(f => ({ ...f, actor: e.target.value }))}
+            placeholder="e.g. AuditAgent"
+          />
         </div>
-        <input value={writeForm.details} onChange={e => setWriteForm(f => ({ ...f, details: e.target.value }))}
+        <Input
+          value={writeForm.details}
+          onChange={e => setWriteForm(f => ({ ...f, details: e.target.value }))}
           placeholder="Details (optional)"
-          style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', padding: '9px 12px', fontSize: 13, outline: 'none', width: '100%', marginBottom: 10 }} />
-        <button
+          style={{ marginBottom: 'var(--space-sm)' }}
+        />
+        <GradientBtn
           onClick={handleWrite}
           disabled={!writeForm.action || !writeForm.actor || writing}
-          style={{
-            background: 'var(--accent)', color: '#fff', border: 'none',
-            borderRadius: 8, padding: '10px 20px', cursor: 'pointer',
-            fontSize: 14, fontWeight: 600,
-            opacity: (!writeForm.action || !writeForm.actor || writing) ? 0.5 : 1,
-          }}>
-          {writing ? '⟳ Submitting...' : 'Submit to AuditTrail'}
-        </button>
-
-        {writeResult && (
-          <div style={{ marginTop: 10, background: '#0a2a0a', border: '1px solid #22c55e30', borderRadius: 8, padding: '10px 12px' }}>
-            <div style={{ color: '#22c55e', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
-              ✓ Entry submitted
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-              Simulated deploy hash:{' '}
-              <span style={{ fontFamily: 'monospace', color: 'var(--text)' }}>
-                {writeResult.deploy_hash?.slice(0, 32)}...
-              </span>
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-              Block: #{writeResult.block_height?.toLocaleString()} · Contract: AuditTrail
-            </div>
-          </div>
-        )}
-      </div>
+          loading={writing}
+        >
+          {writing ? 'Submitting...' : 'Submit to AuditTrail'}
+        </GradientBtn>
+      </GlassCard>
     </div>
   )
 }
