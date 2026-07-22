@@ -35,18 +35,25 @@ class CorrectionResult:
 
 
 class SelfCorrectionAgent:
+    _UNSET = object()  # sentinel: distinguishes "not provided" from "explicitly empty"
+
     def __init__(
         self,
         input_queue: asyncio.Queue = None,
         output_queue: asyncio.Queue = None,
         policy_reader=None,
-        groq_api_key: str = "",
+        groq_api_key=_UNSET,
         groq_client=None,
     ):
         self.input_queue = input_queue or asyncio.Queue()
         self.output_queue = output_queue or asyncio.Queue()
         self.policy_reader = policy_reader
-        self._groq_key = groq_api_key or os.getenv("GROQ_API_KEY", "")
+        # When groq_api_key is explicitly provided (even as ""), use it directly.
+        # When not provided (default sentinel), fall back to env var.
+        if groq_api_key is SelfCorrectionAgent._UNSET:
+            self._groq_key = os.getenv("GROQ_API_KEY", "")
+        else:
+            self._groq_key = groq_api_key
         # Inject a pre-built client (tests / DI) or construct one from the key.
         if groq_client is not None:
             self._client = groq_client

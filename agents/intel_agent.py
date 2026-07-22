@@ -50,17 +50,24 @@ class IntelResponse:
 
 
 class IntelAgent:
+    _UNSET = object()  # sentinel: distinguishes "not provided" from "explicitly empty"
+
     def __init__(
         self,
         input_queue: asyncio.Queue = None,
         casper_client=None,
-        groq_api_key: str = "",
+        groq_api_key=_UNSET,
         groq_client=None,
     ):
         self.input_queue = input_queue or asyncio.Queue()
         self.casper_client = casper_client
         self.alert_count = 0
-        self._groq_key = groq_api_key or os.getenv("GROQ_API_KEY", "")
+        # When groq_api_key is explicitly provided (even as ""), use it directly.
+        # When not provided (default sentinel), fall back to env var.
+        if groq_api_key is IntelAgent._UNSET:
+            self._groq_key = os.getenv("GROQ_API_KEY", "")
+        else:
+            self._groq_key = groq_api_key
         # llama-3.3-70b-versatile — reliably supports response_format
         # {"type":"json_object"} for structured risk-analysis output. Previously
         # ``compound-beta`` (Groq's live-web-search compound model), which does

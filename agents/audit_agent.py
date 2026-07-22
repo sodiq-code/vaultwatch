@@ -96,12 +96,14 @@ class OnChainRecord:
 
 
 class AuditAgent:
+    _UNSET = object()  # sentinel: distinguishes "not provided" from "explicitly empty"
+
     def __init__(
         self,
         input_queue: asyncio.Queue = None,
         output_queue: asyncio.Queue = None,
         casper_client=None,
-        groq_api_key: str = "",
+        groq_api_key=_UNSET,
         groq_client=None,
     ):
         self.input_queue = input_queue or asyncio.Queue()
@@ -117,7 +119,12 @@ class AuditAgent:
         if groq_client is not None:
             self._client = groq_client
         else:
-            _key = groq_api_key or os.getenv("GROQ_API_KEY", "")
+            # When groq_api_key is explicitly provided (even as ""), use it directly.
+            # When not provided (default sentinel), fall back to env var.
+            if groq_api_key is AuditAgent._UNSET:
+                _key = os.getenv("GROQ_API_KEY", "")
+            else:
+                _key = groq_api_key
             self._client = Groq(api_key=_key or "mock-key") if _key else None
 
     async def record(self, action: str, actor: str, details: str = "") -> str:

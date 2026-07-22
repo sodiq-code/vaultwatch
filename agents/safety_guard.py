@@ -47,10 +47,18 @@ class SafetyResult:
 class SafetyGuard:
     """Synchronous inline guard — called directly, not a queue consumer"""
 
-    def __init__(self, policy_reader=None, groq_api_key: str = "", groq_client=None):
+    _UNSET = object()  # sentinel: distinguishes "not provided" from "explicitly empty"
+
+    def __init__(self, policy_reader=None, groq_api_key=_UNSET, groq_client=None):
         self.policy_reader = policy_reader
         self.rejection_threshold = 0.80
-        self._groq_key = groq_api_key or os.getenv("GROQ_API_KEY", "")
+        # When groq_api_key is explicitly provided (even as ""), use it directly.
+        # When not provided (default sentinel), fall back to env var.
+        # This ensures groq_api_key="" → no client (fail-closed tests).
+        if groq_api_key is SafetyGuard._UNSET:
+            self._groq_key = os.getenv("GROQ_API_KEY", "")
+        else:
+            self._groq_key = groq_api_key
         # Inject a pre-built client (tests / DI) or construct one from the key.
         # When neither is supplied, self._client is None and validate() is
         # fail-closed (rejects unverified findings).

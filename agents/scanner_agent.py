@@ -41,16 +41,23 @@ class RawEvent:
 
 
 class ScannerAgent:
+    _UNSET = object()  # sentinel: distinguishes "not provided" from "explicitly empty"
+
     def __init__(
         self,
         event_queue: asyncio.Queue = None,
-        groq_api_key: str = "",
+        groq_api_key=_UNSET,
         groq_client=None,
     ):
         self.queue = event_queue or asyncio.Queue()
         self.last_block = 0
         self.scan_count = 0
-        self._groq_key = groq_api_key or os.getenv("GROQ_API_KEY", "")
+        # When groq_api_key is explicitly provided (even as ""), use it directly.
+        # When not provided (default sentinel), fall back to env var.
+        if groq_api_key is ScannerAgent._UNSET:
+            self._groq_key = os.getenv("GROQ_API_KEY", "")
+        else:
+            self._groq_key = groq_api_key
         # Inject a pre-built client (tests / DI) or construct one from the key.
         # When neither is supplied, ``self._client`` is None and the LLM-backed
         # methods degrade gracefully (no-key fallbacks).
