@@ -1,60 +1,119 @@
-import { useEffect, useRef, useState } from 'react'
-
 /**
- * Animated stat card — large number + label with smooth counter animation.
+ * StatCard — Premium stat card with animated counter, icon, and trend indicator.
  */
-export function StatCard({ value, label, sub, color, icon, prefix = '', suffix = '', style = {}, loading = false, className = '' }) {
-  const displayValue = loading ? null : value
-  const colorVar = color === 'success' ? 'var(--success)'
-    : color === 'danger' ? 'var(--danger)'
-    : color === 'warning' ? 'var(--warning)'
-    : color === 'accent' ? 'var(--accent)'
-    : 'var(--text)'
+import { AnimatedCounter } from './AnimatedCounter.jsx'
+
+export function StatCard({
+  label,
+  value,
+  icon = null,
+  trend = null,
+  trendLabel = '',
+  suffix = '',
+  prefix = '',
+  formatter = null,
+  color = 'var(--accent)',
+  style = {},
+  className = '',
+  animated = true,
+  source = null,
+}) {
+  const isPositive = trend && trend > 0
+  const isNegative = trend && trend < 0
+
+  const trendColor = isPositive ? 'var(--success)' : isNegative ? 'var(--danger)' : 'var(--text-muted)'
+  const trendIcon = isPositive ? '↑' : isNegative ? '↓' : '→'
+
+  const defaultFormatter = (v) => {
+    if (typeof v === 'number') {
+      if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`
+      if (v >= 1_000) return `${(v / 1_000).toFixed(1)}K`
+      if (Number.isInteger(v)) return v.toString()
+      return v.toFixed(2)
+    }
+    return v
+  }
 
   return (
-    <div className={`glass-card-static slide-up ${className}`} style={{
-      padding: 'var(--space-md)',
+    <div className={`glass-card-static ${className}`} style={{
+      padding: 'var(--space-lg)',
       display: 'flex',
       flexDirection: 'column',
-      gap: 'var(--space-xs)',
+      gap: 'var(--space-sm)',
+      position: 'relative',
+      overflow: 'hidden',
       ...style,
     }}>
-      {loading ? (
-        <div className="skeleton-shimmer" style={{ width: 60, height: 28, marginBottom: 4 }} />
-      ) : (
-        <div style={{
-          fontSize: 'var(--font-size-2xl)',
-          fontWeight: 'var(--font-weight-bold)',
-          color: colorVar,
-          lineHeight: 1.1,
-        }}>
-          {prefix}{displayValue !== null ? (typeof displayValue === 'number' ? formatNumber(displayValue) : displayValue) : '—'}{suffix}
-        </div>
-      )}
+      {/* Gradient accent line */}
       <div style={{
-        fontSize: 'var(--font-size-xs)',
-        fontWeight: 'var(--font-weight-medium)',
-        color: 'var(--text-muted)',
-        letterSpacing: '0.5px',
-        textTransform: 'uppercase',
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 2,
+        background: `linear-gradient(90deg, ${color}, transparent)`,
+      }} />
+
+      {/* Label row */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 'var(--space-sm)',
       }}>
-        {icon && <span style={{ marginRight: 4 }}>{icon}</span>}
-        {label}
+        <span style={{
+          fontSize: 'var(--font-size-sm)',
+          fontWeight: 'var(--font-weight-medium)',
+          color: 'var(--text-secondary)',
+          letterSpacing: '0.3px',
+        }}>
+          {icon && <span style={{ marginRight: 6 }}>{icon}</span>}
+          {label}
+        </span>
+        {source && (
+          <span style={{
+            fontSize: 'var(--font-size-xs)',
+            color: source === 'live' ? 'var(--success)' : source === 'fallback' ? 'var(--warning)' : 'var(--accent2)',
+            fontFamily: 'var(--font-mono)',
+          }}>
+            {source === 'live' ? '⚡' : source === 'fallback' ? '⟳' : '💿'}
+          </span>
+        )}
       </div>
-      {sub && !loading && (
-        <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', marginTop: 2 }}>
-          {sub}
+
+      {/* Value */}
+      <div style={{
+        fontSize: 'var(--font-size-xl)',
+        fontWeight: 'var(--font-weight-bold)',
+        color,
+        lineHeight: 1.1,
+      }}>
+        {prefix}
+        {animated ? (
+          <AnimatedCounter value={value} formatter={formatter || defaultFormatter} />
+        ) : (
+          (formatter || defaultFormatter)(value)
+        )}
+        {suffix}
+      </div>
+
+      {/* Trend */}
+      {trend !== null && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+          fontSize: 'var(--font-size-xs)',
+          color: trendColor,
+          fontWeight: 'var(--font-weight-semibold)',
+        }}>
+          <span>{trendIcon}</span>
+          <span>{Math.abs(trend).toFixed(1)}%</span>
+          {trendLabel && <span style={{ color: 'var(--text-muted)' }}>{trendLabel}</span>}
         </div>
       )}
     </div>
   )
-}
-
-function formatNumber(n) {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M'
-  if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K'
-  if (typeof n === 'number' && !Number.isInteger(n)) return n.toFixed(2)
-  return String(n)
 }
 
 export default StatCard

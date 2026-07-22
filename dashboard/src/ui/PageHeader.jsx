@@ -1,51 +1,92 @@
-import { Badge } from './Badge.jsx'
-
 /**
- * Page header — consistent title + badge + subtitle across all panels.
+ * PageHeader — Premium page header with title, subtitle, breadcrumb, and actions slot.
  */
-export function PageHeader({ title, badge, subtitle, icon, style = {} }) {
+import { SourceBadge } from './Badge.jsx'
+
+export function PageHeader({
+  title,
+  subtitle = '',
+  icon = null,
+  source = null,
+  actions = null,
+  breadcrumbs = [],
+  style = {},
+}) {
   return (
-    <div className="fade-in" style={{
-      marginBottom: 'var(--space-lg)',
+    <div className="slide-up" style={{
       display: 'flex',
-      alignItems: 'center',
-      gap: 'var(--space-md)',
+      flexDirection: 'column',
+      gap: 'var(--space-sm)',
+      marginBottom: 'var(--space-xl)',
       ...style,
     }}>
-      {icon && (
+      {/* Breadcrumbs */}
+      {breadcrumbs.length > 0 && (
         <div style={{
-          fontSize: 'var(--font-size-xl)',
-          background: 'var(--gradient-accent)',
-          borderRadius: 'var(--radius-md)',
-          padding: 'var(--space-sm) var(--space-md)',
           display: 'flex',
           alignItems: 'center',
-          boxShadow: 'var(--shadow-glow)',
+          gap: 'var(--space-xs)',
+          fontSize: 'var(--font-size-xs)',
+          color: 'var(--text-muted)',
         }}>
-          {icon}
+          {breadcrumbs.map((bc, i) => (
+            <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              {i > 0 && <span style={{ color: 'var(--text-dark)' }}>›</span>}
+              <span style={{ color: i === breadcrumbs.length - 1 ? 'var(--accent)' : 'var(--text-muted)' }}>
+                {bc}
+              </span>
+            </span>
+          ))}
         </div>
       )}
-      <div style={{ flex: 1 }}>
-        <div style={{
-          fontSize: 'var(--font-size-xl)',
-          fontWeight: 'var(--font-weight-bold)',
-          color: 'var(--text)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 'var(--space-sm)',
-        }}>
-          {title}
-          {badge && <Badge size="sm">{badge}</Badge>}
-        </div>
-        {subtitle && (
-          <div style={{
-            fontSize: 'var(--font-size-sm)',
-            color: 'var(--text-muted)',
-            marginTop: 'var(--space-xs)',
-          }}>
-            {subtitle}
+
+      {/* Title row */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 'var(--space-md)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
+          {icon && (
+            <div style={{
+              width: 36,
+              height: 36,
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--gradient-accent)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 'var(--font-size-lg)',
+              boxShadow: 'var(--shadow-glow)',
+            }}>
+              {icon}
+            </div>
+          )}
+          <div>
+            <h2 style={{
+              fontSize: 'var(--font-size-2xl)',
+              fontWeight: 'var(--font-weight-bold)',
+              color: 'var(--text)',
+              lineHeight: 1.2,
+              margin: 0,
+            }}>
+              {title}
+            </h2>
+            {subtitle && (
+              <p style={{
+                fontSize: 'var(--font-size-sm)',
+                color: 'var(--text-secondary)',
+                margin: 0,
+                marginTop: 2,
+              }}>
+                {subtitle}
+              </p>
+            )}
           </div>
-        )}
+          {source && <SourceBadge source={source} />}
+        </div>
+        {actions && <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>{actions}</div>}
       </div>
     </div>
   )

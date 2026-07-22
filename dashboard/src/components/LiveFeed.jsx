@@ -1,365 +1,273 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { SEED_FINDINGS, fetchLiveFindings, CONTRACT_HASHES, getLiveBlockHeight } from '../liveApi.js'
+/**
+ * LiveFeed — Enhanced agent event stream showing real-time findings,
+ * audit log entries, and agent activity events.
+ */
+import { useState, useEffect, useRef } from 'react'
 import { GlassCard } from '../ui/GlassCard.jsx'
-import { StatCard } from '../ui/StatCard.jsx'
-import { SkeletonCard, SkeletonLine } from '../ui/Skeleton.jsx'
-import { GradientBtn } from '../ui/GradientBtn.jsx'
-import { Input } from '../ui/Input.jsx'
-import { Badge, SourceBadge } from '../ui/Badge.jsx'
 import { PageHeader } from '../ui/PageHeader.jsx'
-import { AnimatedCounter } from '../ui/AnimatedCounter.jsx'
+import { Badge, SeverityBadge, SourceBadge } from '../ui/Badge.jsx'
+import { GradientBtn } from '../ui/GradientBtn.jsx'
+import { StatCard } from '../ui/StatCard.jsx'
+import { SkeletonBlock } from '../ui/Skeleton.jsx'
 import { AgentActivityChart } from '../charts/AgentActivityChart.jsx'
 
-const SEV_COLOR = {
-  CRITICAL: '#ef4444',
-  HIGH:     '#f59e0b',
-  MEDIUM:   '#3b82f6',
-  LOW:      '#22c55e',
-}
+export function LiveFeed({ api, addToast }) {
+  const [findings, setFindings] = useState([])
+  const [auditLog, setAuditLog] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [source, setSource] = useState('fallback')
+  const [autoRefresh, setAutoRefresh] = useState(true)
+  const [activeView, setActiveView] = useState('findings')
+  const containerRef = useRef(null)
 
-// Simulate realistic agent activity log events
-function generateEvent(index) {
-  const agents = ['ScannerAgent', 'AnomalyAgent', 'SelfCorrectionAgent', 'AuditAgent', 'IntelAgent', 'RWAAgent', 'SafetyGuard']
-  const protocols = ['CasperSwap', 'CasperLend', 'CasperYield', 'CasperDEX', 'CSPRFarm']
-  const events = [
-    (p) => ({ type: 'SCAN', msg: `ScannerAgent scanned ${p} — ${Math.floor(Math.random()*5)+1} events ingested`, agent: 'ScannerAgent' }),
-    (p) => ({ type: 'ANOMALY', msg: `AnomalyAgent classified ${p} event as ${['HIGH', 'MEDIUM', 'LOW'][Math.floor(Math.random()*3)]} risk`, agent: 'AnomalyAgent' }),
-    (p) => ({ type: 'AUDIT', msg: `AuditAgent wrote finding to AuditTrail contract on casper-test`, agent: 'AuditAgent' }),
-    (p) => ({ type: 'SAFETY', msg: `SafetyGuard passed query in ${Math.floor(Math.random()*30)+15}ms — no injection detected`, agent: 'SafetyGuard' }),
-    (p) => ({ type: 'CORRECT', msg: `SelfCorrectionAgent re-evaluated low-confidence (${(Math.random()*0.2+0.5).toFixed(2)}) finding`, agent: 'SelfCorrectionAgent' }),
-    (p) => ({ type: 'RWA', msg: `RWAAgent assessed asset via Groq Compound — collateral ratio within bounds`, agent: 'RWAAgent' }),
-    (p) => ({ type: 'ALERT', msg: `IntelAgent dispatched ${['MEDIUM', 'HIGH'][Math.floor(Math.random()*2)]} alert to ${Math.floor(Math.random()*5)+1} subscribers`, agent: 'IntelAgent' }),
-    (p) => ({ type: 'BLOCK', msg: `New block #${getLiveBlockHeight()} finalized on casper-test`, agent: 'Network' }),
-    (p) => ({ type: 'X402', msg: `x402 payment received — 0.5 CSPR deducted from SubscriberVault`, agent: 'IntelAgent' }),
-    (p) => ({ type: 'POLICY', msg: `RiskPolicyManager policy check passed for ${p}`, agent: 'RiskPolicyManager' }),
-  ]
-  const proto  = protocols[Math.floor(Math.random() * protocols.length)]
-  const evtFn  = events[index % events.length]
-  return {
-    id:        `EVT-${Date.now()}-${index}`,
-    timestamp: new Date(),
-    protocol:  proto,
-    ...evtFn(proto),
-  }
-}
-
-const TYPE_COLOR = {
-  SCAN:    '#4f7cff',
-  ANOMALY: '#f59e0b',
-  AUDIT:   '#22c55e',
-  SAFETY:  '#8b5cf6',
-  CORRECT: '#06b6d4',
-  RWA:     '#10b981',
-  ALERT:   '#ef4444',
-  BLOCK:   '#64748b',
-  X402:    '#f97316',
-  POLICY:  '#6366f1',
-}
-
-const TYPE_VARIANT = {
-  SCAN:    'accent',
-  ANOMALY: 'warning',
-  AUDIT:   'success',
-  SAFETY:  'accent',
-  CORRECT: 'info',
-  RWA:     'success',
-  ALERT:   'danger',
-  BLOCK:   'default',
-  X402:    'warning',
-  POLICY:  'accent',
-}
-
-function EventRow({ event, isNew }) {
-  const color = TYPE_COLOR[event.type] || '#64748b'
-  const ts    = event.timestamp.toLocaleTimeString()
-  return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'flex-start',
-      gap: 12,
-      padding: '9px 12px',
-      background: isNew ? color + '11' : 'transparent',
-      borderBottom: '1px solid var(--border)',
-      fontSize: 'var(--font-size-xs)',
-      transition: 'background 1s ease',
-    }}>
-      <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--font)', flexShrink: 0, fontSize: 'var(--font-size-xs)', marginTop: 1 }}>{ts}</span>
-      <Badge variant={TYPE_VARIANT[event.type] || 'default'} size="sm" style={{ flexShrink: 0, marginTop: 1 }}>
-        {event.type}
-      </Badge>
-      <span style={{ color: 'var(--text-muted)', flexShrink: 0, fontSize: 'var(--font-size-xs)', marginTop: 1 }}>
-        [{event.agent}]
-      </span>
-      <span style={{ color: 'var(--text)', flex: 1, lineHeight: 1.4 }}>{event.msg}</span>
-    </div>
-  )
-}
-
-function FindingCard({ f }) {
-  const color = SEV_COLOR[f.severity] || '#64748b'
-  const age   = Math.round((Date.now() - (f.timestamp || 0)) / 60000)
-  const ageStr = age < 60 ? `${age}m ago` : `${Math.round(age / 60)}h ago`
-  const isOnChain = f.source === 'on-chain'
-  const explorerUrl = isOnChain
-    ? `https://testnet.cspr.live/contract/${f.contract_hash}`
-    : `https://testnet.cspr.live/deploy/${f.contract_hash}`
-  return (
-    <GlassCard style={{ padding: 'var(--space-md)', marginBottom: 'var(--space-sm)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontWeight: 'var(--font-weight-bold)', fontSize: 'var(--font-size-sm)' }}>{f.protocol}</span>
-          <span style={{ fontFamily: 'var(--font)', fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>{f.id}</span>
-          {isOnChain && <SourceBadge source="on-chain" />}
-          {!isOnChain && f.source && <SourceBadge source={f.source} />}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-xs)' }}>{ageStr}</span>
-          <Badge size="sm">{f.severity}</Badge>
-        </div>
-      </div>
-      <div style={{ color: 'var(--text-muted)', marginBottom: 7, lineHeight: 1.5, fontSize: 'var(--font-size-xs)' }}>{f.summary}</div>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-        <a href={explorerUrl}
-          target="_blank" rel="noopener noreferrer"
-          style={{ color: 'var(--accent)', fontSize: 'var(--font-size-xs)', textDecoration: 'none' }}>
-          ⬡ {f.contract} ↗
-        </a>
-        <span style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-xs)' }}>Via: {f.agent}</span>
-        <span style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-xs)' }}>
-          Conf: {(f.confidence * 100).toFixed(0)}%
-        </span>
-      </div>
-    </GlassCard>
-  )
-}
-
-export default function LiveFeed({ api, cspr, network, blockHeight, addToast }) {
-  const [events, setEvents]     = useState(() => {
-    return Array.from({ length: 12 }, (_, i) => ({ ...generateEvent(i), isNew: false }))
-  })
-  const [paused, setPaused]     = useState(false)
-  const [filter, setFilter]     = useState('ALL')
-  const [newIds, setNewIds]     = useState(new Set())
-  const [findings, setFindings] = useState(SEED_FINDINGS)
-  const [findingsSource, setFindingsSource] = useState('seed')
-  const eventCounter            = useRef(12)
-  const listRef                 = useRef(null)
-
-  // Fetch REAL on-chain findings through the FastAPI proxy
   useEffect(() => {
-    let cancelled = false
-    const load = async () => {
-      const r = await fetchLiveFindings(20)
-      if (cancelled) return
-      if (r?.findings?.length) {
-        setFindings(r.findings)
-        setFindingsSource(r.source)
+    loadData()
+    if (autoRefresh) {
+      const interval = setInterval(loadData, 10000)
+      return () => clearInterval(interval)
+    }
+  }, [autoRefresh])
+
+  const loadData = async () => {
+    try {
+      const findingsData = await api.fetchLiveFindings(30)
+      if (findingsData?.findings) {
+        setFindings(prev => {
+          // Only update if new findings exist
+          if (findingsData.findings.length > prev.length) return findingsData.findings
+          return prev
+        })
+        setSource(findingsData.source || 'fallback')
       }
+
+      const auditData = await api.getAuditLog(15)
+      if (auditData?.entries) {
+        setAuditLog(auditData.entries)
+      }
+    } catch (e) {
+      // Keep stale
+    } finally {
+      setLoading(false)
     }
-    load()
-    const id = setInterval(load, 30_000)
-    return () => { cancelled = true; clearInterval(id) }
-  }, [])
+  }
 
-  // Auto-scroll to bottom
-  const scrollToBottom = useCallback(() => {
-    if (listRef.current) {
-      listRef.current.scrollTop = listRef.current.scrollHeight
-    }
-  }, [])
+  if (loading) {
+    return (
+      <div style={{ padding: 'var(--space-lg)' }}>
+        <SkeletonBlock height={40} style={{ marginBottom: 'var(--space-lg)' }} />
+        <SkeletonBlock height={300} />
+      </div>
+    )
+  }
 
-  // Emit new events
-  useEffect(() => {
-    if (paused) return
-    const tick = setInterval(() => {
-      const newEvt = { ...generateEvent(eventCounter.current++), isNew: true }
-      setEvents(prev => [...prev.slice(-150), newEvt])
-      setNewIds(ids => { const s = new Set(ids); s.add(newEvt.id); return s })
-      setTimeout(() => {
-        setNewIds(ids => { const s = new Set(ids); s.delete(newEvt.id); return s })
-      }, 2000)
-    }, 2800 + Math.random() * 2000)
-    return () => clearInterval(tick)
-  }, [paused])
-
-  useEffect(() => { scrollToBottom() }, [events, scrollToBottom])
-
-  const allTypes = ['ALL', 'SCAN', 'ANOMALY', 'AUDIT', 'ALERT', 'SAFETY', 'CORRECT', 'RWA', 'BLOCK', 'X402', 'POLICY']
-  const filtered = filter === 'ALL' ? events : events.filter(e => e.type === filter)
-
-  // Agent stats
-  const agentCounts = events.reduce((acc, e) => {
-    acc[e.agent] = (acc[e.agent] || 0) + 1
+  // Agent activity chart data
+  const agentCounts = findings.reduce((acc, f) => {
+    const a = f.agent?.split('→')[0]?.trim() || 'Unknown'
+    acc[a] = (acc[a] || 0) + 1
     return acc
   }, {})
-  const sortedAgents = Object.entries(agentCounts).sort((a, b) => b[1] - a[1])
-  const totalEvents  = events.length
-
-  // Build AgentActivityChart data
-  const chartData = sortedAgents.slice(0, 8).map(([agent, count]) => ({ agent, count }))
+  const chartData = Object.entries(agentCounts).map(([agent, count]) => ({ agent, count }))
 
   return (
-    <div>
+    <div className="fade-in" style={{ padding: 'var(--space-lg)' }}>
       <PageHeader
+        title="Agent Events"
+        subtitle="Live event stream — findings, audit trail, agent activity"
         icon="📡"
-        badge="LIVE"
-        title="Live Agent Feed"
-        subtitle="Real-time VaultWatch agent pipeline activity — events emit every 3–5s. Scroll to the bottom for latest events."
+        source={source}
+        actions={
+          <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+            <GradientBtn variant={autoRefresh ? 'primary' : 'ghost'} size="sm" onClick={() => setAutoRefresh(!autoRefresh)} icon="⟳">
+              {autoRefresh ? 'Auto' : 'Manual'}
+            </GradientBtn>
+            <GradientBtn variant="ghost" size="sm" onClick={loadData} icon="🔄">
+              Refresh
+            </GradientBtn>
+          </div>
+        }
       />
 
-      {/* ── Live Summary Stats ──────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-sm)', marginBottom: 'var(--space-md)' }}>
-        <StatCard
-          label="Events Streamed"
-          value={totalEvents}
-          color="accent"
-          icon="📊"
-        />
-        <StatCard
-          label="Block Height"
-          value={blockHeight?.toLocaleString() ?? '—'}
-          color="accent"
-          icon="⬡"
-        />
-        <StatCard
-          label="Era ID"
-          value={network?.era_id ?? '—'}
-          color="accent"
-          icon="⚡"
-        />
-        <StatCard
-          label="CSPR Price"
-          value={cspr?.usd != null ? `$${cspr.usd.toFixed(4)}` : '—'}
-          sub={cspr?.change_24h != null ? `${cspr.change_24h >= 0 ? '+' : ''}${cspr.change_24h.toFixed(2)}% 24h` : ''}
-          color={cspr?.change_24h >= 0 ? 'success' : cspr?.change_24h < 0 ? 'danger' : 'accent'}
-          icon="💲"
-        />
-        <StatCard
-          label="Active Agents"
-          value={7}
-          color="success"
-          icon="🤖"
-        />
-        <StatCard
-          label="On-Chain Contracts"
-          value={8}
-          color="success"
-          icon="⬡"
-        />
+      {/* Stats */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+        gap: 'var(--space-md)',
+        marginBottom: 'var(--space-lg)',
+      }}>
+        <StatCard label="Active Findings" value={findings.length} icon="🔍" color="var(--accent)" />
+        <StatCard label="Audit Entries" value={auditLog.length} icon="📋" color="var(--accent2)" />
+        <StatCard label="Critical" value={findings.filter(f => f.severity === 'CRITICAL').length} icon="🔴" color="var(--danger)" />
+        <StatCard label="Agents Active" value={Object.keys(agentCounts).length} icon="🧠" color="var(--success)" />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 'var(--space-md)' }}>
-        {/* ── Event Log ────────────────────────────────────────────────── */}
-        <GlassCard>
-          {/* Controls */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', marginBottom: 'var(--space-sm)', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-semibold)' }}>Agent Event Log</span>
-            <div style={{ flex: 1 }} />
-            <GradientBtn
-              variant={paused ? 'success' : 'ghost'}
-              size="sm"
-              onClick={() => setPaused(p => !p)}
-            >
-              {paused ? '▶ Resume' : '⏸ Pause'}
-            </GradientBtn>
-            <GradientBtn
-              variant="ghost"
-              size="sm"
-              onClick={() => { setEvents([]); eventCounter.current = 0 }}
-            >
-              Clear
-            </GradientBtn>
-          </div>
+      {/* View toggle */}
+      <div style={{ display: 'flex', gap: 'var(--space-sm)', marginBottom: 'var(--space-md)' }}>
+        <GradientBtn variant={activeView === 'findings' ? 'primary' : 'ghost'} size="sm" onClick={() => setActiveView('findings')}>
+          Findings Feed
+        </GradientBtn>
+        <GradientBtn variant={activeView === 'audit' ? 'primary' : 'ghost'} size="sm" onClick={() => setActiveView('audit')}>
+          Audit Trail
+        </GradientBtn>
+        <GradientBtn variant={activeView === 'chart' ? 'primary' : 'ghost'} size="sm" onClick={() => setActiveView('chart')}>
+          Activity Chart
+        </GradientBtn>
+      </div>
 
-          {/* Type filter */}
-          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 'var(--space-sm)' }}>
-            {allTypes.map(t => (
-              <Badge
-                key={t}
-                size="sm"
-                variant={filter === t ? (TYPE_VARIANT[t] || 'accent') : 'default'}
-                pulse={t === 'ALL' && filter === 'ALL'}
-                style={{
-                  cursor: 'pointer',
-                  opacity: filter === t ? 1 : 0.6,
-                  transition: 'all var(--transition-normal)',
-                }}
-                onClick={() => setFilter(t)}
-              >
-                {t}
-              </Badge>
-            ))}
-          </div>
-
-          {/* Event list */}
-          <div ref={listRef} style={{
-            height: 420, overflowY: 'auto',
-            background: 'var(--glass-bg)',
-            borderRadius: 'var(--radius-md)',
-            fontFamily: 'var(--font)',
-            border: '1px solid var(--glass-border)',
+      {activeView === 'findings' && (
+        <GlassCard hover={false} style={{ padding: 'var(--space-lg)' }}>
+          <div style={{
+            fontSize: 'var(--font-size-lg)',
+            fontWeight: 'var(--font-weight-semibold)',
+            color: 'var(--text)',
+            marginBottom: 'var(--space-md)',
           }}>
-            {filtered.length === 0 ? (
-              <div style={{ padding: 20, color: 'var(--text-muted)', fontSize: 'var(--font-size-xs)', textAlign: 'center' }}>
-                No events yet{filter !== 'ALL' ? ` for filter: ${filter}` : ''}…
-              </div>
-            ) : filtered.map(evt => (
-              <EventRow key={evt.id} event={evt} isNew={newIds.has(evt.id)} />
-            ))}
+            Live Findings Stream
           </div>
-
-          <div style={{ marginTop: 'var(--space-sm)', fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between' }}>
-            <span>Showing {filtered.length} events{filter !== 'ALL' ? ` (filtered: ${filter})` : ''}</span>
-            <span>{paused ? '⏸ Paused' : '● Streaming live…'}</span>
+          <div ref={containerRef} style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'var(--space-sm)',
+            maxHeight: 500,
+            overflowY: 'auto',
+          }}>
+            {findings.map((finding, i) => (
+              <div key={finding.id || i} className="slide-in-right" style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 'var(--space-md)',
+                padding: 'var(--space-md)',
+                background: i === 0 ? 'rgba(0, 212, 255, 0.08)' : 'rgba(14, 18, 30, 0.4)',
+                borderRadius: 'var(--radius-md)',
+                borderLeft: `3px solid ${
+                  finding.severity === 'CRITICAL' ? 'var(--danger)' :
+                  finding.severity === 'HIGH' ? '#ff6b7a' :
+                  finding.severity === 'MEDIUM' ? 'var(--warning)' : 'var(--info)'
+                }`,
+                animation: i === 0 ? 'highlightNew 2s ease-out' : 'none',
+              }}>
+                <SeverityBadge severity={finding.severity} />
+                <div style={{ flex: 1 }}>
+                  <div style={{
+                    fontSize: 'var(--font-size-md)',
+                    fontWeight: 'var(--font-weight-semibold)',
+                    color: 'var(--text)',
+                    marginBottom: 4,
+                  }}>
+                    {finding.protocol} — {finding.risk_type}
+                  </div>
+                  <div style={{
+                    fontSize: 'var(--font-size-sm)',
+                    color: 'var(--text-secondary)',
+                    lineHeight: 1.4,
+                  }}>
+                    {finding.summary?.slice(0, 150)}{finding.summary?.length > 150 ? '…' : ''}
+                  </div>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--space-sm)',
+                    marginTop: 6,
+                    fontSize: 'var(--font-size-xs)',
+                    color: 'var(--text-muted)',
+                  }}>
+                    <span>{((finding.confidence || 0) * 100).toFixed(0)}%</span>
+                    <span>•</span>
+                    <span>{finding.agent}</span>
+                    <span>•</span>
+                    <span>{new Date(finding.timestamp).toLocaleTimeString()}</span>
+                  </div>
+                </div>
+                <SourceBadge source={finding.source || source} />
+              </div>
+            ))}
           </div>
         </GlassCard>
+      )}
 
-        {/* ── Sidebar: Agent Stats + Active Findings ──────────────────── */}
-        <div>
-          {/* Agent Activity */}
-          <GlassCard>
-            <h3 style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-bold)', marginBottom: 'var(--space-sm)' }}>Agent Activity</h3>
-            <AgentActivityChart data={chartData} height={140} />
-          </GlassCard>
+      {activeView === 'audit' && (
+        <GlassCard hover={false} style={{ padding: 'var(--space-lg)' }}>
+          <div style={{
+            fontSize: 'var(--font-size-lg)',
+            fontWeight: 'var(--font-weight-semibold)',
+            color: 'var(--text)',
+            marginBottom: 'var(--space-md)',
+          }}>
+            Audit Trail
+          </div>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'var(--space-xs)',
+            maxHeight: 400,
+            overflowY: 'auto',
+          }}>
+            {auditLog.map((entry, i) => (
+              <div key={entry.id || i} className="glass-row-hover" style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--space-sm)',
+                padding: 'var(--space-sm)',
+                background: 'rgba(14, 18, 30, 0.4)',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: 'var(--font-size-sm)',
+              }}>
+                <Badge size="xs" colorScheme="muted">{entry.action}</Badge>
+                <span style={{ color: 'var(--accent2)', fontWeight: 'var(--font-weight-semibold)' }}>{entry.actor}</span>
+                <span style={{ color: 'var(--text-muted)', flex: 1, fontSize: 'var(--font-size-xs)' }}>{entry.details?.slice(0, 80)}</span>
+                <span style={{ color: 'var(--text-dark)', fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)' }}>
+                  {entry.deploy_hash?.slice(0, 8)}…
+                </span>
+                <span style={{ color: 'var(--text-dark)', fontSize: 'var(--font-size-xs)' }}>
+                  {new Date(entry.timestamp).toLocaleTimeString()}
+                </span>
+              </div>
+            ))}
+          </div>
+        </GlassCard>
+      )}
 
-          {/* Contract activity */}
-          <GlassCard>
-            <h3 style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-bold)', marginBottom: 'var(--space-sm)' }}>Active Contracts</h3>
-            <div style={{ fontSize: 'var(--font-size-xs)', display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
-              {Object.entries(CONTRACT_HASHES).map(([name, hash]) => (
-                <div key={name} className="glass-row-hover" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: 'var(--space-xs) var(--space-sm)', background: 'var(--glass-bg)', borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--glass-border)',
-                  transition: 'all var(--transition-normal)',
+      {activeView === 'chart' && (
+        <GlassCard hover={false} style={{ padding: 'var(--space-lg)' }}>
+          <div style={{
+            fontSize: 'var(--font-size-lg)',
+            fontWeight: 'var(--font-weight-semibold)',
+            color: 'var(--text)',
+            marginBottom: 'var(--space-md)',
+          }}>
+            Agent Activity Breakdown
+          </div>
+          {chartData.length > 0 && <AgentActivityChart data={chartData} height={200} />}
+          <div style={{ marginTop: 'var(--space-md)', display: 'flex', flexDirection: 'column', gap: 'var(--space-xs)' }}>
+            {chartData.map((d, i) => (
+              <div key={i} style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--space-sm)',
+                fontSize: 'var(--font-size-sm)',
+              }}>
+                <span style={{ fontWeight: 'var(--font-weight-semibold)', color: 'var(--text)' }}>{d.agent}</span>
+                <div style={{
+                  flex: 1,
+                  height: 6,
+                  background: 'rgba(14, 18, 30, 0.4)',
+                  borderRadius: 3,
+                  overflow: 'hidden',
                 }}>
-                  <a href={`https://testnet.cspr.live/deploy/${hash}`} target="_blank" rel="noopener noreferrer"
-                    style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 'var(--font-weight-semibold)' }}>{name}</a>
-                  <Badge variant="success" size="sm">✓ ON-CHAIN</Badge>
+                  <div style={{
+                    height: '100%',
+                    width: `${(d.count / (Math.max(...chartData.map(c => c.count)) || 1)) * 100}%`,
+                    background: 'var(--gradient-accent)',
+                    borderRadius: 3,
+                  }} />
                 </div>
-              ))}
-            </div>
-          </GlassCard>
-        </div>
-      </div>
-
-      {/* ── Recent Findings ───────────────────────────────────────────────── */}
-      <GlassCard>
-        <h2 style={{ fontSize: 'var(--font-size-md)', fontWeight: 'var(--font-weight-semibold)', marginBottom: 'var(--space-md)', display: 'flex', alignItems: 'center', gap: 8 }}>
-          Recent Findings — Agent Pipeline Output
-          <SourceBadge source={findingsSource} />
-          <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', fontWeight: 'var(--font-weight-normal)' }}>
-            written to Casper contracts
-          </span>
-        </h2>
-        {findings.map((f, i) => (
-          <FindingCard key={f.id || i} f={f} />
-        ))}
-        <div style={{ marginTop: 'var(--space-sm)', fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>
-          Each finding is linked to its specific on-chain contract deploy.
-          Click any contract name to verify on <a href="https://testnet.cspr.live" target="_blank" rel="noopener noreferrer"
-            style={{ color: 'var(--accent)', textDecoration: 'none' }}>testnet.cspr.live ↗</a>
-        </div>
-      </GlassCard>
+                <span style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>{d.count}</span>
+              </div>
+            ))}
+          </div>
+        </GlassCard>
+      )}
     </div>
   )
 }
+
+export default LiveFeed

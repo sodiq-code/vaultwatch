@@ -1,53 +1,124 @@
 /**
- * Premium gradient button — replaces all inline `BTN` patterns.
- * Supports gradient backgrounds, glow effects, loading state, and disabled state.
+ * GradientBtn — Premium gradient button with glow, loading state, and variants.
  */
-export function GradientBtn({ children, onClick, loading = false, disabled = false, variant = 'accent', size = 'md', style = {}, className = '', ...rest }) {
-  const gradient = variant === 'accent' ? 'var(--gradient-accent)'
-    : variant === 'success' ? 'var(--gradient-success)'
-    : variant === 'danger' ? 'var(--gradient-danger)'
-    : variant === 'warning' ? 'var(--gradient-warning)'
-    : variant === 'info' ? 'var(--gradient-info)'
-    : variant === 'ghost' ? 'none'
-    : 'var(--gradient-accent)'
 
+const VARIANT_MAP = {
+  primary: {
+    bg: 'var(--gradient-accent)',
+    hoverBg: 'linear-gradient(135deg, #00d4ff, #8b5cf6)',
+    color: '#fff',
+    glow: 'var(--shadow-glow)',
+  },
+  secondary: {
+    bg: 'var(--gradient-accent2)',
+    hoverBg: 'linear-gradient(135deg, #8b5cf6, #c084fc)',
+    color: '#fff',
+    glow: 'var(--shadow-glow2)',
+  },
+  success: {
+    bg: 'var(--gradient-success)',
+    hoverBg: 'linear-gradient(135deg, #00e68a, #00cc7a)',
+    color: '#fff',
+    glow: 'var(--shadow-glow-success)',
+  },
+  danger: {
+    bg: 'var(--gradient-danger)',
+    hoverBg: 'linear-gradient(135deg, #ff3b5c, #e6194b)',
+    color: '#fff',
+    glow: 'var(--shadow-glow-danger)',
+  },
+  warning: {
+    bg: 'var(--gradient-warning)',
+    hoverBg: 'linear-gradient(135deg, #ffb020, #ff8c00)',
+    color: '#fff',
+    glow: 'var(--shadow-glow-warning)',
+  },
+  ghost: {
+    bg: 'transparent',
+    hoverBg: 'rgba(0, 212, 255, 0.08)',
+    color: 'var(--accent)',
+    glow: 'none',
+  },
+  outline: {
+    bg: 'transparent',
+    hoverBg: 'rgba(0, 212, 255, 0.06)',
+    color: 'var(--accent)',
+    glow: 'none',
+  },
+}
+
+export function GradientBtn({
+  children,
+  variant = 'primary',
+  onClick = null,
+  disabled = false,
+  loading = false,
+  size = 'md',
+  icon = null,
+  fullWidth = false,
+  style = {},
+  className = '',
+  type = 'button',
+}) {
+  const v = VARIANT_MAP[variant] || VARIANT_MAP.primary
+
+  const sizeMap = {
+    sm: { padding: '6px 14px', fontSize: 'var(--font-size-sm)', minHeight: 32 },
+    md: { padding: '10px 20px', fontSize: 'var(--font-size-md)', minHeight: 40 },
+    lg: { padding: '14px 28px', fontSize: 'var(--font-size-lg)', minHeight: 48 },
+  }
+  const sz = sizeMap[size] || sizeMap.md
+
+  const isOutline = variant === 'outline'
   const isGhost = variant === 'ghost'
-  const padding = size === 'sm' ? '6px 14px' : size === 'lg' ? '10px 24px' : '8px 18px'
-  const fontSize = size === 'sm' ? 'var(--font-size-xs)' : size === 'lg' ? 'var(--font-size-md)' : 'var(--font-size-sm)'
 
   return (
     <button
+      type={type}
       className={className}
       onClick={onClick}
       disabled={disabled || loading}
       style={{
-        background: isGhost ? 'var(--surface3)' : gradient,
-        border: isGhost ? '1px solid var(--border)' : 'none',
-        borderRadius: 'var(--radius-md)',
-        padding,
-        fontSize,
-        fontWeight: 'var(--font-weight-semibold)',
-        fontFamily: 'var(--font)',
-        color: isGhost ? 'var(--text-muted)' : '#fff',
-        cursor: disabled || loading ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.5 : loading ? 0.7 : 1,
-        transition: 'all var(--transition-normal)',
-        transform: 'translateY(0)',
-        boxShadow: isGhost ? 'none' : '0 2px 12px rgba(79, 124, 255, 0.2)',
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 6,
+        gap: 8,
+        background: v.bg,
+        color: v.color,
+        border: isOutline ? '1px solid var(--border3)' : '1px solid transparent',
+        borderRadius: 'var(--radius-md)',
+        padding: sz.padding,
+        fontSize: sz.fontSize,
+        fontWeight: 'var(--font-weight-semibold)',
+        fontFamily: 'var(--font)',
+        minHeight: sz.minHeight,
+        cursor: disabled || loading ? 'not-allowed' : 'pointer',
+        boxShadow: v.glow,
+        opacity: disabled ? 0.5 : 1,
+        width: fullWidth ? '100%' : 'auto',
+        transition: 'all var(--transition-normal)',
         letterSpacing: '0.3px',
-        outline: 'none',
+        position: 'relative',
+        overflow: 'hidden',
+        ...(loading ? { pointerEvents: 'none' } : {}),
         ...style,
       }}
-      onMouseEnter={e => { if (!disabled && !loading) e.currentTarget.style.transform = 'translateY(-1px)' }}
-      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)' }}
-      {...rest}
     >
-      {loading && <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⟳</span>}
+      {loading && (
+        <span style={{
+          display: 'inline-block',
+          width: 16,
+          height: 16,
+          border: '2px solid rgba(255,255,255,0.3)',
+          borderTopColor: '#fff',
+          borderRadius: '50%',
+          animation: 'spin 0.6s linear infinite',
+        }} />
+      )}
+      {icon && !loading && <span>{icon}</span>}
       {children}
     </button>
   )
 }
+
+export default GradientBtn

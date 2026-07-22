@@ -1,50 +1,76 @@
-import { useRef, useEffect } from 'react'
-
 /**
- * Glassmorphism card component — the foundation of the premium design system.
- * Replaces all inline `CARD` patterns with a reusable, animated, glass-effect card.
+ * GlassCard — Premium glassmorphism card with gradient overlay and hover effects.
+ * Uses the design system CSS variables extensively.
  */
-export function GlassCard({ children, style = {}, glow = false, hoverable = true, animated = true, className = '', onClick, ...rest }) {
-  const ref = useRef(null)
+import { useState } from 'react'
 
-  useEffect(() => {
-    if (animated && ref.current) {
-      ref.current.classList.add('fade-in')
-    }
-  }, [animated])
+export function GlassCard({
+  children,
+  className = '',
+  style = {},
+  hover = true,
+  glow = false,
+  glowColor = 'cyan',
+  padding = 'var(--space-lg)',
+  onClick = null,
+  animated = false,
+  tag = null,
+  ...rest
+}) {
+  const [isHovered, setIsHovered] = useState(false)
 
-  const glowShadow = glow
-    ? glow === 'success' ? 'var(--shadow-glow-success)'
-    : glow === 'danger' ? 'var(--shadow-glow-danger)'
-    : glow === 'warning' ? 'var(--shadow-glow-warning)'
-    : 'var(--shadow-glow)'
-    : ''
+  const glowMap = {
+    cyan: 'var(--shadow-glow)',
+    violet: 'var(--shadow-glow2)',
+    success: 'var(--shadow-glow-success)',
+    danger: 'var(--shadow-glow-danger)',
+    warning: 'var(--shadow-glow-warning)',
+  }
+
+  const baseClass = hover ? 'glass-card' : 'glass-card-static'
+  const animClass = animated ? 'slide-up' : ''
+  const classes = [baseClass, animClass, className].filter(Boolean).join(' ')
+
+  const computedStyle = {
+    padding,
+    ...(glow ? { boxShadow: `${glowMap[glowColor] || glowMap.cyan}, var(--shadow-card)` } : {}),
+    ...(onClick ? { cursor: 'pointer' } : {}),
+    ...(isHovered && hover ? {
+      transform: 'translateY(-2px)',
+      boxShadow: `${glowMap[glowColor] || glowMap.cyan}, var(--shadow-lg), var(--shadow-inner)`,
+    } : {}),
+    ...style,
+  }
 
   return (
     <div
-      ref={ref}
-      className={`glass-card ${hoverable ? 'glass-card-hover' : 'glass-card-static'} ${className}`}
-      style={{
-        padding: 'var(--space-lg)',
-        boxShadow: glowShadow ? `${glowShadow}, var(--shadow-inner)` : undefined,
-        cursor: onClick ? 'pointer' : undefined,
-        ...style,
-      }}
+      className={classes}
+      style={computedStyle}
       onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       {...rest}
     >
+      {tag && (
+        <div style={{
+          position: 'absolute',
+          top: -8,
+          right: 12,
+          background: 'var(--gradient-accent)',
+          color: '#fff',
+          fontSize: 'var(--font-size-xs)',
+          fontWeight: 'var(--font-weight-bold)',
+          padding: '2px 10px',
+          borderRadius: 'var(--radius-full)',
+          boxShadow: 'var(--shadow-glow)',
+          letterSpacing: '0.5px',
+        }}>
+          {tag}
+        </div>
+      )}
       {children}
     </div>
   )
 }
 
-/**
- * Compact glass card for inline/sub-sections.
- */
-export function GlassCardCompact({ children, style = {}, ...rest }) {
-  return (
-    <GlassCard style={{ padding: 'var(--space-md)', ...style }} {...rest}>
-      {children}
-    </GlassCard>
-  )
-}
+export default GlassCard

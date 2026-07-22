@@ -1,262 +1,290 @@
+/**
+ * RiskPanel — Enhanced risk intelligence with findings feed, risk query, and severity breakdown.
+ */
 import { useState, useEffect } from 'react'
 import { GlassCard } from '../ui/GlassCard.jsx'
+import { PageHeader } from '../ui/PageHeader.jsx'
 import { StatCard } from '../ui/StatCard.jsx'
-import { SkeletonCard, SkeletonLine } from '../ui/Skeleton.jsx'
+import { Badge, SeverityBadge, SourceBadge } from '../ui/Badge.jsx'
 import { GradientBtn } from '../ui/GradientBtn.jsx'
 import { Input } from '../ui/Input.jsx'
-import { Badge, SourceBadge } from '../ui/Badge.jsx'
-import { PageHeader } from '../ui/PageHeader.jsx'
+import { SkeletonBlock, SkeletonLine } from '../ui/Skeleton.jsx'
 import { AnimatedCounter } from '../ui/AnimatedCounter.jsx'
+import { RiskGaugeChart } from '../charts/RiskGaugeChart.jsx'
+import { AgentActivityChart } from '../charts/AgentActivityChart.jsx'
 
-const SEVERITY_COLOR = {
-  CRITICAL: '#ef4444',
-  HIGH:     '#f59e0b',
-  MEDIUM:   '#3b82f6',
-  LOW:      '#22c55e',
-}
-
-const SEVERITY_GLOW = {
-  CRITICAL: 'danger',
-  HIGH:     'warning',
-  MEDIUM:   undefined,
-  LOW:      'success',
-}
-
-function FindingCard({ f }) {
-  const color = SEVERITY_COLOR[f.severity] || '#64748b'
-  const glow = SEVERITY_GLOW[f.severity]
-  const age = Math.round((Date.now() - f.timestamp) / 60000)
-  const ageStr = age < 60 ? `${age}m ago` : `${Math.round(age / 60)}h ago`
-
-  return (
-    <GlassCard glow={glow} style={{ padding: 'var(--space-md)', marginBottom: 'var(--space-sm)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontWeight: 'var(--font-weight-bold)', fontSize: 'var(--font-size-md)' }}>{f.protocol}</span>
-          <span style={{ fontFamily: 'var(--font)', fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>{f.id}</span>
-          {f.source && <SourceBadge source={f.source} />}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-xs)' }}>{ageStr}</span>
-          <Badge>{f.severity}</Badge>
-        </div>
-      </div>
-      <div style={{ color: 'var(--text-muted)', marginBottom: 8, lineHeight: 1.5, fontSize: 'var(--font-size-sm)' }}>{f.summary}</div>
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <a
-          href={`https://testnet.cspr.live/deploy/${f.contract_hash}`}
-          target="_blank" rel="noopener noreferrer"
-          style={{
-            color: 'var(--accent)', fontSize: 'var(--font-size-xs)', fontFamily: 'var(--font)',
-            textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4,
-          }}
-        >
-          ⬡ {f.contract} deploy ↗
-        </a>
-        <span style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-xs)' }}>
-          Via: {f.agent}
-        </span>
-        {f.confidence && (
-          <span style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-xs)' }}>
-            Confidence: {(f.confidence * 100).toFixed(0)}%
-          </span>
-        )}
-      </div>
-    </GlassCard>
-  )
-}
-
-export default function RiskPanel({ api, addToast }) {
+export function RiskPanel({ api, addToast }) {
+  const [findings, setFindings] = useState([])
+  const [riskScore, setRiskScore] = useState(null)
+  const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [protocol, setProtocol] = useState('')
-  const [result, setResult] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [findings, setFindings] = useState([])
-  const [findingsLoading, setFindingsLoading] = useState(false)
-  const [findingsSource, setFindingsSource] = useState('seed')
+  const [queryResult, setQueryResult] = useState(null)
+  const [queryLoading, setQueryLoading] = useState(false)
+  const [source, setSource] = useState('fallback')
+
+  useEffect(() => {
+    loadFindings()
+    const interval = setInterval(loadFindings, 20000)
+    return () => clearInterval(interval)
+  }, [])
 
   const loadFindings = async () => {
-    setFindingsLoading(true)
     try {
-      const data = await api.getFindings(20)
-      setFindings(data.findings || [])
-      setFindingsSource(data._source || data.source || 'seed')
-    } catch {
-      setFindings([])
-    } finally {
-      setFindingsLoading(false)
-    }
-  }
-
-  useEffect(() => { loadFindings() }, [])
-
-  const handleQuery = async () => {
-    if (!query.trim()) return
-    setLoading(true)
-    setError(null)
-    setResult(null)
-    try {
-      const data = await api.riskQuery({ query, protocol: protocol || undefined })
-      setResult(data.result)
-      addToast({ type: 'success', message: 'Risk analysis completed successfully' })
+      const data = await api.fetchLiveFindings(20)
+      if (data?.findings) {
+        setFindings(data.findings)
+        setSource(data.source || 'fallback')
+      }
     } catch (e) {
-      setError(e.message)
-      addToast({ type: 'error', message: `Risk query failed: ${e.message}` })
+      // Keep stale data
     } finally {
       setLoading(false)
     }
   }
 
+  const handleRiskQuery = async () => {
+    if (!query.trim()) return
+    setQueryLoading(true)
+    setQueryResult(null)
+    try {
+      const result = await api.riskQuery({ query, protocol })
+      setQueryResult(result)
+      addToast({ type: 'success', message: 'Risk query completed' })
+    } catch (e) {
+      addToast({ type: 'error', message: `Risk query failed: ${e.message}` })
+    } finally {
+      setQueryLoading(false)
+    }
+  }
+
+  const maxRiskScore = findings.length
+    ? Math.max(...findings.map(f => Math.round((f.confidence || 0) * 100)))
+    : 0
+
+  const severityCounts = findings.reduce((acc, f) => {
+    const s = f.severity || 'UNKNOWN'
+    acc[s] = (acc[s] || 0) + 1
+    return acc
+  }, {})
+
+  const agentCounts = findings.reduce((acc, f) => {
+    const a = f.agent?.split('→')[0]?.trim() || 'Unknown'
+    acc[a] = (acc[a] || 0) + 1
+    return acc
+  }, {})
+
+  const agentData = Object.entries(agentCounts).map(([agent, count]) => ({ agent, count }))
+
+  if (loading) {
+    return (
+      <div style={{ padding: 'var(--space-lg)' }}>
+        <SkeletonBlock height={40} style={{ marginBottom: 'var(--space-lg)' }} />
+        <SkeletonBlock height={300} />
+      </div>
+    )
+  }
+
   return (
-    <div>
+    <div className="fade-in" style={{ padding: 'var(--space-lg)' }}>
       <PageHeader
-        icon="🔍"
-        badge="AI"
         title="Risk Intelligence"
-        subtitle="Real-time DeFi risk analysis powered by llama-3.3-70b-versatile + Casper Testnet · Results written to RiskOracle contract."
+        subtitle="AI-powered risk analysis with on-chain findings feed"
+        icon="🛡️"
+        source={source}
       />
 
-      {/* Query box */}
-      <GlassCard>
-        <h2 style={{ fontSize: 'var(--font-size-md)', fontWeight: 'var(--font-weight-semibold)', marginBottom: 'var(--space-md)' }}>
-          Query VaultWatch AI Agent
-        </h2>
-        <Input
-          type="textarea"
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          placeholder="e.g. What are the main risk factors for CasperSwap?\ne.g. Analyze governance risks on CasperLend\ne.g. Is the CSPR/USDC liquidity pool safe for large positions?"
-          style={{ marginBottom: 'var(--space-sm)' }}
-          onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleQuery() }}
-        />
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+      {/* Stats row */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+        gap: 'var(--space-md)',
+        marginBottom: 'var(--space-lg)',
+      }}>
+        <StatCard label="Findings" value={findings.length} icon="🔍" color="var(--accent)" />
+        <StatCard label="Max Risk Score" value={maxRiskScore} suffix="/100" icon="⚡" color={maxRiskScore > 70 ? 'var(--danger)' : 'var(--warning)'} />
+        <StatCard label="Critical" value={severityCounts.CRITICAL || 0} icon="🔴" color="var(--danger)" />
+        <StatCard label="High" value={severityCounts.HIGH || 0} icon="🟠" color="var(--warning)" />
+      </div>
+
+      {/* Two column: Risk Query + Gauge */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: 'var(--space-lg)',
+        marginBottom: 'var(--space-lg)',
+      }}>
+        {/* Risk query panel */}
+        <GlassCard hover={false} style={{ padding: 'var(--space-lg)' }}>
+          <div style={{
+            fontSize: 'var(--font-size-lg)',
+            fontWeight: 'var(--font-weight-semibold)',
+            color: 'var(--text)',
+            marginBottom: 'var(--space-md)',
+          }}>
+            Risk Query
+          </div>
           <Input
+            label="Query"
+            value={query}
+            onChange={setQuery}
+            placeholder="e.g., whale concentration CasperSwap"
+            icon="🔍"
+            clearable
+            onKeyDown={(e) => e.key === 'Enter' && handleRiskQuery()}
+          />
+          <Input
+            label="Protocol"
             value={protocol}
-            onChange={e => setProtocol(e.target.value)}
-            placeholder="Protocol (optional)"
-            style={{ width: 180 }}
+            onChange={setProtocol}
+            placeholder="e.g., CasperSwap (optional)"
+            icon="🔗"
+            style={{ marginTop: 'var(--space-sm)' }}
           />
           <GradientBtn
-            onClick={handleQuery}
-            disabled={loading || !query.trim()}
-            loading={loading}
+            variant="primary"
+            onClick={handleRiskQuery}
+            loading={queryLoading}
+            disabled={!query.trim()}
+            fullWidth
+            style={{ marginTop: 'var(--space-md)' }}
           >
-            {loading ? 'Analyzing via Groq...' : 'Analyze Risk'}
+            Analyze Risk
           </GradientBtn>
-          <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>Ctrl+Enter</span>
-        </div>
-      </GlassCard>
 
-      {error && (
-        <GlassCard glow="danger" style={{ marginBottom: 'var(--space-md)' }}>
-          <span style={{ color: 'var(--danger)', fontSize: 'var(--font-size-sm)' }}>⚠ {error}</span>
-        </GlassCard>
-      )}
-
-      {loading && !result && (
-        <SkeletonCard style={{ marginBottom: 'var(--space-md)' }} />
-      )}
-
-      {result && (
-        <GlassCard glow={result.severity ? SEVERITY_GLOW[result.severity] : undefined} style={{ marginBottom: 'var(--space-md)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 'var(--space-md)' }}>
-            <h3 style={{ fontSize: 'var(--font-size-md)', fontWeight: 'var(--font-weight-bold)', margin: 0, color: 'var(--accent)' }}>
-              Live Analysis Result
-            </h3>
-            {result.severity && <Badge>{result.severity}</Badge>}
-            {result._source && <SourceBadge source={result._source} />}
-            {result.groq_model && (
-              <span style={{ fontWeight: 'var(--font-weight-normal)', fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', marginLeft: 'auto' }}>
-                {result.groq_model}
-              </span>
-            )}
-          </div>
-
-          <p style={{ marginBottom: 'var(--space-md)', lineHeight: 1.6, fontSize: 'var(--font-size-sm)' }}>
-            {result.summary || result.content}
-          </p>
-
-          {result.risk_factors && result.risk_factors.length > 0 && (
-            <div style={{ marginBottom: 'var(--space-md)' }}>
-              <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                Risk Factors Identified
+          {/* Query result */}
+          {queryResult && (
+            <div className="slide-up" style={{
+              marginTop: 'var(--space-lg)',
+              padding: 'var(--space-md)',
+              background: 'rgba(0, 212, 255, 0.06)',
+              border: '1px solid var(--border2)',
+              borderRadius: 'var(--radius-md)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', marginBottom: 'var(--space-sm)' }}>
+                <SeverityBadge severity={queryResult.result?.severity || 'MEDIUM'} />
+                <SourceBadge source={queryResult._source} />
               </div>
-              {result.risk_factors.map((f, i) => (
-                <div key={i} style={{
-                  display: 'flex', alignItems: 'flex-start', gap: 8,
-                  padding: 'var(--space-xs) 0',
-                  borderBottom: i < result.risk_factors.length - 1 ? '1px solid var(--border)' : 'none',
-                  fontSize: 'var(--font-size-sm)',
-                }}>
-                  <span style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 1 }}>▸</span>
-                  <span style={{ color: 'var(--text)' }}>{f}</span>
-                </div>
-              ))}
+              <div style={{
+                fontSize: 'var(--font-size-sm)',
+                color: 'var(--text-secondary)',
+                lineHeight: 1.5,
+                marginBottom: 'var(--space-sm)',
+              }}>
+                {queryResult.result?.summary}
+              </div>
+              <div style={{
+                fontSize: 'var(--font-size-sm)',
+                color: 'var(--accent)',
+                fontWeight: 'var(--font-weight-medium)',
+                marginBottom: 'var(--space-sm)',
+              }}>
+                Recommendation: {queryResult.result?.recommendation}
+              </div>
+              <div style={{
+                fontSize: 'var(--font-size-xs)',
+                color: 'var(--text-muted)',
+                fontFamily: 'var(--font-mono)',
+              }}>
+                Confidence: {((queryResult.result?.confidence || 0) * 100).toFixed(1)}% • Model: {queryResult.result?.groq_model || 'unknown'}
+              </div>
             </div>
           )}
-
-          {result.recommendation && (
-            <GlassCard glow="success" style={{ padding: 'var(--space-md)', marginBottom: 'var(--space-sm)' }}>
-              <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Recommendation · </span>
-              <span style={{ fontSize: 'var(--font-size-sm)' }}>{result.recommendation}</span>
-            </GlassCard>
-          )}
-
-          <div style={{ display: 'flex', gap: 16, fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', alignItems: 'center', flexWrap: 'wrap' }}>
-            {result.confidence !== undefined && (
-              <span>Confidence: <strong style={{ color: 'var(--text)' }}>
-                <AnimatedCounter value={result.confidence * 100} formatter={v => `${Math.round(v)}%`} />
-              </strong></span>
-            )}
-            {result.on_chain_contract && (
-              <span>
-                Written to:{' '}
-                <a
-                  href={`https://testnet.cspr.live/deploy/${result.on_chain_hash}`}
-                  target="_blank" rel="noopener noreferrer"
-                  style={{ color: 'var(--accent)', fontFamily: 'var(--font)' }}
-                >
-                  {result.on_chain_contract} deploy ↗
-                </a>
-              </span>
-            )}
-          </div>
         </GlassCard>
-      )}
+
+        {/* Gauge + Agent chart */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+          <GlassCard hover={false} style={{
+            padding: 'var(--space-lg)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <RiskGaugeChart score={maxRiskScore} size={180} />
+          </GlassCard>
+          <GlassCard hover={false} style={{ padding: 'var(--space-md)' }}>
+            <div style={{
+              fontSize: 'var(--font-size-sm)',
+              fontWeight: 'var(--font-weight-semibold)',
+              color: 'var(--text-secondary)',
+              marginBottom: 'var(--space-sm)',
+            }}>
+              Agent Activity
+            </div>
+            {agentData.length > 0 && <AgentActivityChart data={agentData} height={140} />}
+          </GlassCard>
+        </div>
+      </div>
 
       {/* Findings feed */}
-      <GlassCard>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-md)' }}>
-          <h2 style={{ fontSize: 'var(--font-size-md)', fontWeight: 'var(--font-weight-semibold)', margin: 0 }}>
-            Agent Pipeline Findings
-            <SourceBadge source={findingsSource} />
-            <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', fontWeight: 'var(--font-weight-normal)', marginLeft: 8 }}>
-              logged to Casper contracts
-            </span>
-          </h2>
-          <GradientBtn
-            variant="ghost"
-            size="sm"
-            onClick={loadFindings}
-            disabled={findingsLoading}
-            loading={findingsLoading}
-          >
-            Refresh
-          </GradientBtn>
+      <GlassCard hover={false} style={{ padding: 'var(--space-lg)' }}>
+        <div style={{
+          fontSize: 'var(--font-size-lg)',
+          fontWeight: 'var(--font-weight-semibold)',
+          color: 'var(--text)',
+          marginBottom: 'var(--space-md)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 'var(--space-sm)',
+        }}>
+          Findings Feed
+          <Badge size="sm" colorScheme="accent">{findings.length} total</Badge>
         </div>
-        {findingsLoading && findings.length === 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
-            <SkeletonLine width="100%" height={60} />
-            <SkeletonLine width="100%" height={60} />
-            <SkeletonLine width="80%" height={60} />
-          </div>
-        ) : findings.length === 0 ? (
-          <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-sm)' }}>Loading findings from pipeline...</p>
-        ) : (
-          findings.map((f, i) => <FindingCard key={i} f={f} />)
-        )}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+          {findings.map((finding, i) => (
+            <div key={finding.id || i} className={`glass-row-hover stagger-${Math.min(i + 1, 6)}`} style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 'var(--space-md)',
+              padding: 'var(--space-md)',
+              background: 'rgba(14, 18, 30, 0.4)',
+              borderRadius: 'var(--radius-md)',
+              borderLeft: `3px solid ${
+                finding.severity === 'CRITICAL' ? 'var(--danger)' :
+                finding.severity === 'HIGH' ? '#ff6b7a' :
+                finding.severity === 'MEDIUM' ? 'var(--warning)' : 'var(--info)'
+              }`,
+            }}>
+              <SeverityBadge severity={finding.severity} />
+              <div style={{ flex: 1 }}>
+                <div style={{
+                  fontSize: 'var(--font-size-md)',
+                  fontWeight: 'var(--font-weight-semibold)',
+                  color: 'var(--text)',
+                  marginBottom: 4,
+                }}>
+                  {finding.protocol} — {finding.risk_type}
+                </div>
+                <div style={{
+                  fontSize: 'var(--font-size-sm)',
+                  color: 'var(--text-secondary)',
+                  lineHeight: 1.4,
+                }}>
+                  {finding.summary}
+                </div>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 'var(--space-sm)',
+                  marginTop: 'var(--space-xs)',
+                  fontSize: 'var(--font-size-xs)',
+                  color: 'var(--text-muted)',
+                }}>
+                  <span style={{ fontFamily: 'var(--font-mono)' }}>{((finding.confidence || 0) * 100).toFixed(0)}% conf</span>
+                  <span>•</span>
+                  <span>{finding.agent}</span>
+                  <span>•</span>
+                  <span>{new Date(finding.timestamp).toLocaleTimeString()}</span>
+                </div>
+              </div>
+              <SourceBadge source={finding.source || source} />
+            </div>
+          ))}
+        </div>
       </GlassCard>
     </div>
   )
 }
+
+export default RiskPanel

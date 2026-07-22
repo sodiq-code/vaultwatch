@@ -1,516 +1,387 @@
-import { useState, useEffect, useCallback } from 'react'
+/**
+ * VaultWatch App.jsx — Premium dashboard shell with sidebar navigation,
+ * ticker, panel routing, and CSPR.click integration.
+ */
+import { useState, useEffect } from 'react'
 import { CSPRClickProvider } from './csprclick.js'
-import WalletBar from './components/WalletBar.jsx'
-import RiskPanel from './components/RiskPanel.jsx'
-import AnomalyPanel from './components/AnomalyPanel.jsx'
-import RWAPanel from './components/RWAPanel.jsx'
-import AuditPanel from './components/AuditPanel.jsx'
-import ChainStatus from './components/ChainStatus.jsx'
-import LiveFeed from './components/LiveFeed.jsx'
-import hybridApi from './api/hybridApi.js'
 import { useToast } from './hooks/useToast.js'
 import { useResponsive } from './hooks/useResponsive.js'
 import { ToastContainer } from './ui/ToastContainer.jsx'
-import { Badge } from './ui/Badge.jsx'
-import './animations.css'
+import hybridApi from './api/hybridApi.js'
+import { CONTRACT_HASHES } from './liveApi.js'
 
-/* ─── Navigation items (preserved from original) ─── */
+import { WalletBar } from './components/WalletBar.jsx'
+import { AgentPipelinePanel } from './components/AgentPipelinePanel.jsx'
+import { RiskPanel } from './components/RiskPanel.jsx'
+import { AnomalyPanel } from './components/AnomalyPanel.jsx'
+import { RWAAssetsPanel } from './components/RWAAssetsPanel.jsx'
+import { AttestationsPanel } from './components/AttestationsPanel.jsx'
+import { LiveFeed } from './components/LiveFeed.jsx'
+import { X402PaymentsPanel } from './components/X402PaymentsPanel.jsx'
+import { ChainStatus } from './components/ChainStatus.jsx'
+
+import { GlassCard } from './ui/GlassCard.jsx'
+import { Badge, SourceBadge, HexBadge } from './ui/Badge.jsx'
+import { StatCard } from './ui/StatCard.jsx'
+import { AnimatedCounter } from './ui/AnimatedCounter.jsx'
+
+// ─── Navigation items ───
 const NAV_ITEMS = [
-  { id: 'risk',    label: 'Risk Intelligence',  icon: '🔍' },
-  { id: 'anomaly', label: 'Anomaly Detection',  icon: '⚠️' },
-  { id: 'rwa',     label: 'RWA Assessment',     icon: '🏦' },
-  { id: 'audit',   label: 'Audit Log',          icon: '📋' },
-  { id: 'feed',    label: 'Live Feed',          icon: '📡' },
-  { id: 'chain',   label: 'Chain Status',       icon: '⛓️' },
+  { id: 'pipeline',    label: 'Agent Pipeline',    icon: '⚡', hex: '1' },
+  { id: 'risk',        label: 'Risk Intelligence',  icon: '🛡️', hex: '2' },
+  { id: 'anomaly',     label: 'Anomaly Detection',  icon: '🔍', hex: '3' },
+  { id: 'rwa',         label: 'RWA Assets',         icon: '📊', hex: '4' },
+  { id: 'attestations', label: 'Attestations',      icon: '📋', hex: '5' },
+  { id: 'events',      label: 'Agent Events',       icon: '📡', hex: '6' },
+  { id: 'x402',        label: 'x402 Payments',      icon: '💰', hex: '7' },
+  { id: 'chain',       label: 'Chain Status',       icon: '🔗', hex: '8' },
 ]
 
-/* ─── Ticker marquee of live findings ─── */
-function Ticker({ findings }) {
-  if (!findings || findings.length === 0) return null
-  const SEV_COLOR = { CRITICAL: '#ef4444', HIGH: '#f59e0b', MEDIUM: '#3b82f6', LOW: '#22c55e' }
+const PANEL_MAP = {
+  pipeline:    AgentPipelinePanel,
+  risk:        RiskPanel,
+  anomaly:     AnomalyPanel,
+  rwa:         RWAAssetsPanel,
+  attestations: AttestationsPanel,
+  events:      LiveFeed,
+  x402:        X402PaymentsPanel,
+  chain:       ChainStatus,
+}
+
+const TICKER_ITEMS = [
+  '⚡ ScannerAgent: 342 runs, 28 findings',
+  '🛡️ RiskOracle: CRITICAL whale concentration alert',
+  '🔍 AnomalyAgent: 12 anomalies detected',
+  '📊 RWAAgent: Bond yield 4.25%, Gold $2350',
+  '📋 AuditTrail: 5 on-chain attestations verified',
+  '🧠 IntelAgent: x402 payment flow active',
+  '🔗 Casper Testnet: Block height syncing',
+]
+
+// ─── App Shell ───
+function AppShell() {
+  const { toasts, addToast, removeToast } = useToast()
+  const { isMobile, sidebarOpen, toggleSidebar, closeSidebar } = useResponsive()
+  const [activePanel, setActivePanel] = useState('pipeline')
+  const [price, setPrice] = useState(null)
+  const [blockHeight, setBlockHeight] = useState(0)
+  const [health, setHealth] = useState(null)
+
+  // Load sidebar data
+  useEffect(() => {
+    const loadSidebarData = async () => {
+      try {
+        const priceData = await hybridApi.fetchCSPRPrice()
+        if (priceData) setPrice(priceData)
+      } catch {}
+      try {
+        const netData = await hybridApi.fetchNetworkInfo()
+        if (netData) setBlockHeight(netData.block_height)
+      } catch {}
+      try {
+        const h = await hybridApi.health()
+        if (h) setHealth(h)
+      } catch {}
+    }
+    loadSidebarData()
+    const interval = setInterval(loadSidebarData, 15000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // Auto-refresh block height
+  useEffect(() => {
+    const bhInterval = setInterval(() => {
+      setBlockHeight(hybridApi.getBlockHeight())
+    }, 5000)
+    return () => clearInterval(bhInterval)
+  }, [])
+
+  // Close sidebar on panel change (mobile)
+  const handlePanelChange = (id) => {
+    setActivePanel(id)
+    if (isMobile) closeSidebar()
+  }
+
+  const PanelComponent = PANEL_MAP[activePanel] || ChainStatus
 
   return (
     <div style={{
-      overflow: 'hidden',
-      whiteSpace: 'nowrap',
-      flex: 1,
-      maskImage: 'linear-gradient(to right, transparent, black 5%, black 95%, transparent)',
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      background: 'var(--bg)',
     }}>
+      {/* Top bar — WalletBar */}
+      <WalletBar />
+
+      {/* Ticker marquee */}
       <div style={{
-        display: 'inline-block',
-        animation: 'ticker 30s linear infinite',
-        paddingLeft: '100%',
+        overflow: 'hidden',
+        background: 'var(--surface)',
+        borderBottom: '1px solid var(--border)',
+        padding: '6px 0',
+        position: 'relative',
       }}>
-        {[...findings, ...findings].map((f, i) => (
-          <span key={i} style={{ marginRight: 48, fontSize: 'var(--font-size-xs)' }}>
-            <span style={{ color: SEV_COLOR[f.severity] || 'var(--text-muted)', fontWeight: 700 }}>
-              [{f.severity}]
+        <div style={{
+          display: 'flex',
+          gap: 'var(--space-xl)',
+          animation: 'ticker 30s linear infinite',
+          whiteSpace: 'nowrap',
+        }}>
+          {[...TICKER_ITEMS, ...TICKER_ITEMS].map((item, i) => (
+            <span key={i} style={{
+              fontSize: 'var(--font-size-xs)',
+              color: 'var(--text-muted)',
+              fontWeight: 'var(--font-weight-medium)',
+            }}>
+              {item}
             </span>
-            {' '}
-            <span style={{ color: 'var(--text-muted)' }}>{f.protocol}: </span>
-            <span style={{ color: 'var(--text)' }}>{f.summary.slice(0, 80)}…</span>
-          </span>
-        ))}
+          ))}
+        </div>
       </div>
+
+      {/* Main layout — sidebar + content */}
+      <div style={{
+        display: 'flex',
+        flex: 1,
+        overflow: 'hidden',
+      }}>
+        {/* Mobile hamburger */}
+        {isMobile && !sidebarOpen && (
+          <button
+            onClick={toggleSidebar}
+            style={{
+              position: 'fixed',
+              top: 'var(--space-md)',
+              left: 'var(--space-md)',
+              zIndex: 'var(--z-overlay)',
+              background: 'var(--glass-bg)',
+              border: '1px solid var(--glass-border)',
+              borderRadius: 'var(--radius-md)',
+              padding: '8px 12px',
+              color: 'var(--accent)',
+              fontSize: 'var(--font-size-lg)',
+              cursor: 'pointer',
+              boxShadow: 'var(--shadow-glow)',
+            }}
+          >
+            ☰
+          </button>
+        )}
+
+        {/* Sidebar */}
+        <aside style={{
+          width: isMobile ? (sidebarOpen ? 260 : 0) : 240,
+          minWidth: isMobile ? 0 : 240,
+          background: 'var(--bg-elevated)',
+          borderRight: '1px solid var(--border)',
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          transition: 'width var(--transition-normal)',
+          display: 'flex',
+          flexDirection: 'column',
+          position: isMobile ? 'fixed' : 'relative',
+          top: isMobile ? 0 : 'auto',
+          left: isMobile ? 0 : 'auto',
+          height: isMobile ? '100vh' : 'auto',
+          zIndex: isMobile ? 'var(--z-sidebar)' : 'auto',
+          ...(isMobile && sidebarOpen ? { boxShadow: 'var(--shadow-xl)' } : {}),
+        }}>
+          {/* Logo section */}
+          <div style={{
+            padding: 'var(--space-lg)',
+            borderBottom: '1px solid var(--border)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-sm)',
+          }}>
+            <div className="hex-badge" style={{ width: 36, height: 36, fontSize: 16, animation: 'hexPulse 3s ease-in-out infinite' }}>V</div>
+            <div>
+              <div style={{
+                fontSize: 'var(--font-size-lg)',
+                fontWeight: 'var(--font-weight-bold)',
+                color: 'var(--text)',
+                letterSpacing: '-0.5px',
+              }}>
+                VaultWatch
+              </div>
+              <div style={{
+                fontSize: 'var(--font-size-xs)',
+                color: 'var(--text-muted)',
+                fontFamily: 'var(--font-mono)',
+              }}>
+                DeFi Risk Intelligence
+              </div>
+            </div>
+          </div>
+
+          {/* CSPR price card */}
+          <div style={{ padding: 'var(--space-md)' }}>
+            <GlassCard hover={false} style={{
+              padding: 'var(--space-md)',
+              background: 'rgba(0, 212, 255, 0.06)',
+            }}>
+              <div style={{
+                fontSize: 'var(--font-size-xs)',
+                color: 'var(--text-muted)',
+                fontWeight: 'var(--font-weight-medium)',
+              }}>
+                CSPR/USD
+              </div>
+              <div style={{
+                fontSize: 'var(--font-size-xl)',
+                fontWeight: 'var(--font-weight-bold)',
+                color: price?.change_24h > 0 ? 'var(--success)' : price?.change_24h < 0 ? 'var(--danger)' : 'var(--accent)',
+                lineHeight: 1.2,
+              }}>
+                ${price?.usd?.toFixed(4) || '—'}
+              </div>
+              {price?.change_24h !== null && price?.change_24h !== undefined && (
+                <div style={{
+                  fontSize: 'var(--font-size-xs)',
+                  color: price.change_24h > 0 ? 'var(--success)' : 'var(--danger)',
+                  fontFamily: 'var(--font-mono)',
+                }}>
+                  {price.change_24h > 0 ? '↑' : '↓'} {Math.abs(price.change_24h).toFixed(2)}%
+                </div>
+              )}
+              <SourceBadge source={price?._source || 'live'} style={{ marginTop: 4 }} />
+            </GlassCard>
+          </div>
+
+          {/* Block height */}
+          <div style={{ padding: '0 var(--space-md)' }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: 'var(--font-size-xs)',
+              padding: '6px 10px',
+              background: 'rgba(14, 18, 30, 0.4)',
+              borderRadius: 'var(--radius-sm)',
+            }}>
+              <span style={{ color: 'var(--text-muted)' }}>Block</span>
+              <span style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>
+                <AnimatedCounter value={blockHeight} formatter={(v) => Math.round(v).toLocaleString()} />
+              </span>
+            </div>
+          </div>
+
+          {/* Nav items */}
+          <div style={{
+            padding: 'var(--space-md)',
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+          }}>
+            {NAV_ITEMS.map(item => {
+              const isActive = activePanel === item.id
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handlePanelChange(item.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--space-sm)',
+                    padding: '8px 12px',
+                    background: isActive ? 'rgba(0, 212, 255, 0.12)' : 'transparent',
+                    border: isActive ? '1px solid var(--border2)' : '1px solid transparent',
+                    borderRadius: 'var(--radius-md)',
+                    color: isActive ? 'var(--accent)' : 'var(--text-muted)',
+                    fontSize: 'var(--font-size-sm)',
+                    fontWeight: isActive ? 'var(--font-weight-semibold)' : 'var(--font-weight-normal)',
+                    cursor: 'pointer',
+                    transition: 'all var(--transition-fast)',
+                    textAlign: 'left',
+                    ...(isActive ? { boxShadow: 'var(--shadow-glow)' } : {}),
+                  }}
+                >
+                  <span className="hex-badge" style={{
+                    width: 24,
+                    height: 24,
+                    fontSize: 10,
+                    background: isActive ? 'var(--gradient-accent)' : 'rgba(107, 127, 160, 0.3)',
+                    transition: 'background var(--transition-fast)',
+                  }}>
+                    {item.hex}
+                  </span>
+                  <span style={{ fontSize: '14px' }}>{item.icon}</span>
+                  <span>{item.label}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Footer — Groq status */}
+          <div style={{
+            padding: 'var(--space-md)',
+            borderTop: '1px solid var(--border)',
+          }}>
+            <div style={{
+              fontSize: 'var(--font-size-xs)',
+              color: 'var(--text-dark)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+            }}>
+              <span style={{
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                background: health?.groq_connected ? 'var(--success)' : 'var(--warning)',
+                animation: health?.groq_connected ? 'glowPulseGreen 2s ease-in-out infinite' : 'pulse 2s ease-in-out infinite',
+              }} />
+              <span style={{ fontFamily: 'var(--font-mono)' }}>
+                Groq: {health?.groq_connected ? 'Connected' : 'Fallback Mode'}
+              </span>
+            </div>
+            <div style={{
+              fontSize: 'var(--font-size-xs)',
+              color: 'var(--text-dark)',
+              fontFamily: 'var(--font-mono)',
+              marginTop: 2,
+            }}>
+              v{health?.version || '5.0.0'} • {health?.mode || 'hybrid'}
+            </div>
+          </div>
+        </aside>
+
+        {/* Mobile overlay when sidebar open */}
+        {isMobile && sidebarOpen && (
+          <div
+            onClick={closeSidebar}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0, 0, 0, 0.5)',
+              zIndex: 'var(--z-overlay)',
+            }}
+          />
+        )}
+
+        {/* Main content area */}
+        <main style={{
+          flex: 1,
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          minHeight: 0,
+        }}>
+          <PanelComponent api={hybridApi} addToast={addToast} />
+        </main>
+      </div>
+
+      {/* Toast container */}
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
   )
 }
 
-/* ─── Sidebar component — reused for both desktop and mobile ─── */
-function SidebarContent({ activeTab, setActiveTab, cspr, change24h, changeColor, liveHeight, network, groqOnline, isMobile, closeSidebar }) {
-  const navClick = useCallback((id) => {
-    setActiveTab(id)
-    if (isMobile) closeSidebar()
-  }, [setActiveTab, isMobile, closeSidebar])
-
-  return (
-    <>
-      {/* ── Logo + gradient header ── */}
-      <div style={{
-        padding: 'var(--space-lg)',
-        background: 'var(--gradient-accent)',
-        borderBottom: '1px solid var(--glass-border)',
-        position: 'relative',
-      }}>
-        {/* Glass overlay on gradient */}
-        <div style={{
-          position: 'absolute',
-          inset: 0,
-          background: 'var(--glass-bg)',
-          backdropFilter: 'blur(8px)',
-        }} />
-        <div style={{ position: 'relative' }}>
-          <div style={{
-            fontSize: 'var(--font-size-xl)',
-            fontWeight: 'var(--font-weight-extrabold)',
-            color: 'var(--text)',
-            letterSpacing: '-0.5px',
-          }}>
-            ⬡ VaultWatch
-          </div>
-          <div style={{
-            fontSize: 'var(--font-size-xs)',
-            color: 'var(--text-muted)',
-            marginTop: 'var(--space-xs)',
-            letterSpacing: '0.5px',
-          }}>
-            DeFi Risk Intelligence · Casper
-          </div>
-        </div>
-      </div>
-
-      {/* ── CSPR Price glass card ── */}
-      {cspr?.usd != null ? (
-        <div
-          className="glass-card-static"
-          style={{
-            margin: 'var(--space-md) var(--space-md) 0',
-            padding: 'var(--space-md)',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{
-              fontSize: 'var(--font-size-xs)',
-              color: 'var(--text-muted)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-              fontWeight: 'var(--font-weight-semibold)',
-            }}>CSPR/USD</span>
-            {change24h != null && (
-              <Badge
-                variant={change24h >= 0 ? 'success' : 'danger'}
-                size="sm"
-                pulse={Math.abs(change24h) > 5}
-              >
-                {change24h >= 0 ? '+' : ''}{change24h.toFixed(2)}%
-              </Badge>
-            )}
-          </div>
-          <div style={{
-            fontSize: 'var(--font-size-2xl)',
-            fontWeight: 'var(--font-weight-extrabold)',
-            color: changeColor,
-            marginTop: 'var(--space-xs)',
-            lineHeight: 1.2,
-          }}>
-            ${cspr.usd.toFixed(4)}
-          </div>
-          {cspr?.market_cap && (
-            <div style={{
-              fontSize: 'var(--font-size-xs)',
-              color: 'var(--text-muted)',
-              marginTop: 'var(--space-xs)',
-            }}>
-              MCap ${(cspr.market_cap / 1e6).toFixed(1)}M
-              {cspr?.vol_24h && ` · Vol $${(cspr.vol_24h / 1e6).toFixed(2)}M`}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div style={{
-          margin: 'var(--space-md)',
-          fontSize: 'var(--font-size-sm)',
-          color: 'var(--text-muted)',
-        }}>
-          Loading CSPR price…
-        </div>
-      )}
-
-      {/* ── Block height glass card ── */}
-      <div
-        className="glass-card-static"
-        style={{
-          margin: 'var(--space-sm) var(--space-md) var(--space-md)',
-          padding: 'var(--space-sm) var(--space-md)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-          <span style={{
-            width: 7, height: 7, borderRadius: '50%',
-            background: 'var(--success)',
-            boxShadow: '0 0 6px rgba(34, 197, 94, 0.5)',
-            flexShrink: 0,
-            animation: 'pulse 3s ease-in-out infinite',
-          }} />
-          <span style={{
-            fontSize: 'var(--font-size-xs)',
-            color: 'var(--text-muted)',
-          }}>
-            Block #{liveHeight.toLocaleString()}
-            {network?.era_id != null && ` · Era ${network.era_id}`}
-          </span>
-        </div>
-      </div>
-
-      {/* ── Nav items with hover glow ── */}
-      <nav style={{
-        flex: 1,
-        padding: 'var(--space-sm) var(--space-sm)',
-        overflowY: 'auto',
-      }}>
-        {NAV_ITEMS.map(item => {
-          const isActive = activeTab === item.id
-          return (
-            <button
-              key={item.id}
-              onClick={() => navClick(item.id)}
-              className={isActive ? 'glass-card-static' : undefined}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--space-sm)',
-                width: '100%',
-                padding: '10px 12px',
-                background: isActive ? 'var(--surface2)' : 'transparent',
-                border: isActive ? '1px solid var(--glass-border-hover)' : '1px solid transparent',
-                borderRadius: 'var(--radius-md)',
-                color: isActive ? 'var(--accent)' : 'var(--text)',
-                cursor: 'pointer',
-                fontSize: 'var(--font-size-sm)',
-                fontWeight: isActive ? 'var(--font-weight-semibold)' : 'var(--font-weight-normal)',
-                transition: 'var(--transition-normal)',
-                marginBottom: 2,
-                textAlign: 'left',
-                boxShadow: isActive ? 'var(--shadow-glow)' : 'none',
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.background = 'var(--surface2)'
-                  e.currentTarget.style.boxShadow = 'var(--shadow-glow)'
-                  e.currentTarget.style.border = '1px solid var(--glass-border-hover)'
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.background = 'transparent'
-                  e.currentTarget.style.boxShadow = 'none'
-                  e.currentTarget.style.border = '1px solid transparent'
-                }
-              }}
-            >
-              <span style={{ fontSize: 16 }}>{item.icon}</span>
-              <span>{item.label}</span>
-              {item.id === 'feed' && (
-                <Badge pulse size="sm" variant="danger" style={{ marginLeft: 'auto' }}>LIVE</Badge>
-              )}
-            </button>
-          )
-        })}
-      </nav>
-
-      {/* ── Sidebar footer: Groq status + version info ── */}
-      <div style={{
-        padding: 'var(--space-md)',
-        borderTop: '1px solid var(--glass-border)',
-        fontSize: 'var(--font-size-sm)',
-      }}>
-        {/* Groq status dot with glowPulse */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', marginBottom: 'var(--space-sm)' }}>
-          <span style={{
-            width: 8, height: 8, borderRadius: '50%',
-            background: groqOnline ? 'var(--success)' : 'var(--text-muted)',
-            flexShrink: 0,
-            animation: groqOnline ? 'glowPulseGreen 2s ease-in-out infinite' : 'pulse 2s ease-in-out infinite',
-          }} />
-          <span style={{ color: 'var(--text-muted)' }}>
-            {groqOnline === null ? 'Connecting…' : groqOnline ? 'Groq AI · Live' : 'Groq connecting…'}
-          </span>
-        </div>
-        <div style={{
-          color: 'var(--text-muted)',
-          marginBottom: 'var(--space-sm)',
-          fontSize: 'var(--font-size-xs)',
-        }}>
-          v4.0.0 · casper-test · 8 contracts
-        </div>
-        <div
-          className="glass-card-static"
-          style={{
-            padding: 'var(--space-sm) var(--space-md)',
-            fontSize: 'var(--font-size-xs)',
-            color: 'var(--success)',
-            lineHeight: 1.5,
-          }}
-        >
-          ● Live Groq AI — real-time<br />
-          ● 8 Odra contracts · 29 TX hashes<br />
-          ● 100+ tests passing<br />
-          ● llama-3.3-70b-versatile<br />
-          ● CoinGecko price feed
-        </div>
-      </div>
-    </>
-  )
-}
-
-/* ─── Main App ─── */
+// ─── Root App with CSPRClickProvider ───
 export default function App() {
-  const [activeTab, setActiveTab]         = useState('risk')
-  const [cspr, setCSPR]                   = useState(null)
-  const [blockHeight, setBlockHeight]     = useState(hybridApi.getBlockHeight())
-  const [network, setNetwork]             = useState(null)
-  const [groqOnline, setGroqOnline]       = useState(null)
-  const [liveFindings, setLiveFindings]   = useState(hybridApi.seedFindings)
-  const [tabKey, setTabKey]               = useState(0)   // for fadeIn re-trigger on tab switch
-
-  const { isMobile, sidebarOpen, toggleSidebar, closeSidebar, openSidebar } = useResponsive()
-  const { toasts, addToast, removeToast }                  = useToast()
-
-  const refresh = useCallback(async () => {
-    const [price, health, net, findings] = await Promise.allSettled([
-      hybridApi.fetchCSPRPrice(),
-      hybridApi.health(),
-      hybridApi.fetchNetworkInfo(),
-      hybridApi.fetchLiveFindings(20),
-    ])
-    if (price.status === 'fulfilled' && price.value)   setCSPR(price.value)
-    if (health.status === 'fulfilled' && health.value)  setGroqOnline(health.value.groq_connected ?? health.value.groq)
-    if (net.status === 'fulfilled' && net.value)        setNetwork(net.value)
-    if (findings.status === 'fulfilled' && findings.value?.findings?.length) {
-      setLiveFindings(findings.value.findings)
-    }
-    setBlockHeight(hybridApi.getBlockHeight())
-  }, [])
-
-  useEffect(() => {
-    refresh()
-    const blockTick = setInterval(() => setBlockHeight(hybridApi.getBlockHeight()), 10_000)
-    const fullRefresh = setInterval(refresh, 20_000)
-    return () => { clearInterval(blockTick); clearInterval(fullRefresh) }
-  }, [refresh])
-
-  const handleTabChange = useCallback((id) => {
-    setActiveTab(id)
-    setTabKey(prev => prev + 1)  // re-trigger fadeIn animation
-  }, [])
-
-  const change24h    = cspr?.change_24h
-  const changeColor  = change24h == null ? 'var(--text-muted)' : change24h >= 0 ? 'var(--success)' : 'var(--danger)'
-  const liveHeight   = network?.block_height ?? blockHeight
-
-  const panelProps = { api: hybridApi, addToast }
-
   return (
     <CSPRClickProvider>
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100vh',
-        overflow: 'hidden',
-        background: 'var(--bg)',
-        backgroundImage: 'var(--gradient-bg)',
-      }}>
-
-        {/* ── Wallet Bar ── */}
-        <WalletBar />
-
-        {/* ── Top Alert Ticker ── */}
-        <div
-          className="glass-card-static"
-          style={{
-            borderBottom: '1px solid var(--glass-border)',
-            padding: '6px var(--space-lg)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'var(--space-md)',
-            flexShrink: 0,
-            height: 34,
-            borderRadius: 0,
-          }}
-        >
-          <Badge pulse variant="danger" size="sm">LIVE</Badge>
-          <Ticker findings={liveFindings} />
-          <div style={{
-            display: 'flex',
-            gap: 'var(--space-lg)',
-            alignItems: 'center',
-            flexShrink: 0,
-            fontSize: 'var(--font-size-xs)',
-          }}>
-            {cspr?.usd != null && (
-              <span style={{ color: changeColor, fontWeight: 700 }}>
-                CSPR ${cspr.usd.toFixed(4)}
-                {change24h != null && (
-                  <span style={{ marginLeft: 4 }}>
-                    {change24h >= 0 ? '+' : ''}{change24h.toFixed(2)}%
-                  </span>
-                )}
-              </span>
-            )}
-            <span style={{ color: 'var(--text-muted)' }}>
-              Block #{liveHeight.toLocaleString()}
-              {network?.era_id != null && ` · Era ${network.era_id}`}
-            </span>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-          {/* ── Mobile hamburger button ── */}
-          {isMobile && (
-            <button
-              onClick={toggleSidebar}
-              style={{
-                position: 'fixed',
-                top: 48,
-                left: 'var(--space-md)',
-                zIndex: 'var(--z-sidebar)',
-                background: 'var(--glass-bg)',
-                backdropFilter: 'blur(var(--glass-blur))',
-                border: '1px solid var(--glass-border)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '8px 10px',
-                color: 'var(--text)',
-                fontSize: 'var(--font-size-lg)',
-                cursor: 'pointer',
-                boxShadow: 'var(--shadow-md)',
-                transition: 'var(--transition-normal)',
-              }}
-              aria-label="Toggle sidebar"
-            >
-              ☰
-            </button>
-          )}
-
-          {/* ── Mobile overlay backdrop ── */}
-          {isMobile && sidebarOpen && (
-            <div
-              onClick={closeSidebar}
-              style={{
-                position: 'fixed',
-                inset: 0,
-                background: 'rgba(0, 0, 0, 0.5)',
-                backdropFilter: 'blur(4px)',
-                zIndex: 'var(--z-overlay)',
-                animation: 'fadeIn 0.2s ease-out',
-              }}
-            />
-          )}
-
-          {/* ── Sidebar ── */}
-          <aside
-            className="glass-card-static"
-            style={{
-              width: 228,
-              background: 'var(--surface)',
-              backdropFilter: 'blur(var(--glass-blur)) saturate(var(--glass-saturate))',
-              borderRight: '1px solid var(--glass-border)',
-              display: 'flex',
-              flexDirection: 'column',
-              flexShrink: 0,
-              borderRadius: 0,
-              boxShadow: 'var(--shadow-lg)',
-              ...(isMobile ? {
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                bottom: 0,
-                zIndex: 'var(--z-sidebar)',
-                transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
-                transition: 'transform var(--transition-normal)',
-                animation: sidebarOpen ? 'slideInLeft 0.25s ease-out' : undefined,
-              } : {}),
-            }}
-          >
-            {/* Close button for mobile */}
-            {isMobile && sidebarOpen && (
-              <button
-                onClick={closeSidebar}
-                style={{
-                  position: 'absolute',
-                  top: 'var(--space-sm)',
-                  right: 'var(--space-sm)',
-                  background: 'var(--surface2)',
-                  border: '1px solid var(--glass-border)',
-                  borderRadius: 'var(--radius-sm)',
-                  padding: '4px 8px',
-                  color: 'var(--text-muted)',
-                  fontSize: 'var(--font-size-lg)',
-                  cursor: 'pointer',
-                  zIndex: 1,
-                }}
-                aria-label="Close sidebar"
-              >
-                ✕
-              </button>
-            )}
-
-            <SidebarContent
-              activeTab={activeTab}
-              setActiveTab={handleTabChange}
-              cspr={cspr}
-              change24h={change24h}
-              changeColor={changeColor}
-              liveHeight={liveHeight}
-              network={network}
-              groqOnline={groqOnline}
-              isMobile={isMobile}
-              closeSidebar={closeSidebar}
-            />
-          </aside>
-
-          {/* ── Main Content with fadeIn on tab switch ── */}
-          <main
-            key={tabKey}
-            className="fade-in"
-            style={{
-              flex: 1,
-              overflowY: 'auto',
-              padding: isMobile ? 'var(--space-md)' : 'var(--space-lg)',
-              marginLeft: isMobile ? 0 : undefined,
-            }}
-          >
-            {activeTab === 'risk'    && <RiskPanel    {...panelProps} />}
-            {activeTab === 'anomaly' && <AnomalyPanel {...panelProps} />}
-            {activeTab === 'rwa'     && <RWAPanel     {...panelProps} />}
-            {activeTab === 'audit'   && <AuditPanel   {...panelProps} />}
-            {activeTab === 'feed'    && <LiveFeed      api={hybridApi} addToast={addToast} cspr={cspr} network={network} blockHeight={liveHeight} />}
-            {activeTab === 'chain'   && <ChainStatus  {...panelProps} />}
-          </main>
-        </div>
-      </div>
-
-      {/* ── Toast container at app root ── */}
-      <ToastContainer toasts={toasts} removeToast={removeToast} />
+      <AppShell />
     </CSPRClickProvider>
   )
 }

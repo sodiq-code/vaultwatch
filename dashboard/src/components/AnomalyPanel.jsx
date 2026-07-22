@@ -1,211 +1,243 @@
-import { useState } from 'react'
-import { CONTRACT_HASHES } from '../liveApi.js'
+/**
+ * AnomalyPanel — Enhanced anomaly detection with gauge chart, metrics visualization,
+ * and self-correction status.
+ */
+import { useState, useEffect } from 'react'
 import { GlassCard } from '../ui/GlassCard.jsx'
+import { PageHeader } from '../ui/PageHeader.jsx'
 import { StatCard } from '../ui/StatCard.jsx'
-import { SkeletonCard, SkeletonLine } from '../ui/Skeleton.jsx'
+import { Badge, SeverityBadge, SourceBadge } from '../ui/Badge.jsx'
 import { GradientBtn } from '../ui/GradientBtn.jsx'
 import { Input } from '../ui/Input.jsx'
-import { Badge, SourceBadge } from '../ui/Badge.jsx'
-import { PageHeader } from '../ui/PageHeader.jsx'
-import { AnimatedCounter } from '../ui/AnimatedCounter.jsx'
+import { SkeletonBlock } from '../ui/Skeleton.jsx'
 import { RiskGaugeChart } from '../charts/RiskGaugeChart.jsx'
 import { AnomalyBarChart } from '../charts/AnomalyBarChart.jsx'
 
 const DEFAULT_METRICS = {
-  protocol:         'CasperSwap',
-  tvl:              12_000_000,
-  volume_24h:       2_400_000,
-  price_change_1h:  -2.5,
-  num_transactions: 340,
-  liquidity_ratio:  0.65,
+  protocol: 'CasperSwap',
+  price_change_1h: 2.5,
+  volume_24h: 5000,
+  liquidity_ratio: 0.65,
+  tvl_change_24h: -5,
+  whale_activity: 0.12,
 }
 
-const FIELDS = [
-  { key: 'protocol',         label: 'Protocol Name',       type: 'text' },
-  { key: 'tvl',              label: 'TVL (USD)',            type: 'number' },
-  { key: 'volume_24h',       label: '24h Volume (USD)',     type: 'number' },
-  { key: 'price_change_1h',  label: 'Price Change 1h (%)', type: 'number' },
-  { key: 'num_transactions', label: 'Transactions (24h)',   type: 'number' },
-  { key: 'liquidity_ratio',  label: 'Liquidity Ratio (0–1)', type: 'number' },
-]
-
-// Build AnomalyBarChart data from anomaly result
-function buildBarData(result) {
-  if (!result?.anomalies?.length) return []
-  return result.anomalies.map(a => {
-    const text = typeof a === 'string' ? a : `${a.metric}: ${a.value} (threshold ${a.threshold}, ${a.severity})`
-    const sev = typeof a === 'object' ? a.severity : 'MEDIUM'
-    const color = sev === 'HIGH' || sev === 'CRITICAL' ? '#ef4444' : sev === 'MEDIUM' ? '#f59e0b' : '#22c55e'
-    const metric = typeof a === 'object' ? a.metric : text.split(':')[0]
-    const value = typeof a === 'object' ? a.value : 50
-    const threshold = typeof a === 'object' ? a.threshold : null
-    return { metric, value, threshold, color, unit: typeof a === 'object' ? '' : '' }
-  })
-}
-
-export default function AnomalyPanel({ api, addToast }) {
+export function AnomalyPanel({ api, addToast }) {
   const [metrics, setMetrics] = useState(DEFAULT_METRICS)
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-
-  const update = (key, val) => setMetrics(m => ({ ...m, [key]: val }))
+  const [source, setSource] = useState(null)
 
   const handleDetect = async () => {
     setLoading(true)
-    setError(null)
     setResult(null)
     try {
-      const data = await api.detectAnomaly({
-        ...metrics,
-        tvl:              parseFloat(metrics.tvl),
-        volume_24h:       parseFloat(metrics.volume_24h),
-        price_change_1h:  parseFloat(metrics.price_change_1h),
-        num_transactions: parseInt(metrics.num_transactions),
-        liquidity_ratio:  parseFloat(metrics.liquidity_ratio),
-      })
-      setResult(data)
-      addToast({ type: 'success', message: 'Anomaly detection completed' })
+      const res = await api.detectAnomaly(metrics)
+      setResult(res)
+      setSource(res._source || 'fallback')
+      addToast({ type: res.risk_score > 70 ? 'error' : 'info', message: `Anomaly detection: risk score ${res.risk_score}` })
     } catch (e) {
-      setError(e.message)
       addToast({ type: 'error', message: `Anomaly detection failed: ${e.message}` })
     } finally {
       setLoading(false)
     }
   }
 
+  // Prepare bar chart data from anomalies
+  const anomalyChartData = result?.anomalies?.map(a => ({
+    metric: a.metric,
+    value: typeof a.value === 'number' ? a.value : Number(a.value) || 0,
+    threshold: a.threshold || 0,
+    severity: a.severity,
+    color: a.severity === 'CRITICAL' ? '#ef4444' : a.severity === 'HIGH' ? '#ff6b7a' : a.severity === 'MEDIUM' ? '#f59e0b' : '#22c55e',
+  })) || []
+
   return (
-    <div>
+    <div className="fade-in" style={{ padding: 'var(--space-lg)' }}>
       <PageHeader
-        icon="⚡"
-        badge="DETECT"
         title="Anomaly Detection"
-        subtitle="AnomalyAgent (llama-3.3-70b-versatile) with SelfCorrectionAgent loop · findings written to AuditTrail + RiskOracle on Casper."
+        subtitle="Real-time anomaly detection with self-correction pipeline"
+        icon="⚡"
+        source={source}
       />
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)' }}>
-        {/* Input */}
-        <GlassCard>
-          <h2 style={{ fontSize: 'var(--font-size-md)', fontWeight: 'var(--font-weight-semibold)', marginBottom: 'var(--space-md)' }}>
-            Protocol Metrics
-          </h2>
-          <div style={{ display: 'grid', gap: 'var(--space-sm)' }}>
-            {FIELDS.map(field => (
-              <Input
-                key={field.key}
-                label={field.label}
-                type={field.type}
-                value={metrics[field.key]}
-                onChange={e => update(field.key, e.target.value)}
-                step={field.type === 'number' ? 'any' : undefined}
-              />
-            ))}
+      {/* Stats */}
+      {result && (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+          gap: 'var(--space-md)',
+          marginBottom: 'var(--space-lg)',
+        }}>
+          <StatCard label="Risk Score" value={result.risk_score} suffix="/100" icon="⚡" color={result.risk_score > 70 ? 'var(--danger)' : result.risk_score > 40 ? 'var(--warning)' : 'var(--success)'} />
+          <StatCard label="Anomalies" value={result.anomalies?.length || 0} icon="🔍" color="var(--accent2)" />
+          <StatCard label="Confidence" value={((result.confidence || 0) * 100).toFixed(1)} suffix="%" icon="📊" color="var(--accent)" />
+          <StatCard label="Self-Corrected" value={result.self_correction_applied ? 'Yes' : 'No'} icon="⟳" color={result.self_correction_applied ? 'var(--success)' : 'var(--text-muted)'} />
+        </div>
+      )}
+
+      {/* Two column layout */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: 'var(--space-lg)',
+        marginBottom: 'var(--space-lg)',
+      }}>
+        {/* Input metrics panel */}
+        <GlassCard hover={false} style={{ padding: 'var(--space-lg)' }}>
+          <div style={{
+            fontSize: 'var(--font-size-lg)',
+            fontWeight: 'var(--font-weight-semibold)',
+            color: 'var(--text)',
+            marginBottom: 'var(--space-md)',
+          }}>
+            Detection Parameters
           </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+            <Input label="Protocol" value={metrics.protocol} onChange={(v) => setMetrics(prev => ({ ...prev, protocol: v }))} icon="🔗" clearable />
+            <Input label="Price Change 1h (%)" value={String(metrics.price_change_1h)} onChange={(v) => setMetrics(prev => ({ ...prev, price_change_1h: Number(v) || 0 }))} icon="📈" mono />
+            <Input label="Volume 24h" value={String(metrics.volume_24h)} onChange={(v) => setMetrics(prev => ({ ...prev, volume_24h: Number(v) || 0 }))} icon="📊" mono />
+            <Input label="Liquidity Ratio" value={String(metrics.liquidity_ratio)} onChange={(v) => setMetrics(prev => ({ ...prev, liquidity_ratio: Number(v) || 0 }))} icon="💧" mono />
+            <Input label="TVL Change 24h (%)" value={String(metrics.tvl_change_24h)} onChange={(v) => setMetrics(prev => ({ ...prev, tvl_change_24h: Number(v) || 0 }))} icon="📉" mono />
+            <Input label="Whale Activity" value={String(metrics.whale_activity)} onChange={(v) => setMetrics(prev => ({ ...prev, whale_activity: Number(v) || 0 }))} icon="🐋" mono />
+          </div>
+
           <GradientBtn
+            variant="primary"
             onClick={handleDetect}
-            disabled={loading}
             loading={loading}
-            style={{ marginTop: 'var(--space-md)', width: '100%' }}
+            fullWidth
+            style={{ marginTop: 'var(--space-lg)' }}
+            icon="⚡"
           >
-            {loading ? 'Calling AnomalyAgent via Groq...' : 'Detect Anomalies'}
+            Detect Anomalies
           </GradientBtn>
-          {error && (
-            <GlassCard glow="danger" style={{ marginTop: 'var(--space-sm)', padding: 'var(--space-sm)' }}>
-              <span style={{ color: 'var(--danger)', fontSize: 'var(--font-size-sm)' }}>⚠ {error}</span>
-            </GlassCard>
-          )}
         </GlassCard>
 
-        {/* Result */}
-        <GlassCard>
-          <h2 style={{ fontSize: 'var(--font-size-md)', fontWeight: 'var(--font-weight-semibold)', marginBottom: 'var(--space-md)' }}>
-            AnomalyAgent Result
-          </h2>
-          {loading && !result ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)', paddingTop: 20 }}>
-              <SkeletonLine width="60%" height={80} />
-              <SkeletonLine width="100%" height={20} />
-              <SkeletonLine width="80%" height={20} />
-              <SkeletonLine width="100%" height={40} />
-            </div>
-          ) : result ? (
-            <>
-              {/* RiskGaugeChart replaces manual RiskGauge */}
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 'var(--space-md)' }}>
-                <RiskGaugeChart score={Math.round(result.risk_score ?? 0)} size={160} />
+        {/* Results panel */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+          <GlassCard hover={false} style={{
+            padding: 'var(--space-lg)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            {result ? (
+              <RiskGaugeChart score={result.risk_score} size={200} />
+            ) : (
+              <div style={{
+                textAlign: 'center',
+                color: 'var(--text-muted)',
+                fontSize: 'var(--font-size-sm)',
+              }}>
+                <div style={{ fontSize: 40, marginBottom: 8 }}>⚡</div>
+                Run detection to see results
               </div>
+            )}
+          </GlassCard>
 
-              {/* AnomalyBarChart for metric visualization */}
-              {result.anomalies && result.anomalies.length > 0 && (
-                <div style={{ marginBottom: 'var(--space-md)' }}>
-                  <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', marginBottom: 'var(--space-sm)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                    Detected Anomalies
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 'var(--space-sm)' }}>
-                    {result.anomalies.map((a, i) => {
-                      const text = typeof a === 'string'
-                        ? a
-                        : `${a.metric}: ${a.value} (threshold ${a.threshold}, ${a.severity})`
-                      const sev = typeof a === 'object' ? a.severity : 'MEDIUM'
-                      return <Badge key={i} variant={sev === 'HIGH' || sev === 'CRITICAL' ? 'danger' : sev === 'MEDIUM' ? 'warning' : 'success'} size="sm">{text}</Badge>
-                    })}
-                  </div>
-                  <AnomalyBarChart metrics={buildBarData(result)} height={160} />
+          {/* Recommendation */}
+          {result && (
+            <GlassCard hover={false} style={{ padding: 'var(--space-md)' }}>
+              <div style={{
+                fontSize: 'var(--font-size-sm)',
+                fontWeight: 'var(--font-weight-semibold)',
+                color: 'var(--text-secondary)',
+                marginBottom: 'var(--space-sm)',
+              }}>
+                Recommendation
+              </div>
+              <div style={{
+                fontSize: 'var(--font-size-md)',
+                color: result.risk_score > 70 ? 'var(--danger)' : result.risk_score > 40 ? 'var(--warning)' : 'var(--success)',
+                fontWeight: 'var(--font-weight-semibold)',
+              }}>
+                {result.recommendation}
+              </div>
+              {result.self_correction_applied && (
+                <div style={{
+                  marginTop: 'var(--space-sm)',
+                  padding: '6px 10px',
+                  background: 'rgba(0, 230, 138, 0.1)',
+                  border: '1px solid rgba(0, 230, 138, 0.25)',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: 'var(--font-size-xs)',
+                  color: 'var(--success)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}>
+                  ⟳ Self-correction applied — initial score adjusted
                 </div>
               )}
-
-              {(!result.anomalies || result.anomalies.length === 0) && (
-                <GlassCard glow="success" style={{ padding: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
-                  <span style={{ color: 'var(--success)', fontSize: 'var(--font-size-sm)' }}>
-                    ✓ No anomalies detected
-                  </span>
-                </GlassCard>
-              )}
-
-              {result.recommendation && (
-                <GlassCard style={{ padding: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
-                  <strong style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-xs)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Recommendation</strong>
-                  <p style={{ marginTop: 4, lineHeight: 1.5, fontSize: 'var(--font-size-sm)' }}>{result.recommendation}</p>
-                </GlassCard>
-              )}
-
-              {result.self_correction_applied && (
-                <Badge variant="info" size="md" style={{ marginBottom: 'var(--space-sm)', display: 'inline-flex' }}>
-                  ⟳ SelfCorrectionAgent applied — confidence re-evaluated
-                </Badge>
-              )}
-
-              <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {result.confidence !== undefined && (
-                  <span>Confidence: <strong style={{ color: 'var(--text)' }}>
-                    <AnimatedCounter value={result.confidence * 100} formatter={v => `${Math.round(v)}%`} />
-                  </strong></span>
-                )}
-                {result.agent && <span>Agent: {result.agent}</span>}
-                {result._source && <span>Data source: <SourceBadge source={result._source} /></span>}
-                {result.on_chain_contract && (
-                  <span>
-                    On-chain:{' '}
-                    <a
-                      href={`https://testnet.cspr.live/deploy/${CONTRACT_HASHES.SentinelAlertLog}`}
-                      target="_blank" rel="noopener noreferrer"
-                      style={{ color: 'var(--accent)', fontFamily: 'var(--font)' }}
-                    >
-                      AuditTrail deploy ↗
-                    </a>
-                  </span>
-                )}
-              </div>
-            </>
-          ) : (
-            <div style={{ color: 'var(--text-muted)', textAlign: 'center', paddingTop: 40, fontSize: 'var(--font-size-sm)' }}>
-              <div style={{ fontSize: 36, marginBottom: 8 }}>⚠</div>
-              Enter protocol metrics and click detect<br />
-              <span style={{ fontSize: 'var(--font-size-xs)' }}>Real Groq AI · llama-3.3-70b-versatile</span>
-            </div>
+              <SourceBadge source={source} style={{ marginTop: 'var(--space-sm)' }} />
+            </GlassCard>
           )}
-        </GlassCard>
+
+          {/* Anomaly bar chart */}
+          {anomalyChartData.length > 0 && (
+            <GlassCard hover={false} style={{ padding: 'var(--space-md)' }}>
+              <div style={{
+                fontSize: 'var(--font-size-sm)',
+                fontWeight: 'var(--font-weight-semibold)',
+                color: 'var(--text-secondary)',
+                marginBottom: 'var(--space-sm)',
+              }}>
+                Anomaly Metrics vs Thresholds
+              </div>
+              <AnomalyBarChart metrics={anomalyChartData} height={180} />
+            </GlassCard>
+          )}
+        </div>
       </div>
+
+      {/* Anomaly detail list */}
+      {result?.anomalies?.length > 0 && (
+        <GlassCard hover={false} style={{ padding: 'var(--space-lg)' }}>
+          <div style={{
+            fontSize: 'var(--font-size-lg)',
+            fontWeight: 'var(--font-weight-semibold)',
+            color: 'var(--text)',
+            marginBottom: 'var(--space-md)',
+          }}>
+            Detected Anomalies
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+            {result.anomalies.map((anomaly, i) => (
+              <div key={i} className="slide-up" style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 'var(--space-md)',
+                padding: 'var(--space-md)',
+                background: anomaly.severity === 'CRITICAL' ? 'rgba(255, 59, 92, 0.06)' : 'rgba(14, 18, 30, 0.4)',
+                borderRadius: 'var(--radius-md)',
+                borderLeft: `3px solid ${anomaly.severity === 'CRITICAL' ? 'var(--danger)' : anomaly.severity === 'HIGH' ? '#ff6b7a' : 'var(--warning)'}`,
+              }}>
+                <SeverityBadge severity={anomaly.severity} />
+                <div style={{ flex: 1 }}>
+                  <div style={{
+                    fontSize: 'var(--font-size-md)',
+                    fontWeight: 'var(--font-weight-semibold)',
+                    color: 'var(--text)',
+                  }}>
+                    {anomaly.metric}
+                  </div>
+                  <div style={{
+                    fontSize: 'var(--font-size-sm)',
+                    color: 'var(--text-secondary)',
+                    marginTop: 2,
+                  }}>
+                    Value: {anomaly.value} — Threshold: {anomaly.threshold}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </GlassCard>
+      )}
     </div>
   )
 }
+
+export default AnomalyPanel
