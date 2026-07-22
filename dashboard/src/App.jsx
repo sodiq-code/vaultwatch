@@ -64,7 +64,7 @@ function AppShell() {
   const { isMobile, sidebarOpen, toggleSidebar, closeSidebar } = useResponsive()
   const [activePanel, setActivePanel] = useState('pipeline')
   const [price, setPrice] = useState(null)
-  const [blockHeight, setBlockHeight] = useState(0)
+  const [blockHeight, setBlockHeight] = useState(hybridApi.getBlockHeight())
   const [health, setHealth] = useState(null)
 
   // Load sidebar data

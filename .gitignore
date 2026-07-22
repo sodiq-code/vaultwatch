@@ -37,3 +37,4 @@ dashboard/.env.local
 secret_key*.pem
 *.pem
 !contracts/wasm/*.wasm
+.vercel
