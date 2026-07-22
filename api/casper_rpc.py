@@ -86,6 +86,7 @@ import asyncio
 import hashlib
 import json
 import logging
+import os
 import struct
 import time
 import urllib.request
@@ -96,7 +97,7 @@ logger = logging.getLogger("vaultwatch.casper_rpc")
 # ---------------------------------------------------------------------------
 # Configuration — contract hashes + RPC endpoint
 # ---------------------------------------------------------------------------
-CASPER_RPC_URL = "https://node.testnet.casper.network/rpc"
+CASPER_RPC_URL = os.getenv("CASPER_RPC_URL", "https://node.testnet.cspr.cloud/rpc")
 
 # Verified CONTRACT hashes on Casper Testnet (resolved from the deployer
 # account's named keys via query_global_state — see deploy_hashes_live.json

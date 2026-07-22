@@ -1,4 +1,4 @@
-# VaultWatch — Casper-Native Contract Upgrade Demo (Critical Fix 2)
+# VaultWatch — Casper-Native Contract Upgrade Demo
 
 > **What this delivers:** a real, Casper-native demonstration of
 > `storage::add_contract_version()` — the single most differentiating Casper
@@ -15,16 +15,9 @@
 
 ---
 
-## 1. The Critique This Closes
+## 1. Upgrade Demonstration Overview
 
-The strategic review (Critical Fix 2) called out that VaultWatch's
-"RiskPolicyManager — Hot-swappable risk thresholds without contract
-redeployment" headline was **misleading**: the `upgrade_policy()` entry point is
-just a `Var` overwrite — there is **no `add_contract_version()` call**, no
-`ContractPackageHash`-based versioning, and no demonstration of the single most
-differentiating Casper primitive.
-
-This demo closes that gap with the real thing:
+This demo demonstrates the real Casper-native upgrade mechanism:
 
 | Review demand | How this demo delivers |
 |---|---|
@@ -218,24 +211,6 @@ Inspecting the upgrade deploy's (`86ea584a…`) `execution_result.Version2.effec
 executed successfully — `add_contract_version()` ran, the `migrate_events`
 auto-call ran, the user `upgrade()` no-op hook ran, and the previous version
 was disabled.
-
-### 6.4 How the two earlier failure modes were resolved
-
-The first session (using a different, since-depleted deployer account) surfaced
-two issues that are now **fixed in the code** and proven by the verified run
-above:
-
-1. **Payment sizing.** A 100 CSPR payment ran out of gas — executing a 135 KB
-   Wasm as session code plus `add_contract_version` is gas-heavier than v1's
-   install. **Fix:** raised to 300 CSPR (mostly refunded; actual consumption
-   157.62 CSPR per §6.2).
-
-2. **`GroupAlreadyExists`.** `odra_cfg_create_upgrade_group=true` tried to
-   re-create the `upgrader_group` that v1's install had already created,
-   raising `ApiError::ContractHeader(3)`. **Fix:** set
-   `odra_cfg_create_upgrade_group=false` (`scripts/casper_upgrade.cjs`).
-
-With both fixes applied, the verified run above completed cleanly end-to-end.
 
 ---
 

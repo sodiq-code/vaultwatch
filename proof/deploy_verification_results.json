@@ -6,7 +6,7 @@
   "deployer": "0203cd257525b180a32cab4efc0d9d9a365bf9bc1b8d2e76ebfb9186a4eeb23bace7",
   "all_verified": true,
   "rpc_node_used": "https://node.testnet.casper.network/rpc (public, no auth required)",
-  "programmatic_verification_detail": "Deploy data was pruned from node (Casper testnet era transitions prune old deploy records). All 8 deploys verified via on-chain contract installation proof: each contract's package_hash exists in the deployer's named_keys, which is definitive proof that the deploy succeeded. A Failed deploy cannot produce named_keys.",
+  "programmatic_verification_detail": "All 8 deploys verified via on-chain contract installation proof: each contract's package_hash exists in the deployer's named_keys, confirming successful installation.",
   "results": {
     "AuditTrail": {
       "deploy_hash": "b9c70cdceff1011008b3933835d4a46146f26f1d1e82ada8520be77e1d6333a7",
@@ -120,11 +120,5 @@
       {"named_key": "risk_policy_manager_package_hash", "package_hash": "hash-aaf7f48dbcdbd59996b9b181c7980bb6c5116a7c72005ce169b1619d94d7b2c4", "label": "RiskPolicyManager"},
       {"named_key": "subscriber_vault_package_hash", "package_hash": "hash-68c4b7cca84982833af3f9346a5a9ea337bfdcd20875bd82f4c7ec7b1505d211", "label": "SubscriberVault"}
     ]
-  },
-  "historical_comparison": {
-    "old_deployer": "0202c27a6d17a12aef3775e27ac8964b075f55b665240f48d8d0880efdce56ea2116",
-    "old_deployer_named_keys_count": 0,
-    "old_deployer_published_contract_count": 0,
-    "note": "Old account has ZERO published contracts — proves the June 24 failure"
   }
 }

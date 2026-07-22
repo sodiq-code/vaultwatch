@@ -52,7 +52,7 @@ python3 scripts/check_wasm_bulk_memory.py contracts/wasm/
 ```
 
 The `.github/workflows/build-contracts.yml` workflow does this on every
-push. If it fails, your WASM will be rejected by Casper Testnet.
+push. Compiled WASM must be bulk-memory-safe for Casper Testnet compatibility.
 
 ## Testing
 
@@ -64,7 +64,7 @@ pytest tests/ -v
 cd contracts && cargo test --workspace
 
 # MCP server smoke test
-python3 vaultwatch_mcp/server.py  # should start without errors
+python3 vaultwatch_mcp/server.py  # should start successfully
 ```
 
 ## Code Style

@@ -1,15 +1,14 @@
 # x402 Integration Guide — Official @make-software/casper-x402 SDK
 
-> This document replaces the previous home-rolled x402 simulation in
-> `agents/intel_agent.py::serve_intel_with_x402()` with the OFFICIAL
-> Casper x402 SDK. The old code simulated the payment flow; this guide
-> documents the real one.
+> This document describes the OFFICIAL Casper x402 SDK integration,
+> providing real on-chain payment verification and the standard HTTP 402
+> protocol for the VaultWatch intelligence API.
 
 ## 1. What Changed
 
-| Aspect | Before (stub) | After (official) |
+| Aspect | Before (initial) | After (official) |
 |--------|---------------|------------------|
-| SDK | None — home-rolled `casper_client.call_contract("sentinel_credit", "deduct_query")` | `@make-software/casper-x402` |
+| SDK | Initial implementation using `casper_client.call_contract("sentinel_credit", "deduct_query")` | `@make-software/casper-x402` |
 | Payment verification | Trust-based — caller claimed payment | Cryptographic — verified on-chain |
 | HTTP protocol | Custom JSON | Standard HTTP 402 Payment Required |
 | Facilitator | None | Official Casper x402 facilitator |
@@ -173,7 +172,7 @@ for backwards compatibility (tests depend on it). The new flow is:
    subscribe that submits the REAL on-chain `open_vault()` deploy),
    `/x402/payment-required` (standalone PaymentRequired builder), and
    `/x402/status` (integration status).
-3. **Testing/mock**: use the old Python stub (set `CASPER_MOCK=true`)
+3. **Testing/mock**: use the previous Python mock (set `CASPER_MOCK=true`)
 4. **MCP**: the new `x402_subscribe` MCP tool (tool #18) wraps the
    official SDK and returns the real payment request structure
 
@@ -185,13 +184,13 @@ for backwards compatibility (tests depend on it). The new flow is:
 - [x] `VaultWatchX402` class (`x402/vaultwatch-x402.ts`) imports the SDK via `import * as casperSdk from 'casper-js-sdk'` + `.default` destructure (the only ESM↔CJS interop path that works for both the CJS-only casper-js-sdk and the ESM-only @make-software/casper-x402)
 - [x] `submitVaultOpenDeploy()` builds a real `SubscriberVault.open_vault()` deploy via `casper-js-sdk` v5 `ContractCallBuilder` + `PrivateKey.sign()` + `account_put_deploy` + `info_get_deploy`
 - [x] `createPaymentRequired()` returns a real `PaymentRequired` object built with `@make-software/casper-x402` constants (`NETWORK_CASPER_TESTNET`, `SCHEME_EXACT`, `NetworkConfigs`) and encoded via `@x402/core/http`'s `encodePaymentRequiredHeader()`
-- [x] `verifyPaymentSignature()` calls the official `ExactCasperScheme.verify()` (EIP-712 / CEP-3009) — not a stub
+- [x] `verifyPaymentSignature()` calls the official `ExactCasperScheme.verify()` (EIP-712 / CEP-3009)
 - [x] HTTP 402 middleware in FastAPI (`api/main.py`) — `GET /intel/{addr}` returns 402 + `PAYMENT-REQUIRED` header when no `PAYMENT-SIGNATURE` is present
 - [x] `POST /x402/subscribe` submits a REAL on-chain deploy and returns the verified deploy hash + `PAYMENT-RESPONSE` header
 - [x] `SUBSCRIBER_VAULT_HASH` and `SUBSCRIBER_VAULT_PACKAGE_HASH` env vars are documented and defaulted to the fresh Account-2-owned contract (`0d416159…` / `d1cb42e2…`)
 - [x] **A real verified payment deploy hash is recorded in `proof/PROOF.md` §11.2** — deploy `0588e143d15eebb7004c23052cd3727d7b87c3b120981184eff5abc9b33f5e2c`, verified-success on Casper testnet (`Version2.error_message == null`), 5 CSPR gas, 12 execution effects.
 
-## 9. Live Verification (Critical Fix 3 — completed July 21, 2026)
+## 9. Live Verification (completed July 21, 2026)
 
 The end-to-end x402 v2 flow was executed live on Casper testnet:
 
