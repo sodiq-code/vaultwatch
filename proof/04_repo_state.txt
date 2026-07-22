@@ -1,16 +1,90 @@
 === REPO STATE ===
-Repository: https://github.com/sodiq-code/vaultwatch
-Branch: main
-Commit: latest
-Branches: main (only)
+Captured: 2026-07-22 01:09:05 UTC
+Repo:     /home/z/my-project/vaultwatch
 
-Deployer: 0203cd257525b180a32cab4efc0d9d9a365bf9bc1b8d2e76ebfb9186a4eeb23bace7
-Network: casper-test
-Protocol: 2.2.2
+Command(s) used to produce this file:
+  $ git log --oneline -20
+  $ git status
+  $ git remote -v
+  $ git branch -a
+  $ git rev-parse HEAD
+  $ git rev-parse --abbrev-ref HEAD
 
-8 contracts deployed + 21 interactions = 29 on-chain TX hashes
-16 named keys on deployer account
+------------------------------------------------------------------------------
 
-Live dashboard: https://dashboard-rho-amber-89.vercel.app
-PyPI: casper-sentinel v4.0.0
-npm: casper-sentinel-mcp v4.0.0
+$ git log --oneline -20  (exit=0)
+79de3e1 test(e2e): add real-Casper-testnet e2e suite + captured proof output
+be4319e fix(dashboard): render anomaly objects as readable strings (React error #31)
+5a7fbfa fix(intel-agent): switch from compound-beta to llama-3.3-70b-versatile for reliable JSON mode
+a9cf453 fix(safety-guard): replace deprecated llama-prompt-guard-2-86m with llama-3.3-70b-versatile
+0813163 feat(chain+sdk+dash): real on-chain findings via FastAPI proxy + SDK contract-query methods
+11c32c6 fix(wasm): rebuild SentinelAlertLog.wasm with Vec<u64> source change
+5042bb9 harden(security): close timing oracle in AuthMiddleware key check
+6ab22cf refactor(agents+api): inject Groq client via constructor + FastAPI auth & rate limiting
+3c32adf fix(contracts+guard): Vec<u64> address_logs capped at 256 + fail-closed SafetyGuard
+72455ce feat(contracts): add Odra events to all 8 contracts + Address-typed fields
+3ae1d85 fix(critical-9,10): serve_intel_with_x402 real testnet + live on-chain policy_reader
+1930820 fix(critical-7,8): Groq key server-side + payable contracts with withdraw()
+4b57244 verify(critical-1-6): comprehensive verification + PROOF.md sections 12-15
+18acb6d fix(critical-6): rotate leaked CSPR.cloud key behind FastAPI reverse proxy
+8918b1e fix(critical-5): wire MCP tools to REAL Casper RPC + fix fake 50-char hashes
+24e9485 fix(critical-4): standardize AuditAgent on record_finding + contract_hash kwarg
+8cb289e fix(critical-3): real x402 v2 payment flow verified on-chain
+29f0ffd fix(critical-2): fully verify Casper-native add_contract_version upgrade on-chain
+d5cefd4 feat: Casper-native upgradable contracts via add_contract_version() (Critical Fix 2)
+62af3f5 fix: execute 21 REAL verified-success deploys via official casper-js-sdk
+
+$ git status  (exit=0)
+On branch main
+Your branch is ahead of 'origin/main' by 1 commit.
+  (use "git push" to publish your local commits)
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   proof/01_build_output.txt
+	modified:   proof/02_environment.txt
+	modified:   proof/03_wasm_contracts.txt
+	modified:   proof/04_repo_state.txt
+	modified:   proof/05_test_results.txt
+	modified:   proof/06_mcp_server.txt
+	modified:   proof/07_stack_info.txt
+	modified:   scripts/capture_proof.py
+
+no changes added to commit (use "git add" and/or "git commit -a")
+
+$ git remote -v  (exit=0)
+origin	https://[REDACTED]@github.com/sodiq-code/vaultwatch.git (fetch)
+origin	https://[REDACTED]@github.com/sodiq-code/vaultwatch.git (push)
+
+$ git branch -a  (exit=0)
+* main
+  remotes/origin/HEAD -> origin/main
+  remotes/origin/dependabot/npm_and_yarn/dashboard/vite-8.1.5
+  remotes/origin/dependabot/pip/dev-tools-d6405df956
+  remotes/origin/dependabot/pip/fastapi-gte-0.139.2
+  remotes/origin/dependabot/pip/fastmcp-gte-3.4.4
+  remotes/origin/dependabot/pip/opentelemetry-a30c47dd7a
+  remotes/origin/dependabot/pip/testing-977d1b941f
+  remotes/origin/main
+
+$ git rev-parse HEAD  (exit=0)
+79de3e1120d7fb22528012bc43d1c2d7fcf355d4
+
+$ git rev-parse --abbrev-ref HEAD  (exit=0)
+main
+
+--- Deployed Contract Hashes (deploy_hashes_live.json) ---
+  AuditTrail                 cd1579001dcd923888baa9ea44b1df3b816de52ced44682a3042779d1d4d9932
+  RiskOracle                 234a34a71fb04625971373b06b73ac6dbc5f7d701f7e96621c752d73ccde80ff
+  SentinelCredit             993d8947a6c8220539efaea87c7631c9fc45780c674406d48487bcf66fb1cbfb
+  SentinelRegistry           9cce03a0e5d1aa3dab07da50afb4cb9eaba29973eb2b1e766cc6724a1e34e31e
+  SentinelAlertLog           43f9b7df3f9f808db8b035c13ae0bac0b47335709abeafdc36e6a9bffe9b9322
+  AgentBehaviorIndex         1a976fe839366c4399541055245695cf94626b3d99c0f3a6675ae761395d822b
+  RiskPolicyManager          1027cb2a989b75d8b29b82cab60a8b12a892138a5704cdd4753a0862f65b1d85
+  SubscriberVault            9a93db9c1f315f1ed34ee55e46f65ed28585f9529fb8427aedf937a6ea0d7bd0
+
+--- Deployer Account (live RPC) ---
+account_hash: account-hash-0debd9ab6e903b6d3269f7c9ceaf28320e3b91209e1a1080fd9ddf097d3dbd68
+named_keys: 4
+main_purse: uref-e09e313356c37984609e75ff2bed46f2144017b573af4cc339fbd40b65defd8b-007

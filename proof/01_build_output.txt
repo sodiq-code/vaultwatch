@@ -1,16 +1,12 @@
 === BUILD OUTPUT ===
-All 8 Odra contracts compiled successfully (bulk-memory-safe WASM):
-- AuditTrail.wasm
-- SentinelRegistry.wasm
-- RiskOracle.wasm
-- SentinelCredit.wasm
-- AgentBehaviorIndex.wasm
-- SentinelAlertLog.wasm
-- RiskPolicyManager.wasm
-- SubscriberVault.wasm
+Captured: 2026-07-22 01:05:53 UTC
+Repo:     /home/z/my-project/vaultwatch
 
-RUSTFLAGS: -C target-feature=-bulk-memory
-Post-processing: wasm-opt --enable-bulk-memory=no
-Hard gate: check_wasm_bulk_memory.py PASSED
+Command(s) used to produce this file:
+  $ RUSTFLAGS='-C target-feature=-bulk-memory' cargo build --target wasm32-unknown-unknown --lib --release
+  $ wasm-opt --enable-bulk-memory-opt --llvm-memory-copy-fill-lowering -Oz contracts/wasm/RiskPolicyManagerV2.raw.wasm -o contracts/wasm/RiskPolicyManagerV2.wasm
+  $ python3 scripts/check_wasm_bulk_memory.py contracts/wasm/
 
-Build date: July 11, 2026
+------------------------------------------------------------------------------
+
+[SKIPPED via --skip-build]

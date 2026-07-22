@@ -215,21 +215,75 @@ async def test_serve_intel_without_casper_client_serves_findings(seeded_findings
 # ---------------------------------------------------------------------------
 
 
-# The SentinelCredit owner key (depleted but re-funded with 20 CSPR for gas).
-# This file is gitignored. Skip the live test if the key is absent.
+# The SentinelCredit owner key (Account 1 — installed the v1 contracts on
+# 2026-07-11). This file is gitignored. Skip the live test if the key is
+# absent OR if the account is depleted (balance 0 CSPR).
 _OWNER_KEY_PATH = "secret_key.depleted_2026-07-21T17-06-18.pem"
+_OWNER_PUBLIC_KEY = (
+    "0203cd257525b180a32cab4efc0d9d9a365bf9bc1b8d2e76ebfb9186a4eeb23bace7"
+)
 _OWNER_ACCOUNT_HASH = (
     "account-hash-aff1536a1cc925dab64b18049e0b63d5ec48580480a8d8306003663070c83136"
 )
+
+
+def _owner_balance_cspr() -> int:
+    """Live-check Account 1's balance. Returns -1 on RPC error (so the test
+    runs and surfaces the real failure, rather than silently skipping on a
+    transient network issue)."""
+    import json
+    import urllib.request
+    try:
+        req = urllib.request.Request(
+            "https://node.testnet.casper.network/rpc",
+            data=json.dumps({
+                "jsonrpc": "2.0", "id": 1,
+                "method": "state_get_account_info",
+                "params": {"public_key": _OWNER_PUBLIC_KEY},
+            }).encode(),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            r = json.loads(resp.read())
+        purse = r["result"]["account"]["main_purse"]
+        req2 = urllib.request.Request(
+            "https://node.testnet.casper.network/rpc",
+            data=json.dumps({
+                "jsonrpc": "2.0", "id": 1,
+                "method": "chain_get_state_root_hash", "params": {},
+            }).encode(),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req2, timeout=10) as resp:
+            srh = json.loads(resp.read())["result"]["state_root_hash"]
+        req3 = urllib.request.Request(
+            "https://node.testnet.casper.network/rpc",
+            data=json.dumps({
+                "jsonrpc": "2.0", "id": 1,
+                "method": "state_get_balance",
+                "params": {"state_root_hash": srh, "purse_uref": purse},
+            }).encode(),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req3, timeout=10) as resp:
+            r = json.loads(resp.read())
+        return int(r["result"]["balance_value"]) // 1_000_000_000
+    except Exception:
+        return -1
+
+
+_OWNER_BALANCE = _owner_balance_cspr()
 _LIVE_SKIP_REASON = (
-    "requires the SentinelCredit owner key file "
-    f"({_OWNER_KEY_PATH}) and live testnet access"
+    f"requires the SentinelCredit owner key file ({_OWNER_KEY_PATH}), live "
+    f"testnet access, AND a funded owner account (current Account-1 balance: "
+    f"{_OWNER_BALANCE} CSPR — needs >= 5 CSPR for the deduct_query deploy). "
+    "Refill at https://testnet.cspr.live/tools/faucet."
 )
 
 
 @pytest.mark.asyncio
 @pytest.mark.skipif(
-    not os.path.exists(_OWNER_KEY_PATH),
+    not os.path.exists(_OWNER_KEY_PATH) or _OWNER_BALANCE < 5,
     reason=_LIVE_SKIP_REASON,
 )
 async def test_serve_intel_with_x402_live_testnet(seeded_findings):

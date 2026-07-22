@@ -1,8 +1,59 @@
 === ENVIRONMENT ===
-Python: 3.11
-Rust: nightly-2026-01-01
-cargo-odra: 0.1.7
-wasm-opt: binaryen 116+
-ruff: latest
-Node: 18+
-OS: Ubuntu 22.04 (CI) / Windows 10 (local dev)
+Captured: 2026-07-22 01:05:53 UTC
+Repo:     /home/z/my-project/vaultwatch
+
+Command(s) used to produce this file:
+  $ rustc --version
+  $ cargo --version
+  $ wasm-opt --version
+  $ wasm-objdump --version
+  $ wasm-validate --version
+  $ node --version
+  $ npm --version
+  $ python3 --version
+  $ pytest --version
+  $ ruff --version
+  $ git --version
+
+------------------------------------------------------------------------------
+
+$ rustc --version  (exit=0)
+rustc 1.97.1 (8bab26f4f 2026-07-14)
+
+$ cargo --version  (exit=0)
+cargo 1.97.1 (c980f4866 2026-06-30)
+
+$ wasm-opt --version  (exit=0)
+wasm-opt version 120 (version_120)
+
+$ wasm-objdump --version  (exit=0)
+1.0.36
+
+$ wasm-validate --version  (exit=0)
+1.0.36
+
+$ node --version  (exit=0)
+v24.18.0
+
+$ npm --version  (exit=0)
+11.16.0
+
+$ python3 --version  (exit=0)
+Python 3.12.13
+
+$ pytest --version  (exit=0)
+pytest 9.0.2
+
+$ ruff --version  (exit=0)
+ruff 0.15.22
+
+$ git --version  (exit=0)
+git version 2.47.3
+
+
+--- Casper Testnet Node ---
+chainspec_name: casper-test
+api_version: 2.0.0
+build_version: 2.2.2-d4becff
+peers: 101
+last_block_height: 8582696
