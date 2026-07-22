@@ -39,17 +39,27 @@ class RWAFeedData:
 
     Represents the five asset categories served by the x402-gated feed:
     real_estate, bonds, commodities, credit, tokenized_assets.
+
+    Hybrid upgrade (v1.1.0): each category may contain real data from
+    CoinGecko (commodities/tokenized_assets) or FRED (bonds/credit) or
+    remain mock-only (real_estate). Provenance is tracked via:
+      - real_data_sources: bool flags indicating which external APIs were live
+      - attestation_proof: SHA-256 hashes + timestamps per category
+      - data_source_map: per-category provenance (coingecko_api / fred_api / vaultwatch_mock)
     """
     feed_source: str = "rwa_feed_api"
     x402_payment_id: str = ""
     timestamp: int = 0
-    feed_version: str = "1.0.0"
+    feed_version: str = "1.1.0"
     real_estate: Dict[str, Any] = field(default_factory=dict)
     bonds: Dict[str, Any] = field(default_factory=dict)
     commodities: Dict[str, Any] = field(default_factory=dict)
     credit: Dict[str, Any] = field(default_factory=dict)
     tokenized_assets: Dict[str, Any] = field(default_factory=dict)
     raw_feed: Dict[str, Any] = field(default_factory=dict)
+    real_data_sources: Dict[str, bool] = field(default_factory=dict)
+    attestation_proof: Dict[str, Any] = field(default_factory=dict)
+    data_source_map: Dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -128,13 +138,22 @@ class RWAAgent:
                         feed_source="rwa_feed_api",
                         x402_payment_id=payment_id,
                         timestamp=feed_data_dict.get("timestamp", int(time.time())),
-                        feed_version=feed_data_dict.get("feed_version", "1.0.0"),
+                        feed_version=feed_data_dict.get("feed_version", "1.1.0"),
                         real_estate=feed_data_dict.get("real_estate", {}),
                         bonds=feed_data_dict.get("bonds", {}),
                         commodities=feed_data_dict.get("commodities", {}),
                         credit=feed_data_dict.get("credit", {}),
                         tokenized_assets=feed_data_dict.get("tokenized_assets", {}),
                         raw_feed=feed_data_dict,
+                        real_data_sources=feed_data_dict.get("real_data_sources", {}),
+                        attestation_proof=feed_data_dict.get("attestation_proof", {}),
+                        data_source_map={
+                            "real_estate": feed_data_dict.get("real_estate", {}).get("data_source", "vaultwatch_mock"),
+                            "bonds": feed_data_dict.get("bonds", {}).get("data_source", "vaultwatch_mock"),
+                            "commodities": feed_data_dict.get("commodities", {}).get("data_source", "vaultwatch_mock"),
+                            "credit": feed_data_dict.get("credit", {}).get("data_source", "vaultwatch_mock"),
+                            "tokenized_assets": feed_data_dict.get("tokenized_assets", {}).get("data_source", "vaultwatch_mock"),
+                        },
                     )
                 else:
                     span.set_attribute("rwa.feed.success", False)
@@ -253,8 +272,12 @@ class RWAAgent:
             # Inject the structured feed data into the Groq query so the LLM
             # can cross-reference live web intel against the known feed values.
             if feed_summary:
+                provenance_info = ""
+                if feed_data.real_data_sources:
+                    active = [k for k, v in feed_data.real_data_sources.items() if v]
+                    provenance_info = f" (live data sources: {', '.join(active) if active else 'all mock'})"
                 query += (
-                    f"\n\n--- STRUCTURED RWA FEED DATA (source: {feed_data.feed_source}) ---\n"
+                    f"\n\n--- STRUCTURED RWA FEED DATA (source: {feed_data.feed_source}{provenance_info}) ---\n"
                     f"{feed_summary}\n"
                     f"Cross-reference the above feed data with your live web search."
                 )
@@ -383,10 +406,18 @@ class RWAAgent:
         return mapping.get(risk_type, "")
 
     def _summarize_feed_data(self, feed: RWAFeedData) -> str:
-        """Build a human-readable summary of structured feed data for Groq context."""
+        """Build a human-readable summary of structured feed data for Groq context.
+
+        Hybrid upgrade: includes provenance annotations (data_source per category).
+        """
         if feed.timestamp == 0 and not feed.raw_feed:
             return ""
         parts = []
+        # Provenance header
+        if feed.real_data_sources:
+            active = [k for k, v in feed.real_data_sources.items() if v]
+            if active:
+                parts.append(f"[Provenance: live data from {', '.join(active)}]")
         if feed.real_estate:
             props = feed.real_estate.get("properties", [])
             for p in props[:3]:

@@ -1098,26 +1098,180 @@ async def intel_resource(
 
 
 # ---------------------------------------------------------------------------
-# RWA Feed — Mock structured RWA data (x402-gated)
+# RWA Feed — Hybrid real+mock structured RWA data (x402-gated)
+#
+# Real data sources (gracefully degrade to mock on failure):
+#   • CoinGecko (free, no key): CSPR price, PAXG gold token price,
+#     USDC/USDT stablecoin depeg detection
+#   • FRED (env-gated via FRED_API_KEY): Treasury yields (10y, 2y, 3m),
+#     BAA corporate spread, effective federal funds rate
+#
+# Provenance tracking: each category records whether it came from a real
+# API (data_source = "coingecko_api" / "fred_api") or mock fallback
+# (data_source = "vaultwatch_mock"). attestation_proof contains SHA-256
+# hashes + timestamps for audit verification.
 # ---------------------------------------------------------------------------
 import hashlib
 import random as _random
 
 
-def _generate_rwa_feed_data(asset_type: Optional[str] = None) -> Dict[str, Any]:
-    """Generate structured, realistic mock RWA data with time-rotating values.
+async def _fetch_coingecko_rwa_data() -> Dict[str, Any]:
+    """Fetch real RWA-related market data from CoinGecko (free, no API key).
 
-    Each call produces "fresh" data by seeding deterministic randomness from
-    the current UNIX timestamp (per-minute bucket so data is stable within a
-    minute but shifts across calls made at different times).
+    Returns:
+        Dict with:
+          - cspr_price_usd: current CSPR/USD price
+          - paxg_price_usd: PAXG (PAX Gold) token price ≈ physical gold
+          - stablecoin_depeg: USDC/USDT price deviation from $1.00
+          - fetched_at: UNIX timestamp of fetch
+        Empty dict on any error (graceful fallback to mock).
+    """
+    result: Dict[str, Any] = {}
+    now = int(time.time())
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as cg:
+            # CSPR price (same pattern as /agent/health)
+            resp = await cg.get(
+                "https://api.coingecko.com/api/v3/simple/price"
+                "?ids=casper-network&vs_currencies=usd",
+            )
+            if resp.status_code == 200:
+                cspr_val = resp.json().get("casper-network", {}).get("usd")
+                if cspr_val is not None:
+                    result["cspr_price_usd"] = float(cspr_val)
+
+            # PAXG (tokenised gold) price — best free proxy for real gold
+            resp = await cg.get(
+                "https://api.coingecko.com/api/v3/simple/price"
+                "?ids=pax-gold&vs_currencies=usd",
+            )
+            if resp.status_code == 200:
+                paxg_val = resp.json().get("pax-gold", {}).get("usd")
+                if paxg_val is not None:
+                    result["paxg_price_usd"] = float(paxg_val)
+
+            # Stablecoin depeg detection: USDC and USDT should be ≈ $1.00
+            resp = await cg.get(
+                "https://api.coingecko.com/api/v3/simple/price"
+                "?ids=usd-coin,tether&vs_currencies=usd",
+            )
+            if resp.status_code == 200:
+                sc_data = resp.json()
+                usdc = sc_data.get("usd-coin", {}).get("usd")
+                usdt = sc_data.get("tether", {}).get("usd")
+                depeg_signals = {}
+                if usdc is not None and abs(float(usdc) - 1.0) > 0.005:
+                    depeg_signals["USDC"] = {
+                        "price_usd": float(usdc),
+                        "deviation_pct": round((float(usdc) - 1.0) * 100, 4),
+                        "depeg_risk": "medium" if abs(float(usdc) - 1.0) > 0.01 else "low",
+                    }
+                if usdt is not None and abs(float(usdt) - 1.0) > 0.005:
+                    depeg_signals["USDT"] = {
+                        "price_usd": float(usdt),
+                        "deviation_pct": round((float(usdt) - 1.0) * 100, 4),
+                        "depeg_risk": "medium" if abs(float(usdt) - 1.0) > 0.01 else "low",
+                    }
+                result["stablecoin_depeg"] = depeg_signals
+
+            result["fetched_at"] = now
+    except (httpx.HTTPError, ValueError, TypeError, KeyError) as exc:
+        logger.warning("CoinGecko RWA fetch failed: %s", exc)
+    return result
+
+
+async def _fetch_fred_rwa_data() -> Dict[str, Any]:
+    """Fetch real US Treasury / macro data from FRED (Federal Reserve Economic Data).
+
+    Gated by FRED_API_KEY env var — if not set, returns empty dict and
+    all bond/credit data falls back to mock. FRED is free (register at
+    https://fred.stlouisfed.org/docs/api/api_key.html).
+
+    Returns:
+        Dict with:
+          - treasury_10y_yield, treasury_2y_yield, treasury_3m_yield
+          - baa_spread (BAA corporate bond spread over 10y Treasury)
+          - effective_fed_rate (effective federal funds rate)
+          - fetched_at: UNIX timestamp
+        Empty dict on any error or missing API key.
+    """
+    fred_key = os.getenv("FRED_API_KEY", "")
+    if not fred_key:
+        return {}
+
+    result: Dict[str, Any] = {}
+    now = int(time.time())
+    # FRED series IDs for key RWA indicators
+    series_map = {
+        "treasury_10y_yield": "DGS10",     # 10-Year Treasury
+        "treasury_2y_yield": "DGS2",       # 2-Year Treasury
+        "treasury_3m_yield": "DGS3MO",     # 3-Month Treasury
+        "baa_spread": "BAA10YM",           # BAA corporate spread
+        "effective_fed_rate": "EFFR",      # Effective Fed Funds Rate
+    }
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as fred:
+            for field, series_id in series_map.items():
+                resp = await fred.get(
+                    f"https://api.stlouisfed.org/fred/series/observations"
+                    f"?series_id={series_id}&api_key={fred_key}"
+                    f"&file_type=json&sort_order=desc&limit=1",
+                )
+                if resp.status_code == 200:
+                    obs = resp.json().get("observations", [])
+                    if obs:
+                        val_str = obs[0].get("value", "")
+                        if val_str and val_str != ".":
+                            result[field] = float(val_str)
+            if result:
+                result["fetched_at"] = now
+    except (httpx.HTTPError, ValueError, TypeError, KeyError) as exc:
+        logger.warning("FRED RWA fetch failed: %s", exc)
+    return result
+
+
+async def _generate_rwa_feed_data(asset_type: Optional[str] = None) -> Dict[str, Any]:
+    """Generate hybrid real+mock structured RWA data with provenance tracking.
+
+    Strategy:
+      1. Generate the full mock dataset (deterministic, time-rotating).
+      2. Fetch real data from CoinGecko (free) and FRED (env-gated).
+      3. Overlay real values onto the corresponding mock categories:
+         - Bonds: real Treasury yields from FRED when available
+         - Commodities: real gold price from PAXG (CoinGecko) when available
+         - Credit: real BAA spread from FRED when available
+         - Tokenized Assets: overlay CSPR price + stablecoin depeg from CoinGecko
+         - Real Estate: always mock (no free property data API)
+      4. Record provenance per category (data_source: "fred_api" / "coingecko_api"
+         vs "vaultwatch_mock") and attestation_proof (SHA-256 + timestamps).
+
+    Falls back gracefully: if CoinGecko/FRED are unreachable or return errors,
+    the corresponding categories use pure mock data.
     """
     now = int(time.time())
     minute_bucket = now // 60
     seed = hashlib.sha256(f"vaultwatch-rwa-feed-{minute_bucket}".encode()).hexdigest()
     rng = _random.Random(seed)
 
-    # --- Real Estate ---
+    # ---- Step 1: Fetch real data from CoinGecko + FRED (concurrent) ----
+    coingecko_data, fred_data = await asyncio.gather(
+        _fetch_coingecko_rwa_data(),
+        _fetch_fred_rwa_data(),
+    )
+    has_coingecko = bool(coingecko_data)
+    has_fred = bool(fred_data)
+
+    # Provenance tracking flags
+    real_data_sources: Dict[str, bool] = {
+        "coingecko": has_coingecko,
+        "fred": has_fred,
+    }
+
+    # ---- Step 2: Generate mock baseline (unchanged deterministic data) ----
+
+    # --- Real Estate (always mock — no free property API) ---
     real_estate = {
+        "data_source": "vaultwatch_mock",
         "properties": [
             {
                 "property_id": "RWE-001",
@@ -1155,60 +1309,100 @@ def _generate_rwa_feed_data(asset_type: Optional[str] = None) -> Dict[str, Any]:
         ],
     }
 
-    # --- Bonds ---
-    bonds = {
-        "treasury": [
-            {
-                "bond_id": "TBY-4W",
-                "name": "4-Week US Treasury Bill",
-                "maturity_days": 28,
-                "yield_pct": round(rng.uniform(5.20, 5.45), 4),
-                "par_value_usd": 10_000,
-                "spread_bps": 0,
-                "maturity_risk": round(rng.uniform(0.001, 0.005), 4),
-            },
-            {
-                "bond_id": "TBY-13W",
-                "name": "13-Week US Treasury Bill",
-                "maturity_days": 91,
-                "yield_pct": round(rng.uniform(5.25, 5.50), 4),
-                "par_value_usd": 10_000,
-                "spread_bps": 0,
-                "maturity_risk": round(rng.uniform(0.002, 0.008), 4),
-            },
-            {
-                "bond_id": "TBY-26W",
-                "name": "26-Week US Treasury Bill",
-                "maturity_days": 182,
-                "yield_pct": round(rng.uniform(5.30, 5.60), 4),
-                "par_value_usd": 10_000,
-                "spread_bps": 0,
-                "maturity_risk": round(rng.uniform(0.003, 0.01), 4),
-            },
-        ],
-        "corporate": [
-            {
-                "bond_id": "CB-IBM",
-                "name": "IBM 5-Year Corporate Bond",
-                "maturity_days": 1825,
-                "yield_pct": round(rng.uniform(5.80, 6.20), 4),
-                "par_value_usd": 1_000,
-                "spread_bps": round(rng.uniform(50, 80), 1),
-                "maturity_risk": round(rng.uniform(0.02, 0.05), 4),
-            },
-            {
-                "bond_id": "CB-UKG",
-                "name": "UK 10-Year Gilt",
-                "maturity_days": 3650,
-                "yield_pct": round(rng.uniform(4.30, 4.60), 4),
-                "par_value_usd": 1_000,
-                "spread_bps": round(rng.uniform(20, 40), 1),
-                "maturity_risk": round(rng.uniform(0.03, 0.07), 4),
-            },
-        ],
-    }
+    # --- Bonds (overlay real FRED data when available) ---
+    bonds_data_source = "vaultwatch_mock"
+    treasury_bonds = [
+        {
+            "bond_id": "TBY-4W",
+            "name": "4-Week US Treasury Bill",
+            "maturity_days": 28,
+            "yield_pct": round(rng.uniform(5.20, 5.45), 4),
+            "par_value_usd": 10_000,
+            "spread_bps": 0,
+            "maturity_risk": round(rng.uniform(0.001, 0.005), 4),
+        },
+        {
+            "bond_id": "TBY-13W",
+            "name": "13-Week US Treasury Bill",
+            "maturity_days": 91,
+            "yield_pct": round(rng.uniform(5.25, 5.50), 4),
+            "par_value_usd": 10_000,
+            "spread_bps": 0,
+            "maturity_risk": round(rng.uniform(0.002, 0.008), 4),
+        },
+        {
+            "bond_id": "TBY-26W",
+            "name": "26-Week US Treasury Bill",
+            "maturity_days": 182,
+            "yield_pct": round(rng.uniform(5.30, 5.60), 4),
+            "par_value_usd": 10_000,
+            "spread_bps": 0,
+            "maturity_risk": round(rng.uniform(0.003, 0.01), 4),
+        },
+    ]
+    # Overlay real Treasury yields from FRED onto mock T-Bills
+    if has_fred:
+        fred_3m = fred_data.get("treasury_3m_yield")
+        fred_2y = fred_data.get("treasury_2y_yield")
+        fred_10y = fred_data.get("treasury_10y_yield")
+        if fred_3m is not None:
+            treasury_bonds[0]["yield_pct"] = round(fred_3m, 4)
+            treasury_bonds[0]["real_source"] = "fred_api"
+        if fred_2y is not None:
+            treasury_bonds[1]["yield_pct"] = round(fred_2y, 4)
+            treasury_bonds[1]["real_source"] = "fred_api"
+        if fred_10y is not None:
+            treasury_bonds[2]["yield_pct"] = round(fred_10y, 4)
+            treasury_bonds[2]["real_source"] = "fred_api"
+        bonds_data_source = "fred_api"
 
-    # --- Commodities ---
+    corporate_bonds = [
+        {
+            "bond_id": "CB-IBM",
+            "name": "IBM 5-Year Corporate Bond",
+            "maturity_days": 1825,
+            "yield_pct": round(rng.uniform(5.80, 6.20), 4),
+            "par_value_usd": 1_000,
+            "spread_bps": round(rng.uniform(50, 80), 1),
+            "maturity_risk": round(rng.uniform(0.02, 0.05), 4),
+        },
+        {
+            "bond_id": "CB-UKG",
+            "name": "UK 10-Year Gilt",
+            "maturity_days": 3650,
+            "yield_pct": round(rng.uniform(4.30, 4.60), 4),
+            "par_value_usd": 1_000,
+            "spread_bps": round(rng.uniform(20, 40), 1),
+            "maturity_risk": round(rng.uniform(0.03, 0.07), 4),
+        },
+    ]
+    # Overlay real BAA corporate spread from FRED onto IBM corporate bond
+    if has_fred:
+        baa_spread = fred_data.get("baa_spread")
+        if baa_spread is not None:
+            # BAA spread is the difference between BAA yield and 10y Treasury
+            # IBM bond spread should track the BAA spread
+            corporate_bonds[0]["spread_bps"] = round(baa_spread * 100, 1)  # Convert % to bps
+            corporate_bonds[0]["real_source"] = "fred_api"
+
+    bonds = {
+        "data_source": bonds_data_source,
+        "treasury": treasury_bonds,
+        "corporate": corporate_bonds,
+    }
+    # Include raw FRED yields for direct reference
+    if has_fred:
+        bonds["fred_raw"] = {
+            "treasury_10y": fred_data.get("treasury_10y_yield"),
+            "treasury_2y": fred_data.get("treasury_2y_yield"),
+            "treasury_3m": fred_data.get("treasury_3m_yield"),
+            "baa_spread_pct": fred_data.get("baa_spread"),
+            "effective_fed_rate_pct": fred_data.get("effective_fed_rate"),
+            "fetched_at": fred_data.get("fetched_at"),
+        }
+
+    # --- Commodities (overlay real gold from PAXG when available) ---
+    commodities_data_source = "vaultwatch_mock"
     commodities = {
         "gold_price_usd_per_oz": round(rng.uniform(2_300, 2_500), 2),
         "silver_price_usd_per_oz": round(rng.uniform(26, 32), 2),
@@ -1218,8 +1412,18 @@ def _generate_rwa_feed_data(asset_type: Optional[str] = None) -> Dict[str, Any]:
             "Bloomberg_Commodity": round(rng.uniform(115, 130), 2),
         },
     }
+    # Overlay real gold price from PAXG (CoinGecko)
+    if has_coingecko and "paxg_price_usd" in coingecko_data:
+        # PAXG ≈ 1 oz gold — its USD price directly maps to gold_price_usd_per_oz
+        commodities["gold_price_usd_per_oz"] = round(coingecko_data["paxg_price_usd"], 2)
+        commodities["gold_real_source"] = "coingecko_api"
+        commodities_data_source = "coingecko_api"
+    if has_coingecko:
+        commodities["cspr_price_usd"] = coingecko_data.get("cspr_price_usd")
+    commodities["data_source"] = commodities_data_source
 
-    # --- Credit ---
+    # --- Credit (overlay real BAA spread from FRED when available) ---
+    credit_data_source = "vaultwatch_mock"
     credit = {
         "ratings": [
             {"entity": "US Government", "rating": "AAA", "default_probability": 0.0003, "recovery_rate": 0.95},
@@ -1229,8 +1433,17 @@ def _generate_rwa_feed_data(asset_type: Optional[str] = None) -> Dict[str, Any]:
         "aggregate_default_rate": round(rng.uniform(0.02, 0.05), 4),
         "average_recovery_rate": round(rng.uniform(0.40, 0.60), 4),
     }
+    # Overlay real BAA spread from FRED as credit risk indicator
+    if has_fred:
+        baa_spread = fred_data.get("baa_spread")
+        if baa_spread is not None:
+            # BAA spread is a proxy for corporate default risk
+            credit["fred_baa_spread_pct"] = round(baa_spread, 4)
+            credit["data_source"] = "fred_api"
+            credit_data_source = "fred_api"
+    credit["data_source"] = credit_data_source
 
-    # --- Tokenized Assets ---
+    # --- Tokenized Assets (overlay CSPR price + stablecoin depeg from CoinGecko) ---
     tokenized_assets = {
         "on_chain_assets": [
             {
@@ -1267,16 +1480,48 @@ def _generate_rwa_feed_data(asset_type: Optional[str] = None) -> Dict[str, Any]:
             },
         ],
     }
+    # Overlay CSPR price + stablecoin depeg from CoinGecko
+    if has_coingecko:
+        cspr_price = coingecko_data.get("cspr_price_usd")
+        if cspr_price is not None:
+            tokenized_assets["cspr_price_usd"] = cspr_price
+            tokenized_assets["cspr_real_source"] = "coingecko_api"
+        depeg = coingecko_data.get("stablecoin_depeg", {})
+        if depeg:
+            tokenized_assets["stablecoin_depeg_signals"] = depeg
+            tokenized_assets["depeg_real_source"] = "coingecko_api"
+    tokenized_assets["data_source"] = "coingecko_api" if has_coingecko else "vaultwatch_mock"
 
+    # ---- Step 3: Build attestation proof (SHA-256 hashes + timestamps) ----
+    # Each category's data is hashed to prove integrity for AuditAgent verification.
+    attestation_proof: Dict[str, Any] = {}
+    for category_name, category_data in [
+        ("real_estate", real_estate),
+        ("bonds", bonds),
+        ("commodities", commodities),
+        ("credit", credit),
+        ("tokenized_assets", tokenized_assets),
+    ]:
+        data_str = json.dumps(category_data, sort_keys=True, separators=(",", ":"))
+        data_hash = hashlib.sha256(data_str.encode("utf-8")).hexdigest()
+        attestation_proof[category_name] = {
+            "sha256": data_hash,
+            "data_source": category_data.get("data_source", "vaultwatch_mock"),
+            "timestamp": now,
+        }
+
+    # ---- Step 4: Assemble the final hybrid feed ----
     feed: Dict[str, Any] = {
         "timestamp": now,
-        "feed_version": "1.0.0",
+        "feed_version": "1.1.0",
         "network": "casper-test",
         "real_estate": real_estate,
         "bonds": bonds,
         "commodities": commodities,
         "credit": credit,
         "tokenized_assets": tokenized_assets,
+        "real_data_sources": real_data_sources,
+        "attestation_proof": attestation_proof,
     }
 
     # If a specific asset_type is requested, filter to just that category
@@ -1290,7 +1535,15 @@ def _generate_rwa_feed_data(asset_type: Optional[str] = None) -> Dict[str, Any]:
         }
         filtered = type_map.get(asset_type)
         if filtered:
-            feed = {"timestamp": now, "feed_version": "1.0.0", "network": "casper-test", asset_type: filtered}
+            filtered_proof = attestation_proof.get(asset_type, {})
+            feed = {
+                "timestamp": now,
+                "feed_version": "1.1.0",
+                "network": "casper-test",
+                asset_type: filtered,
+                "real_data_sources": real_data_sources,
+                "attestation_proof": {asset_type: filtered_proof},
+            }
 
     return feed
 
@@ -1304,17 +1557,22 @@ async def rwa_feed(
     ),
     plan: str = Query("standard", pattern="^(standard|premium)$"),
 ):
-    """Payment-gated RWA feed resource (x402 v2 flow).
+    """Payment-gated hybrid real+mock RWA feed resource (x402 v2 flow).
 
-    Returns structured, realistic mock RWA data covering five asset categories:
-    Real Estate (property valuations, occupancy rates, location risk),
-    Bonds (treasury yields, corporate bond spreads, maturity risk),
-    Commodities (gold/silver prices, oil prices, commodity indices),
-    Credit (credit ratings, default probabilities, recovery rates),
-    Tokenized Assets (on-chain RWA token addresses, collateral ratios, chain IDs).
+    Returns structured RWA data covering five asset categories:
+    Real Estate (property valuations, occupancy rates, location risk — always mock),
+    Bonds (treasury yields, corporate bond spreads, maturity risk — real from FRED when available),
+    Commodities (gold/silver prices, oil prices — real gold from CoinGecko/PAXG when available),
+    Credit (credit ratings, default probabilities — real BAA spread from FRED when available),
+    Tokenized Assets (on-chain RWA tokens, collateral ratios — overlay CSPR price + stablecoin depeg).
+
+    Each category includes a `data_source` field indicating whether it came from
+    a real API ("coingecko_api"/"fred_api") or mock fallback ("vaultwatch_mock").
+    The feed also includes `real_data_sources` (bool flags) and `attestation_proof`
+    (SHA-256 hashes + timestamps) for AuditAgent provenance verification.
 
     Data rotates on a per-minute bucket so each call gets "fresh" deterministic
-    values.
+    values for mock fallback, while real data is fetched live from external APIs.
 
     Without a `PAYMENT-SIGNATURE` header: returns **402 Payment Required** with
     a `PAYMENT-REQUIRED` base64 header (same pattern as /intel/{addr}).
@@ -1406,7 +1664,7 @@ async def rwa_feed(
                 "success": True,
             },
         )
-        feed_data = _generate_rwa_feed_data(asset_type)
+        feed_data = await _generate_rwa_feed_data(asset_type)
         feed_payload = {
             "resource": "rwa/feed",
             "plan": plan,
