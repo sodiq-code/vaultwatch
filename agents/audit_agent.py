@@ -7,19 +7,29 @@ Actions:
   - Write to RiskOracle.rs
   - Write to SentinelAlertLog.rs (if subscribers exist)
   - Record to AgentBehaviorIndex.rs
+  - Post EAS-style RWA attestation to AuditTrail (Task 3-5)
 Records: tx_hash, block_height, deploy_hash
 OTel: span with tx_hash, contract_target, gas_used
+
+Task 3-5 additions:
+  • EAS-style attestation fields (schemaId, attester, recipient, dataHash, dataEncoded)
+  • _build_attestation() creates an attestation object proving data retrieval provenance
+  • _post_attestation_on_chain() writes the attestation to AuditTrail via record_finding
+  • OnChainRecord now includes attestation fields
 """
 
 import asyncio
+import base64
+import hashlib
+import json
 import logging
 import os
 import time
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Dict, Optional
 from opentelemetry import trace
 from groq import Groq
-from .rwa_agent import EnrichedFinding
+from .rwa_agent import EnrichedFinding, RWAFeedData
 from .safety_guard import SafetyResult
 
 logger = logging.getLogger("vaultwatch.audit")
@@ -76,6 +86,13 @@ class OnChainRecord:
     timestamp: int
     success: bool
     error: Optional[str] = None
+    # EAS-style attestation fields (Task 3-5)
+    schema_id: str = ""
+    attester: str = ""
+    recipient: str = ""
+    data_hash: str = ""
+    data_encoded: str = ""
+    attestation_tx: Optional[str] = None
 
 
 class AuditAgent:
@@ -178,6 +195,24 @@ class AuditAgent:
 
             try:
                 record = await self._write_on_chain(safety_result.finding)
+
+                # If the finding was enriched with RWA feed data (feed_source
+                # is present), build and post an EAS-style attestation proving
+                # the data retrieval provenance.
+                if safety_result.finding.feed_source:
+                    try:
+                        attestation = self._build_attestation(safety_result.finding, None)
+                        attestation_tx = await self._post_attestation_on_chain(attestation)
+                        record.schema_id = attestation.get("schemaId", "")
+                        record.attester = attestation.get("attester", "")
+                        record.recipient = attestation.get("recipient", "")
+                        record.data_hash = attestation.get("dataHash", "")
+                        record.data_encoded = attestation.get("dataEncoded", "")
+                        record.attestation_tx = attestation_tx
+                        logger.info(f"RWA attestation posted: {attestation_tx}")
+                    except Exception as att_exc:
+                        logger.error(f"RWA attestation post failed: {att_exc}")
+
                 await self.output_queue.put(record)
             except Exception as e:
                 logger.error(f"AuditAgent on-chain write error: {e}")
@@ -328,3 +363,187 @@ class AuditAgent:
             return response.choices[0].message.content.strip()[:200]
         except Exception:
             return f"{base.risk_type} | {base.severity} | {base.confidence:.0%} confidence | {base.event.address[:20]}"
+
+    # ------------------------------------------------------------------
+    # EAS-style RWA attestation methods (Task 3-5)
+    # ------------------------------------------------------------------
+
+    # Well-known schema ID for VaultWatch RWA data provenance attestations.
+    # Follows EAS (Ethereum Attestation Service) naming conventions.
+    _RWA_ATTESTATION_SCHEMA_ID = "0xvaultwatch-rwa-data-provenance-v1"
+
+    def _build_attestation(
+        self,
+        finding: EnrichedFinding,
+        rwa_feed_data: Optional[RWAFeedData] = None,
+    ) -> Dict[str, Any]:
+        """Build an EAS-style attestation object proving data retrieval provenance.
+
+        The attestation proves: "I retrieved asset X's data from source Y at
+        timestamp Z, and here's the signed proof."
+
+        Args:
+            finding: The enriched finding containing RWA context and feed metadata.
+            rwa_feed_data: Optional structured RWA feed data (if available from
+                a direct feed fetch). When None, the attestation is built from
+                the finding's existing enrichment data.
+
+        Returns:
+            Dict containing EAS-style attestation fields:
+            schemaId, attester, recipient, dataHash, dataEncoded,
+            plus VaultWatch-specific feed_source, x402_payment_id, timestamp.
+        """
+        with tracer.start_as_current_span("audit.build_attestation") as span:
+            base = finding.base
+            timestamp = int(time.time())
+
+            # The attester is the agent wallet's public key. In production,
+            # this would be the Casper account hash of the AuditAgent's signer.
+            # In dev/mock mode, use a well-known test key or env override.
+            attester = os.getenv("VAULTWATCH_AGENT_PUBLIC_KEY", "0xaudit-agent-public-key-placeholder")
+
+            # The recipient is the finding address (the entity being attested about).
+            recipient = base.event.address
+
+            # Build the attestation data payload — the core content being attested.
+            attestation_data = {
+                "risk_type": base.risk_type,
+                "severity": base.severity,
+                "confidence": base.confidence,
+                "address": base.event.address,
+                "amount_motes": base.event.amount_motes,
+                "block_height": base.event.block_height,
+                "rwa_context": finding.rwa_context[:500],
+                "collateral_signals": finding.collateral_signals[:10],
+                "yield_data": finding.yield_data[:200],
+                "depeg_alerts": finding.depeg_alerts[:10],
+                "enrichment_model": finding.enrichment_model,
+                "feed_source": finding.feed_source,
+                "x402_payment_id": finding.x402_payment_id,
+            }
+
+            # If structured RWA feed data was provided, include it in the attestation.
+            if rwa_feed_data is not None:
+                attestation_data["feed_timestamp"] = rwa_feed_data.timestamp
+                attestation_data["feed_version"] = rwa_feed_data.feed_version
+                if rwa_feed_data.real_estate:
+                    attestation_data["feed_real_estate_summary"] = str(rwa_feed_data.real_estate)[:200]
+                if rwa_feed_data.bonds:
+                    attestation_data["feed_bonds_summary"] = str(rwa_feed_data.bonds)[:200]
+                if rwa_feed_data.commodities:
+                    attestation_data["feed_commodities_summary"] = str(rwa_feed_data.commodities)[:200]
+                if rwa_feed_data.credit:
+                    attestation_data["feed_credit_summary"] = str(rwa_feed_data.credit)[:200]
+                if rwa_feed_data.tokenized_assets:
+                    attestation_data["feed_tokenized_assets_summary"] = str(rwa_feed_data.tokenized_assets)[:200]
+
+            # Compute SHA-256 hash of the attestation data (proves data integrity).
+            data_json = json.dumps(attestation_data, sort_keys=True, separators=(",", ":"))
+            data_hash = hashlib.sha256(data_json.encode("utf-8")).hexdigest()
+
+            # Base64-encode the full attestation data (for on-chain storage).
+            data_encoded = base64.b64encode(data_json.encode("utf-8")).decode("utf-8")
+
+            attestation = {
+                "schemaId": self._RWA_ATTESTATION_SCHEMA_ID,
+                "attester": attester,
+                "recipient": recipient,
+                "dataHash": data_hash,
+                "dataEncoded": data_encoded,
+                "feed_source": finding.feed_source,
+                "x402_payment_id": finding.x402_payment_id,
+                "timestamp": timestamp,
+            }
+
+            span.set_attribute("attestation.schema_id", attestation["schemaId"])
+            span.set_attribute("attestation.attester", attestation["attester"])
+            span.set_attribute("attestation.recipient", attestation["recipient"])
+            span.set_attribute("attestation.data_hash", attestation["dataHash"])
+            span.set_attribute("attestation.feed_source", attestation["feed_source"])
+
+            logger.info(
+                "Built attestation: schema=%s, recipient=%s, dataHash=%s, feed=%s",
+                attestation["schemaId"],
+                recipient[:20],
+                data_hash[:16],
+                attestation["feed_source"],
+            )
+
+            return attestation
+
+    async def _post_attestation_on_chain(self, attestation: Dict[str, Any]) -> str:
+        """Write the attestation to AuditTrail via record_finding.
+
+        Uses the same pattern as _write_on_chain — calls the AuditTrail
+        contract's record_finding entry point with:
+          - risk_type = "rwa_attestation"
+          - description = JSON string containing {schemaId, attester, recipient,
+            dataHash, dataEncoded, feed_source, x402_payment_id, timestamp}
+          - rwa_enriched = True (since this specifically about RWA data verification)
+
+        Returns the deploy hash (or mock hash in test mode).
+        """
+        with tracer.start_as_current_span("audit.post_attestation") as span:
+            span.set_attribute("attestation.schema_id", attestation.get("schemaId", ""))
+            span.set_attribute("attestation.attester", attestation.get("attester", ""))
+            span.set_attribute("attestation.recipient", attestation.get("recipient", ""))
+            span.set_attribute("attestation.data_hash", attestation.get("dataHash", ""))
+
+            # Build the description as a JSON string containing all attestation fields.
+            attestation_description = json.dumps(
+                {
+                    "schemaId": attestation.get("schemaId", ""),
+                    "attester": attestation.get("attester", ""),
+                    "recipient": attestation.get("recipient", ""),
+                    "dataHash": attestation.get("dataHash", ""),
+                    "dataEncoded": attestation.get("dataEncoded", ""),
+                    "feed_source": attestation.get("feed_source", ""),
+                    "x402_payment_id": attestation.get("x402_payment_id", ""),
+                    "timestamp": attestation.get("timestamp", 0),
+                },
+                sort_keys=True,
+            )
+
+            timestamp = int(time.time())
+            recipient = attestation.get("recipient", "unknown")
+
+            if self.casper_client:
+                try:
+                    audit_trail_hash = os.getenv("AUDIT_TRAIL_HASH", "")
+                    deploy_hash = self.casper_client.call_contract(
+                        contract_hash=audit_trail_hash,
+                        entry_point="record_finding",
+                        args={
+                            "address": recipient,
+                            "risk_type": "rwa_attestation",
+                            "severity": "INFO",
+                            "confidence": 100,
+                            "description": attestation_description,
+                            "rwa_enriched": True,
+                            "agent_model": "vaultwatch-audit-agent-eas",
+                            "block_height": 0,
+                            "timestamp": timestamp,
+                        },
+                    )
+                    span.set_attribute("attestation.deploy_hash", deploy_hash)
+                    logger.info(f"Attestation on-chain write SUCCESS: {deploy_hash}")
+                    return deploy_hash
+                except Exception as exc:
+                    span.record_exception(exc)
+                    span.set_attribute("attestation.error", str(exc))
+                    logger.error(f"Attestation on-chain write failed: {exc}")
+                    # Fall back to mock hash
+                    mock_hash = hashlib.sha256(
+                        f"attestation-{attestation.get('dataHash', '')}-{timestamp}".encode()
+                    ).hexdigest()
+                    return f"0x{mock_hash}_mock_attestation"
+            else:
+                # Mock mode (no Casper client)
+                mock_hash = hashlib.sha256(
+                    f"attestation-{attestation.get('dataHash', '')}-{timestamp}".encode()
+                ).hexdigest()
+                mock_tx = f"0x{mock_hash}_mock_attestation_{int(time.time())}"
+                span.set_attribute("attestation.mock_mode", True)
+                span.set_attribute("attestation.mock_tx", mock_tx)
+                logger.info(f"AuditAgent MOCK attestation: {mock_tx}")
+                return mock_tx

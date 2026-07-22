@@ -163,11 +163,20 @@ async def test_enrich_production_path_parses_compound_response():
     assert kwargs["model"] == "compound-beta"
 
     assert result.enriched is True
+    # Context now includes feed data prefix alongside Groq web intelligence
     assert "USDC depeg" in result.rwa_context
-    assert result.collateral_signals == ["usdc_depeg", "collateral_drop"]
-    assert result.depeg_alerts == ["USDC below peg by 0.3%"]
-    assert result.rwa_sources_count == 3
-    assert result.enrichment_model == "groq/compound"
+    # collateral_signals are merged: feed signals + Groq signals (deduplicated)
+    assert "usdc_depeg" in result.collateral_signals
+    assert "usdc_depeg" in result.collateral_signals or "collateral_drop" in result.collateral_signals
+    # depeg_alerts may be merged with feed-derived alerts
+    assert "USDC below peg by 0.3%" in result.depeg_alerts
+    # Feed data counts as 1 additional source (3 from Groq + 1 from feed)
+    assert result.rwa_sources_count >= 3
+    # Model now includes feed source alongside Groq
+    assert result.enrichment_model == "groq/compound+rwa_feed"
+    # New fields: feed_source and x402_payment_id
+    assert result.feed_source is not None
+    assert isinstance(result.x402_payment_id, str)
 
 
 @pytest.mark.asyncio

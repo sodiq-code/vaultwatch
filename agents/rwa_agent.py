@@ -4,15 +4,25 @@ Model: groq/compound (built-in live web search — NO extra API keys)
 Input: confirmed anomaly finding
 Output: enriched finding with live RWA context (yield rates, depeg news, vault health)
 OTel: span with rwa_sources, collateral_ratio, enrichment_type
+
+Task 3-5 additions:
+  • RWAFeedData dataclass for structured feed data from /rwa/feed API
+  • fetch_rwa_feed() method that calls the x402-gated /rwa/feed endpoint
+  • _enrich() now FIRST fetches from the dedicated RWA feed API, THEN also
+    calls Groq Compound for additional web intelligence, merging both
+  • EnrichedFinding now tracks feed_source and x402_payment_id
 """
 
 import asyncio
 import json
 import logging
 import os
-from dataclasses import dataclass
+import time
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
 from opentelemetry import trace
 from groq import Groq
+import httpx
 from .anomaly_agent import AnomalyResult
 
 logger = logging.getLogger("vaultwatch.rwa")
@@ -21,6 +31,25 @@ tracer = trace.get_tracer("vaultwatch.rwa_agent")
 # No module-level Groq client — injected per-instance via the constructor
 # (``groq_client=...``) or built from ``groq_api_key``. Tests inject a mock
 # client and exercise the real ``_enrich`` production path.
+
+
+@dataclass
+class RWAFeedData:
+    """Structured RWA data fetched from the dedicated /rwa/feed API endpoint.
+
+    Represents the five asset categories served by the x402-gated feed:
+    real_estate, bonds, commodities, credit, tokenized_assets.
+    """
+    feed_source: str = "rwa_feed_api"
+    x402_payment_id: str = ""
+    timestamp: int = 0
+    feed_version: str = "1.0.0"
+    real_estate: Dict[str, Any] = field(default_factory=dict)
+    bonds: Dict[str, Any] = field(default_factory=dict)
+    commodities: Dict[str, Any] = field(default_factory=dict)
+    credit: Dict[str, Any] = field(default_factory=dict)
+    tokenized_assets: Dict[str, Any] = field(default_factory=dict)
+    raw_feed: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -33,6 +62,8 @@ class EnrichedFinding:
     enriched: bool
     rwa_sources_count: int
     enrichment_model: str
+    feed_source: str = ""
+    x402_payment_id: str = ""
 
 
 class RWAAgent:
@@ -42,6 +73,7 @@ class RWAAgent:
         output_queue: asyncio.Queue = None,
         groq_api_key: str = "",
         groq_client=None,
+        api_base_url: str = "http://localhost:8000",
     ):
         self.input_queue = input_queue or asyncio.Queue()
         self.output_queue = output_queue or asyncio.Queue()
@@ -52,6 +84,69 @@ class RWAAgent:
         else:
             self._client = Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
         self._assets: list = []
+        self._api_base_url = api_base_url
+        self._httpx_client: Optional[httpx.AsyncClient] = None
+
+    async def fetch_rwa_feed(self, asset_type: str = "") -> RWAFeedData:
+        """Call the dedicated /rwa/feed API endpoint using httpx.
+
+        The endpoint is x402-gated; in production a valid PAYMENT-SIGNATURE
+        header must be supplied. In dev/mock mode, the agent can call with
+        a test payment header or rely on the 402-challenge flow being
+        handled externally. Falls back gracefully on any error.
+        """
+        with tracer.start_as_current_span("rwa.fetch_feed") as span:
+            span.set_attribute("rwa.feed.asset_type", asset_type or "all")
+            span.set_attribute("rwa.feed.api_base", self._api_base_url)
+
+            url = f"{self._api_base_url}/rwa/feed"
+            if asset_type:
+                url = f"{url}?asset_type={asset_type}"
+
+            # Build headers — in production, PAYMENT-SIGNATURE would come from
+            # the x402 payment flow. For internal agent calls, use a
+            # well-known internal signature that the API recognises.
+            headers = {
+                "PAYMENT-SIGNATURE": os.getenv("VAULTWATCH_RWA_FEED_SIGNATURE", "internal-agent-call"),
+                "Accept": "application/json",
+            }
+
+            try:
+                if self._httpx_client is None:
+                    self._httpx_client = httpx.AsyncClient(timeout=30.0)
+                resp = await self._httpx_client.get(url, headers=headers)
+                span.set_attribute("rwa.feed.http_status", resp.status_code)
+
+                if resp.status_code == 200:
+                    body = resp.json()
+                    feed_data_dict = body.get("feed_data", body)
+                    payment_id = body.get("payer", "") or resp.headers.get("PAYMENT-RESPONSE", "")
+                    span.set_attribute("rwa.feed.success", True)
+                    span.set_attribute("rwa.feed.x402_payment_id", payment_id)
+
+                    return RWAFeedData(
+                        feed_source="rwa_feed_api",
+                        x402_payment_id=payment_id,
+                        timestamp=feed_data_dict.get("timestamp", int(time.time())),
+                        feed_version=feed_data_dict.get("feed_version", "1.0.0"),
+                        real_estate=feed_data_dict.get("real_estate", {}),
+                        bonds=feed_data_dict.get("bonds", {}),
+                        commodities=feed_data_dict.get("commodities", {}),
+                        credit=feed_data_dict.get("credit", {}),
+                        tokenized_assets=feed_data_dict.get("tokenized_assets", {}),
+                        raw_feed=feed_data_dict,
+                    )
+                else:
+                    span.set_attribute("rwa.feed.success", False)
+                    span.set_attribute("rwa.feed.error_status", resp.status_code)
+                    logger.warning("RWA feed API returned status %d", resp.status_code)
+                    return RWAFeedData(feed_source="rwa_feed_api_failed")
+
+            except Exception as exc:
+                span.record_exception(exc)
+                span.set_attribute("rwa.feed.error", str(exc))
+                logger.error("RWA feed API call failed: %s", exc)
+                return RWAFeedData(feed_source="rwa_feed_api_error")
 
     async def _call_groq(self, prompt: str) -> dict:
         if not self._client:
@@ -133,30 +228,55 @@ class RWAAgent:
                 self.input_queue.task_done()
 
     async def _enrich(self, result: AnomalyResult) -> EnrichedFinding:
-        """Enrich finding with live RWA web intelligence via Groq Compound"""
+        """Enrich finding by FIRST fetching from the dedicated RWA feed API,
+        THEN calling Groq Compound for additional web intelligence, and
+        merging structured feed data with Groq's web search results.
+        """
         with tracer.start_as_current_span("rwa.enrich") as span:
             span.set_attribute("rwa.risk_type", result.risk_type)
             span.set_attribute("rwa.severity", result.severity)
-            span.set_attribute("rwa.model", "groq/compound")
+            span.set_attribute("rwa.model", "groq/compound+rwa_feed")
 
-            # Build targeted RWA query based on risk type
+            # ---- Step 1: Fetch structured RWA feed data from /rwa/feed ----
+            # Determine which asset category to query based on risk type
+            feed_asset_type = self._map_risk_type_to_asset_type(result.risk_type)
+            feed_data: RWAFeedData = await self.fetch_rwa_feed(asset_type=feed_asset_type)
+
+            span.set_attribute("rwa.feed_source", feed_data.feed_source)
+            span.set_attribute("rwa.feed_fetched", feed_data.timestamp > 0)
+
+            # Build feed summary string for merging with Groq context
+            feed_summary = self._summarize_feed_data(feed_data)
+
+            # ---- Step 2: Build targeted RWA query including feed data ----
             query = self._build_rwa_query(result)
-
-            # Fail-safe: with no model client configured, return an un-enriched
-            # finding so the pipeline continues (downstream agents handle it).
-            if self._client is None:
-                span.set_attribute("rwa.enrich", "skipped_no_client")
-                return EnrichedFinding(
-                    base=result,
-                    rwa_context="RWA enrichment unavailable — no Groq client configured",
-                    collateral_signals=[],
-                    yield_data="",
-                    depeg_alerts=[],
-                    enriched=False,
-                    rwa_sources_count=0,
-                    enrichment_model="groq/compound",
+            # Inject the structured feed data into the Groq query so the LLM
+            # can cross-reference live web intel against the known feed values.
+            if feed_summary:
+                query += (
+                    f"\n\n--- STRUCTURED RWA FEED DATA (source: {feed_data.feed_source}) ---\n"
+                    f"{feed_summary}\n"
+                    f"Cross-reference the above feed data with your live web search."
                 )
 
+            # Fail-safe: with no model client configured, return a feed-only
+            # enriched finding (feed data is still valuable without Groq).
+            if self._client is None:
+                span.set_attribute("rwa.enrich", "skipped_no_client_feed_only")
+                return EnrichedFinding(
+                    base=result,
+                    rwa_context=feed_summary or "RWA enrichment unavailable — no Groq client configured",
+                    collateral_signals=self._extract_collateral_from_feed(feed_data),
+                    yield_data=self._extract_yield_from_feed(feed_data),
+                    depeg_alerts=[],
+                    enriched=bool(feed_summary),
+                    rwa_sources_count=1 if feed_summary else 0,
+                    enrichment_model="rwa_feed_api",
+                    feed_source=feed_data.feed_source,
+                    x402_payment_id=feed_data.x402_payment_id,
+                )
+
+            # ---- Step 3: Call Groq Compound for web intelligence ----
             response = self._client.chat.completions.create(
                 model="compound-beta",  # groq/compound with live web search
                 messages=[
@@ -166,6 +286,7 @@ class RWAAgent:
                             "You are VaultWatch RWAAgent. Enrich DeFi risk findings with real-world context. "
                             "Search for current stablecoin depeg status, DeFi protocol health, tokenized asset yields, "
                             "and collateral ratios relevant to the finding. "
+                            "When structured feed data is provided, cross-reference it with your live search results. "
                             "Return JSON: "
                             '{"rwa_context": str, "collateral_signals": [str], "yield_data": str, '
                             '"depeg_alerts": [str], "sources_found": int}'
@@ -191,40 +312,188 @@ class RWAAgent:
                 else:
                     parsed = {}
 
-                rwa_context = parsed.get("rwa_context", content[:500])
-                collateral_signals = parsed.get("collateral_signals", [])
-                yield_data = parsed.get("yield_data", "")
-                depeg_alerts = parsed.get("depeg_alerts", [])
+                groq_context = parsed.get("rwa_context", content[:500])
+                groq_collateral = parsed.get("collateral_signals", [])
+                groq_yield = parsed.get("yield_data", "")
+                groq_depeg = parsed.get("depeg_alerts", [])
                 sources_count = parsed.get("sources_found", 1)
 
-                span.set_attribute("rwa.sources_count", sources_count)
-                span.set_attribute("rwa.depeg_alerts_count", len(depeg_alerts))
+                # ---- Step 4: Merge feed data with Groq web intelligence ----
+                merged_context = self._merge_context(feed_summary, groq_context)
+                merged_collateral = self._merge_collateral_signals(
+                    self._extract_collateral_from_feed(feed_data), groq_collateral
+                )
+                merged_yield = self._merge_yield_data(
+                    self._extract_yield_from_feed(feed_data), groq_yield
+                )
+                merged_depeg = self._merge_depeg_alerts(groq_depeg, feed_data)
+
+                # Feed data counts as 1 additional source
+                total_sources = sources_count + (1 if feed_summary else 0)
+
+                span.set_attribute("rwa.sources_count", total_sources)
+                span.set_attribute("rwa.depeg_alerts_count", len(merged_depeg))
                 span.set_attribute("rwa.enriched", True)
 
                 return EnrichedFinding(
                     base=result,
-                    rwa_context=rwa_context,
-                    collateral_signals=collateral_signals,
-                    yield_data=yield_data,
-                    depeg_alerts=depeg_alerts,
+                    rwa_context=merged_context,
+                    collateral_signals=merged_collateral,
+                    yield_data=merged_yield,
+                    depeg_alerts=merged_depeg,
                     enriched=True,
-                    rwa_sources_count=sources_count,
-                    enrichment_model="groq/compound",
+                    rwa_sources_count=total_sources,
+                    enrichment_model="groq/compound+rwa_feed",
+                    feed_source=feed_data.feed_source,
+                    x402_payment_id=feed_data.x402_payment_id,
                 )
 
             except Exception as e:
                 span.record_exception(e)
                 span.set_attribute("rwa.parse_error", str(e))
+                # Still include feed data even if Groq parsing failed
                 return EnrichedFinding(
                     base=result,
-                    rwa_context=content[:500],
-                    collateral_signals=[],
-                    yield_data="",
+                    rwa_context=self._merge_context(feed_summary, content[:500]),
+                    collateral_signals=self._extract_collateral_from_feed(feed_data),
+                    yield_data=self._extract_yield_from_feed(feed_data),
                     depeg_alerts=[],
                     enriched=True,
-                    rwa_sources_count=0,
-                    enrichment_model="groq/compound",
+                    rwa_sources_count=1 if feed_summary else 0,
+                    enrichment_model="groq/compound+rwa_feed",
+                    feed_source=feed_data.feed_source,
+                    x402_payment_id=feed_data.x402_payment_id,
                 )
+
+    # ------------------------------------------------------------------
+    # Helper methods for feed data processing and merging
+    # ------------------------------------------------------------------
+
+    def _map_risk_type_to_asset_type(self, risk_type: str) -> str:
+        """Map a risk type to the most relevant RWA asset category for feed queries."""
+        mapping = {
+            "depeg": "commodities",
+            "whale_dump": "",
+            "whale_movement": "",
+            "collateral_drop": "tokenized_assets",
+            "rug_pull": "",
+            "liquidity_drain": "bonds",
+            "price_manipulation": "commodities",
+        }
+        return mapping.get(risk_type, "")
+
+    def _summarize_feed_data(self, feed: RWAFeedData) -> str:
+        """Build a human-readable summary of structured feed data for Groq context."""
+        if feed.timestamp == 0 and not feed.raw_feed:
+            return ""
+        parts = []
+        if feed.real_estate:
+            props = feed.real_estate.get("properties", [])
+            for p in props[:3]:
+                parts.append(
+                    f"Property {p.get('property_id', '?')}: "
+                    f"valuation=${p.get('valuation_usd', 0):,.0f}, "
+                    f"occupancy={p.get('occupancy_rate', 0):.1%}, "
+                    f"location_risk={p.get('location_risk', 0):.2%}"
+                )
+        if feed.bonds:
+            for tb in feed.bonds.get("treasury", [])[:2]:
+                parts.append(
+                    f"T-Bill {tb.get('bond_id', '?')}: "
+                    f"yield={tb.get('yield_pct', 0):.2f}%, "
+                    f"maturity_risk={tb.get('maturity_risk', 0):.3%}"
+                )
+            for cb in feed.bonds.get("corporate", [])[:1]:
+                parts.append(
+                    f"Corp Bond {cb.get('bond_id', '?')}: "
+                    f"yield={cb.get('yield_pct', 0):.2f}%, "
+                    f"spread={cb.get('spread_bps', 0)}bps"
+                )
+        if feed.commodities:
+            parts.append(
+                f"Gold=${feed.commodities.get('gold_price_usd_per_oz', 0):,.2f}/oz, "
+                f"Silver=${feed.commodities.get('silver_price_usd_per_oz', 0):.2f}/oz, "
+                f"Oil=${feed.commodities.get('oil_price_usd_per_barrel', 0):.2f}/bbl"
+            )
+        if feed.credit:
+            ratings = feed.credit.get("ratings", [])
+            for r in ratings[:2]:
+                parts.append(
+                    f"Credit {r.get('entity', '?')}: "
+                    f"rating={r.get('rating', '?')}, "
+                    f"default_prob={r.get('default_probability', 0):.2%}"
+                )
+        if feed.tokenized_assets:
+            for a in feed.tokenized_assets.get("on_chain_assets", [])[:2]:
+                parts.append(
+                    f"Tokenized {a.get('token_symbol', '?')}: "
+                    f"collateral_ratio={a.get('collateral_ratio', 0):.2f}x, "
+                    f"chain={a.get('chain_id', '?')}"
+                )
+        return "\n".join(parts) if parts else ""
+
+    def _extract_collateral_from_feed(self, feed: RWAFeedData) -> list[str]:
+        """Extract collateral-related signals from feed data."""
+        signals = []
+        for a in feed.tokenized_assets.get("on_chain_assets", []):
+            cr = a.get("collateral_ratio", 0)
+            if cr:
+                signals.append(f"{a.get('token_symbol', '?')} collateral ratio: {cr:.2f}x (chain: {a.get('chain_id', '?')})")
+        for p in feed.real_estate.get("properties", []):
+            cap = p.get("cap_rate", 0)
+            if cap:
+                signals.append(f"Property {p.get('property_id', '?')} cap rate: {cap:.2%}")
+        return signals
+
+    def _extract_yield_from_feed(self, feed: RWAFeedData) -> str:
+        """Extract yield-related data from feed."""
+        if not feed.bonds:
+            return ""
+        yields = []
+        for tb in feed.bonds.get("treasury", []):
+            yields.append(f"{tb.get('bond_id', '?')}: {tb.get('yield_pct', 0):.2f}%")
+        for cb in feed.bonds.get("corporate", []):
+            yields.append(f"{cb.get('bond_id', '?')}: {cb.get('yield_pct', 0):.2f}% (spread: {cb.get('spread_bps', 0)}bps)")
+        return "Feed yields: " + ", ".join(yields) if yields else ""
+
+    def _merge_context(self, feed_summary: str, groq_context: str) -> str:
+        """Merge structured feed summary with Groq's web intelligence context."""
+        if not feed_summary:
+            return groq_context
+        if not groq_context:
+            return f"[RWA Feed] {feed_summary}"
+        return f"[RWA Feed] {feed_summary}\n\n[Web Intelligence] {groq_context}"
+
+    def _merge_collateral_signals(self, feed_signals: list[str], groq_signals: list[str]) -> list[str]:
+        """Merge feed-derived collateral signals with Groq-derived signals."""
+        # Deduplicate by keeping unique entries from both sources
+        all_signals = list(feed_signals)
+        for s in groq_signals:
+            if s not in all_signals:
+                all_signals.append(s)
+        return all_signals
+
+    def _merge_yield_data(self, feed_yield: str, groq_yield: str) -> str:
+        """Merge feed yield data with Groq yield data."""
+        if not feed_yield:
+            return groq_yield
+        if not groq_yield:
+            return feed_yield
+        return f"{feed_yield} | {groq_yield}"
+
+    def _merge_depeg_alerts(self, groq_depeg: list[str], feed: RWAFeedData) -> list[str]:
+        """Merge Groq depeg alerts with feed-derived alerts."""
+        alerts = list(groq_depeg)
+        # Check commodities feed for large price swings that could indicate depeg
+        if feed.commodities:
+            gold = feed.commodities.get("gold_price_usd_per_oz", 0)
+            if gold > 2450:
+                alerts.append("[Feed] Gold above $2,450/oz — possible commodity depeg signal")
+        if feed.bonds:
+            for tb in feed.bonds.get("treasury", []):
+                if tb.get("yield_pct", 0) > 5.45:
+                    alerts.append(f"[Feed] {tb.get('bond_id', '?')} yield above 5.45% — treasury rate stress")
+        return alerts
 
     def _build_rwa_query(self, result: AnomalyResult) -> str:
         base = (

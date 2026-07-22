@@ -1097,6 +1097,334 @@ async def intel_resource(
         )
 
 
+# ---------------------------------------------------------------------------
+# RWA Feed — Mock structured RWA data (x402-gated)
+# ---------------------------------------------------------------------------
+import hashlib
+import random as _random
+
+
+def _generate_rwa_feed_data(asset_type: Optional[str] = None) -> Dict[str, Any]:
+    """Generate structured, realistic mock RWA data with time-rotating values.
+
+    Each call produces "fresh" data by seeding deterministic randomness from
+    the current UNIX timestamp (per-minute bucket so data is stable within a
+    minute but shifts across calls made at different times).
+    """
+    now = int(time.time())
+    minute_bucket = now // 60
+    seed = hashlib.sha256(f"vaultwatch-rwa-feed-{minute_bucket}".encode()).hexdigest()
+    rng = _random.Random(seed)
+
+    # --- Real Estate ---
+    real_estate = {
+        "properties": [
+            {
+                "property_id": "RWE-001",
+                "name": "Manhattan Commercial Tower",
+                "type": "commercial",
+                "location": "New York, NY",
+                "valuation_usd": round(rng.uniform(45_000_000, 55_000_000), 2),
+                "occupancy_rate": round(rng.uniform(0.82, 0.96), 4),
+                "location_risk": round(rng.uniform(0.12, 0.25), 4),
+                "cap_rate": round(rng.uniform(0.04, 0.07), 4),
+                "last_appraisal_ts": now - rng.randint(86400, 864000),
+            },
+            {
+                "property_id": "RWE-002",
+                "name": "London Residential Portfolio",
+                "type": "residential",
+                "location": "London, UK",
+                "valuation_usd": round(rng.uniform(22_000_000, 30_000_000), 2),
+                "occupancy_rate": round(rng.uniform(0.88, 0.97), 4),
+                "location_risk": round(rng.uniform(0.10, 0.20), 4),
+                "cap_rate": round(rng.uniform(0.03, 0.06), 4),
+                "last_appraisal_ts": now - rng.randint(86400, 864000),
+            },
+            {
+                "property_id": "RWE-003",
+                "name": "Singapore Mixed-Use Development",
+                "type": "mixed_use",
+                "location": "Singapore",
+                "valuation_usd": round(rng.uniform(60_000_000, 72_000_000), 2),
+                "occupancy_rate": round(rng.uniform(0.90, 0.98), 4),
+                "location_risk": round(rng.uniform(0.08, 0.15), 4),
+                "cap_rate": round(rng.uniform(0.035, 0.055), 4),
+                "last_appraisal_ts": now - rng.randint(86400, 864000),
+            },
+        ],
+    }
+
+    # --- Bonds ---
+    bonds = {
+        "treasury": [
+            {
+                "bond_id": "TBY-4W",
+                "name": "4-Week US Treasury Bill",
+                "maturity_days": 28,
+                "yield_pct": round(rng.uniform(5.20, 5.45), 4),
+                "par_value_usd": 10_000,
+                "spread_bps": 0,
+                "maturity_risk": round(rng.uniform(0.001, 0.005), 4),
+            },
+            {
+                "bond_id": "TBY-13W",
+                "name": "13-Week US Treasury Bill",
+                "maturity_days": 91,
+                "yield_pct": round(rng.uniform(5.25, 5.50), 4),
+                "par_value_usd": 10_000,
+                "spread_bps": 0,
+                "maturity_risk": round(rng.uniform(0.002, 0.008), 4),
+            },
+            {
+                "bond_id": "TBY-26W",
+                "name": "26-Week US Treasury Bill",
+                "maturity_days": 182,
+                "yield_pct": round(rng.uniform(5.30, 5.60), 4),
+                "par_value_usd": 10_000,
+                "spread_bps": 0,
+                "maturity_risk": round(rng.uniform(0.003, 0.01), 4),
+            },
+        ],
+        "corporate": [
+            {
+                "bond_id": "CB-IBM",
+                "name": "IBM 5-Year Corporate Bond",
+                "maturity_days": 1825,
+                "yield_pct": round(rng.uniform(5.80, 6.20), 4),
+                "par_value_usd": 1_000,
+                "spread_bps": round(rng.uniform(50, 80), 1),
+                "maturity_risk": round(rng.uniform(0.02, 0.05), 4),
+            },
+            {
+                "bond_id": "CB-UKG",
+                "name": "UK 10-Year Gilt",
+                "maturity_days": 3650,
+                "yield_pct": round(rng.uniform(4.30, 4.60), 4),
+                "par_value_usd": 1_000,
+                "spread_bps": round(rng.uniform(20, 40), 1),
+                "maturity_risk": round(rng.uniform(0.03, 0.07), 4),
+            },
+        ],
+    }
+
+    # --- Commodities ---
+    commodities = {
+        "gold_price_usd_per_oz": round(rng.uniform(2_300, 2_500), 2),
+        "silver_price_usd_per_oz": round(rng.uniform(26, 32), 2),
+        "oil_price_usd_per_barrel": round(rng.uniform(72, 85), 2),
+        "commodity_indices": {
+            "S&P_GSCI": round(rng.uniform(680, 750), 2),
+            "Bloomberg_Commodity": round(rng.uniform(115, 130), 2),
+        },
+    }
+
+    # --- Credit ---
+    credit = {
+        "ratings": [
+            {"entity": "US Government", "rating": "AAA", "default_probability": 0.0003, "recovery_rate": 0.95},
+            {"entity": "IBM Corporation", "rating": "A+", "default_probability": round(rng.uniform(0.005, 0.01), 4), "recovery_rate": round(rng.uniform(0.40, 0.60), 4)},
+            {"entity": "SME Loan Pool", "rating": "BBB", "default_probability": round(rng.uniform(0.03, 0.06), 4), "recovery_rate": round(rng.uniform(0.30, 0.50), 4)},
+        ],
+        "aggregate_default_rate": round(rng.uniform(0.02, 0.05), 4),
+        "average_recovery_rate": round(rng.uniform(0.40, 0.60), 4),
+    }
+
+    # --- Tokenized Assets ---
+    tokenized_assets = {
+        "on_chain_assets": [
+            {
+                "token_address": "0x" + hashlib.sha256(b"vaultwatch-rwa-realestate").hexdigest()[:40],
+                "asset_type": "real_estate",
+                "collateral_ratio": round(rng.uniform(1.30, 1.50), 4),
+                "chain_id": "casper-test",
+                "valuation_usd": round(rng.uniform(45_000_000, 55_000_000), 2),
+                "token_symbol": "rWEPROP",
+            },
+            {
+                "token_address": "0x" + hashlib.sha256(b"vaultwatch-rwa-treasury").hexdigest()[:40],
+                "asset_type": "bonds",
+                "collateral_ratio": round(rng.uniform(1.05, 1.15), 4),
+                "chain_id": "casper-test",
+                "valuation_usd": round(rng.uniform(10_000_000, 15_000_000), 2),
+                "token_symbol": "rWTBILL",
+            },
+            {
+                "token_address": "0x" + hashlib.sha256(b"vaultwatch-rwa-gold").hexdigest()[:40],
+                "asset_type": "commodities",
+                "collateral_ratio": round(rng.uniform(1.20, 1.35), 4),
+                "chain_id": "casper-test",
+                "valuation_usd": round(rng.uniform(5_000_000, 8_000_000), 2),
+                "token_symbol": "rWGOLD",
+            },
+            {
+                "token_address": "0x" + hashlib.sha256(b"vaultwatch-rwa-credit").hexdigest()[:40],
+                "asset_type": "credit",
+                "collateral_ratio": round(rng.uniform(1.10, 1.25), 4),
+                "chain_id": "casper-test",
+                "valuation_usd": round(rng.uniform(3_000_000, 6_000_000), 2),
+                "token_symbol": "rWCREDIT",
+            },
+        ],
+    }
+
+    feed: Dict[str, Any] = {
+        "timestamp": now,
+        "feed_version": "1.0.0",
+        "network": "casper-test",
+        "real_estate": real_estate,
+        "bonds": bonds,
+        "commodities": commodities,
+        "credit": credit,
+        "tokenized_assets": tokenized_assets,
+    }
+
+    # If a specific asset_type is requested, filter to just that category
+    if asset_type:
+        type_map = {
+            "real_estate": real_estate,
+            "bonds": bonds,
+            "commodities": commodities,
+            "credit": credit,
+            "tokenized_assets": tokenized_assets,
+        }
+        filtered = type_map.get(asset_type)
+        if filtered:
+            feed = {"timestamp": now, "feed_version": "1.0.0", "network": "casper-test", asset_type: filtered}
+
+    return feed
+
+
+@app.get("/rwa/feed", tags=["x402 Payment Protocol"])
+async def rwa_feed(
+    request: Request,
+    asset_type: Optional[str] = Query(
+        None,
+        description="Filter to a single asset category: real_estate, bonds, commodities, credit, tokenized_assets",
+    ),
+    plan: str = Query("standard", pattern="^(standard|premium)$"),
+):
+    """Payment-gated RWA feed resource (x402 v2 flow).
+
+    Returns structured, realistic mock RWA data covering five asset categories:
+    Real Estate (property valuations, occupancy rates, location risk),
+    Bonds (treasury yields, corporate bond spreads, maturity risk),
+    Commodities (gold/silver prices, oil prices, commodity indices),
+    Credit (credit ratings, default probabilities, recovery rates),
+    Tokenized Assets (on-chain RWA token addresses, collateral ratios, chain IDs).
+
+    Data rotates on a per-minute bucket so each call gets "fresh" deterministic
+    values.
+
+    Without a `PAYMENT-SIGNATURE` header: returns **402 Payment Required** with
+    a `PAYMENT-REQUIRED` base64 header (same pattern as /intel/{addr}).
+
+    With a valid `PAYMENT-SIGNATURE` header: verifies the EIP-712 signature
+    via the official `@make-software/casper-x402` facilitator, then returns
+    **200 OK** with the RWA feed payload and a `PAYMENT-RESPONSE` header.
+    """
+    with tracer.start_as_current_span("api.x402.rwa_feed") as span:
+        span.set_attribute("x402.rwa_feed.asset_type", asset_type or "all")
+        span.set_attribute("x402.plan", plan)
+
+        payment_signature = request.headers.get("PAYMENT-SIGNATURE")
+
+        # ---- No payment signature → 402 + PAYMENT-REQUIRED header ----------
+        if not payment_signature:
+            amount_motes = str(_X402_PLAN_PRICES_MOTES[plan])
+            enc = await _x402_helper(
+                "encode-payment-required",
+                {
+                    "resourceUrl": str(request.url),
+                    "description": f"VaultWatch {plan} RWA feed query",
+                    "mimeType": "application/json",
+                    "plan": plan,
+                    "amountMotes": amount_motes,
+                },
+            )
+            header = enc.get("paymentRequiredHeader", "")
+            span.set_attribute("x402.challenge", True)
+            return Response(
+                status_code=402,
+                headers={
+                    "PAYMENT-REQUIRED": header,
+                    "Content-Type": "application/json",
+                },
+                content=json.dumps(
+                    {
+                        "error": "PAYMENT-SIGNATURE header is required",
+                        "x402Version": 2,
+                        "resource": "rwa/feed",
+                        "plan": plan,
+                        "amount_motes": amount_motes,
+                        "network": "casper:casper-test",
+                        "instructions": (
+                            "Decode the PAYMENT-REQUIRED base64 header to obtain the "
+                            "x402 PaymentRequired object. Sign the EIP-712 "
+                            "ExactCasperPayload with your Casper wallet, then retry "
+                            "this request with the base64 signature in the "
+                            "PAYMENT-SIGNATURE header."
+                        ),
+                    }
+                ),
+            )
+
+        # ---- Payment signature present → verify via facilitator scheme ----
+        try:
+            verify = await _x402_helper(
+                "verify-payment-signature",
+                {"paymentSignatureHeader": payment_signature},
+            )
+        except HTTPException as e:
+            span.set_attribute("x402.verify_error", e.detail)
+            return Response(
+                status_code=402,
+                content=json.dumps({"error": "payment verification failed", "detail": e.detail}),
+                headers={"Content-Type": "application/json"},
+            )
+
+        if not verify.get("isValid"):
+            return Response(
+                status_code=402,
+                headers={"Content-Type": "application/json"},
+                content=json.dumps(
+                    {
+                        "error": "invalid payment signature",
+                        "invalidReason": verify.get("invalidReason"),
+                        "invalidMessage": verify.get("invalidMessage"),
+                    }
+                ),
+            )
+
+        # Signature valid → serve the RWA feed + PAYMENT-RESPONSE
+        settle = await _x402_helper(
+            "build-settle-response",
+            {
+                "deployHash": verify.get("payer", "") or "0" * 64,
+                "payer": verify.get("payer", ""),
+                "amountMotes": str(_X402_PLAN_PRICES_MOTES[plan]),
+                "success": True,
+            },
+        )
+        feed_data = _generate_rwa_feed_data(asset_type)
+        feed_payload = {
+            "resource": "rwa/feed",
+            "plan": plan,
+            "payer": verify.get("payer"),
+            "feed_data": feed_data,
+            "payment_verified": True,
+            "note": ("Payment signature verified via @make-software/casper-x402 ExactCasperScheme."),
+        }
+        return Response(
+            status_code=200,
+            headers={
+                "PAYMENT-RESPONSE": settle.get("settleResponseHeader", ""),
+                "Content-Type": "application/json",
+            },
+            content=json.dumps(feed_payload),
+        )
+
+
 @app.post(
     "/x402/subscribe",
     response_model=X402SubscribeResponse,
