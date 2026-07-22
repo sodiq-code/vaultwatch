@@ -25,6 +25,7 @@ verify-payment-signature, submit-vault-payment, build-settle-response).
 from __future__ import annotations
 
 import os
+import sys
 import time
 import json
 import base64
@@ -34,6 +35,16 @@ import logging
 import random as _random
 from pathlib import Path
 from typing import Any, Dict, Optional
+
+# Load .env before any os.getenv calls — python-dotenv reads the
+# project-root .env file and injects all vars into os.environ so that
+# GROQ_API_KEY, CSPR_CLOUD_API_KEY, etc. are available.
+# SKIPPED under pytest so that monkeypatch.delenv/setenv stays hermetic
+# (tests control env vars directly; CI injects them via workflow env:).
+if "pytest" not in sys.modules:
+    from dotenv import load_dotenv
+
+    load_dotenv(Path(__file__).resolve().parent.parent / ".env", override=False)
 
 import httpx
 from fastapi import FastAPI, HTTPException, Query, Request, Response

@@ -7,10 +7,19 @@ Run with: python pipeline.py
 from __future__ import annotations
 
 import os
+import sys
 import asyncio
 import logging
 import signal
+from pathlib import Path
 from typing import Any, Dict
+
+# Load .env before any os.getenv calls — only when NOT running under pytest
+# (tests control env vars directly; CI injects them via workflow env:).
+if "pytest" not in sys.modules:
+    from dotenv import load_dotenv
+
+    load_dotenv(Path(__file__).resolve().parent / ".env", override=False)
 
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
