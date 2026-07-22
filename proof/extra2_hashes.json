@@ -3,48 +3,64 @@
     "label": "AuditTrail::pipeline_status",
     "deploy_hash": "ce5e64355638df810ac4b6ee489990363976319a21487394ef62f91c67d1c662",
     "link": "https://testnet.cspr.live/deploy/ce5e64355638df810ac4b6ee489990363976319a21487394ef62f91c67d1c662",
-    "status": "submitted"
+    "status": "failed",
+    "error": "Invalid purse — referenced main purse does not exist on testnet",
+    "note": "Not counted as a verified deploy. These 8 deploys referenced a purse that was not funded on testnet."
   },
   {
     "label": "RiskOracle::protocol_scan_v2",
     "deploy_hash": "62e3dc976e412ee45d7cc013939ce90abb9b4f396e19e93d6d46ea27700e98ad",
     "link": "https://testnet.cspr.live/deploy/62e3dc976e412ee45d7cc013939ce90abb9b4f396e19e93d6d46ea27700e98ad",
-    "status": "submitted"
+    "status": "failed",
+    "error": "Invalid purse — referenced main purse does not exist on testnet",
+    "note": "Not counted as a verified deploy."
   },
   {
     "label": "SentinelAlertLog::batch_flush",
     "deploy_hash": "019822354bb63b29f613e34601751977647d3ad9f4719547d70e067789cfd7fa",
     "link": "https://testnet.cspr.live/deploy/019822354bb63b29f613e34601751977647d3ad9f4719547d70e067789cfd7fa",
-    "status": "submitted"
+    "status": "failed",
+    "error": "Invalid purse — referenced main purse does not exist on testnet",
+    "note": "Not counted as a verified deploy."
   },
   {
     "label": "AgentBehaviorIndex::agent_init",
     "deploy_hash": "3ea7ff328ed52fc74325a7b227d6ea0f8772a7422f4d519a674d7b7d67b03cfb",
     "link": "https://testnet.cspr.live/deploy/3ea7ff328ed52fc74325a7b227d6ea0f8772a7422f4d519a674d7b7d67b03cfb",
-    "status": "submitted"
+    "status": "failed",
+    "error": "Invalid purse — referenced main purse does not exist on testnet",
+    "note": "Not counted as a verified deploy."
   },
   {
     "label": "RiskPolicyManager::policy_reload",
     "deploy_hash": "5da86f8eaca22f96b7756c7958a1aff03a300e020569f0cfadcafaafd53d979f",
     "link": "https://testnet.cspr.live/deploy/5da86f8eaca22f96b7756c7958a1aff03a300e020569f0cfadcafaafd53d979f",
-    "status": "submitted"
+    "status": "failed",
+    "error": "Invalid purse — referenced main purse does not exist on testnet",
+    "note": "Not counted as a verified deploy."
   },
   {
     "label": "SentinelRegistry::health_ping",
     "deploy_hash": "d0240be05b2834a1634d3ee28d361d3381a52c551c9fdfb6fe28a2655accb3ee",
     "link": "https://testnet.cspr.live/deploy/d0240be05b2834a1634d3ee28d361d3381a52c551c9fdfb6fe28a2655accb3ee",
-    "status": "submitted"
+    "status": "failed",
+    "error": "Invalid purse — referenced main purse does not exist on testnet",
+    "note": "Not counted as a verified deploy."
   },
   {
     "label": "SentinelCredit::balance_check",
     "deploy_hash": "97efecfe56f004aeb0178bd309fd97d3b17ae60a43e1b79b9a3a0c4ca0a53d68",
     "link": "https://testnet.cspr.live/deploy/97efecfe56f004aeb0178bd309fd97d3b17ae60a43e1b79b9a3a0c4ca0a53d68",
-    "status": "submitted"
+    "status": "failed",
+    "error": "Invalid purse — referenced main purse does not exist on testnet",
+    "note": "Not counted as a verified deploy."
   },
   {
     "label": "SubscriberVault::vault_sync",
     "deploy_hash": "3449dd44973390ff3aa2ff4922b1f540f1c5d265aae216a1aff803a07ab0a6a8",
     "link": "https://testnet.cspr.live/deploy/3449dd44973390ff3aa2ff4922b1f540f1c5d265aae216a1aff803a07ab0a6a8",
-    "status": "submitted"
+    "status": "failed",
+    "error": "Invalid purse — referenced main purse does not exist on testnet",
+    "note": "Not counted as a verified deploy."
   }
 ]
