@@ -135,10 +135,17 @@ def capture_build(skip_build: bool) -> str:
 def capture_environment() -> str:
     """Capture versions of every tool in the toolchain."""
     cmds = [
-        "rustc --version", "cargo --version", "wasm-opt --version",
-        "wasm-objdump --version", "wasm-validate --version", "node --version",
-        "npm --version", "python3 --version", "pytest --version",
-        "ruff --version", "git --version",
+        "rustc --version",
+        "cargo --version",
+        "wasm-opt --version",
+        "wasm-objdump --version",
+        "wasm-validate --version",
+        "node --version",
+        "npm --version",
+        "python3 --version",
+        "pytest --version",
+        "ruff --version",
+        "git --version",
     ]
     out = header("ENVIRONMENT", cmds)
     for cmd in cmds:
@@ -150,19 +157,23 @@ def capture_environment() -> str:
         out += f"$ {cmd}  (exit={rc})\n{so}{se}\n"
     # Also capture the Casper testnet node's reported version (live RPC).
     out += "\n--- Casper Testnet Node ---\n"
-    rc, so, se = run([
-        "python3", "-c",
-        "import json,urllib.request; "
-        "r=json.loads(urllib.request.urlopen(urllib.request.Request('https://node.testnet.casper.network/rpc',"
-        "data=json.dumps({'jsonrpc':'2.0','id':1,'method':'info_get_status','params':{}}).encode(),"
-        "headers={'Content-Type':'application/json'})).read()); "
-        "r=r['result']; "
-        "print('chainspec_name:', r.get('chainspec_name')); "
-        "print('api_version:', r.get('api_version')); "
-        "print('build_version:', r.get('build_version')); "
-        "print('peers:', len(r.get('peers',[]))); "
-        "print('last_block_height:', r.get('last_added_block_info',{}).get('height'))"
-    ], timeout=30)
+    rc, so, se = run(
+        [
+            "python3",
+            "-c",
+            "import json,urllib.request; "
+            "r=json.loads(urllib.request.urlopen(urllib.request.Request('https://node.testnet.casper.network/rpc',"
+            "data=json.dumps({'jsonrpc':'2.0','id':1,'method':'info_get_status','params':{}}).encode(),"
+            "headers={'Content-Type':'application/json'})).read()); "
+            "r=r['result']; "
+            "print('chainspec_name:', r.get('chainspec_name')); "
+            "print('api_version:', r.get('api_version')); "
+            "print('build_version:', r.get('build_version')); "
+            "print('peers:', len(r.get('peers',[]))); "
+            "print('last_block_height:', r.get('last_added_block_info',{}).get('height'))",
+        ],
+        timeout=30,
+    )
     out += so + ("\n" + se if se else "")
     return out
 
@@ -175,13 +186,11 @@ def capture_environment() -> str:
 def capture_wasm_contracts() -> str:
     """Capture wasm-objdump -x + wasm-validate + bulk-memory check for every WASM."""
     wasms = sorted(WASM_DIR.glob("*.wasm"))
-    cmds = [
-        f"wasm-objdump -x contracts/wasm/{w.name}" for w in wasms
-    ] + [
-        f"wasm-validate contracts/wasm/{w.name}" for w in wasms
-    ] + [
-        "python3 scripts/check_wasm_bulk_memory.py contracts/wasm/"
-    ]
+    cmds = (
+        [f"wasm-objdump -x contracts/wasm/{w.name}" for w in wasms]
+        + [f"wasm-validate contracts/wasm/{w.name}" for w in wasms]
+        + ["python3 scripts/check_wasm_bulk_memory.py contracts/wasm/"]
+    )
     out = header("WASM CONTRACTS", cmds)
     out += f"{len(wasms)} WASM files in contracts/wasm/:\n\n"
     for w in wasms:
@@ -248,6 +257,7 @@ def capture_repo_state() -> str:
         # the push if the real token appears in any tracked file.
         if "remote" in cmd and "://" in so:
             import re
+
             # Match https://<user>:<token>@<host> — replace <user>:<token>
             # with [REDACTED].
             so = re.sub(
@@ -272,18 +282,22 @@ def capture_repo_state() -> str:
 
     # And the deployer account info (live RPC).
     out += "--- Deployer Account (live RPC) ---\n"
-    rc, so, se = run([
-        "python3", "-c",
-        "import json,urllib.request; "
-        "r=json.loads(urllib.request.urlopen(urllib.request.Request('https://node.testnet.casper.network/rpc',"
-        "data=json.dumps({'jsonrpc':'2.0','id':1,'method':'state_get_account_info',"
-        "'params':{'public_key':'02031300f7e7a8c0a9390ce7f365e315bae45c91e2cdcedaf754156b1a6bac13e3db'}}).encode(),"
-        "headers={'Content-Type':'application/json'})).read()); "
-        "a=r['result']['account']; "
-        "print('account_hash:', a['account_hash']); "
-        "print('named_keys:', len(a.get('named_keys',[]))); "
-        "print('main_purse:', a['main_purse'])"
-    ], timeout=30)
+    rc, so, se = run(
+        [
+            "python3",
+            "-c",
+            "import json,urllib.request; "
+            "r=json.loads(urllib.request.urlopen(urllib.request.Request('https://node.testnet.casper.network/rpc',"
+            "data=json.dumps({'jsonrpc':'2.0','id':1,'method':'state_get_account_info',"
+            "'params':{'public_key':'02031300f7e7a8c0a9390ce7f365e315bae45c91e2cdcedaf754156b1a6bac13e3db'}}).encode(),"
+            "headers={'Content-Type':'application/json'})).read()); "
+            "a=r['result']['account']; "
+            "print('account_hash:', a['account_hash']); "
+            "print('named_keys:', len(a.get('named_keys',[]))); "
+            "print('main_purse:', a['main_purse'])",
+        ],
+        timeout=30,
+    )
     out += so + ("\n" + se if se else "")
     return out
 
@@ -341,7 +355,7 @@ def capture_test_results(skip_tests: bool) -> str:
 def capture_mcp_server() -> str:
     """Introspect the FastMCP server to list all 20 tools."""
     cmds = [
-        "python3 -c \"import vaultwatch_mcp.server as s; ...\"",
+        'python3 -c "import vaultwatch_mcp.server as s; ..."',
     ]
     out = header("MCP SERVER", cmds)
 
@@ -439,12 +453,9 @@ def capture_stack_info() -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--skip-build", action="store_true",
-                        help="Skip the (slow) cargo build output capture.")
-    parser.add_argument("--skip-tests", action="store_true",
-                        help="Skip the (slow) pytest output capture.")
-    parser.add_argument("--only", choices=["01", "02", "03", "04", "05", "06", "07"],
-                        help="Only capture the specified file (1-7).")
+    parser.add_argument("--skip-build", action="store_true", help="Skip the (slow) cargo build output capture.")
+    parser.add_argument("--skip-tests", action="store_true", help="Skip the (slow) pytest output capture.")
+    parser.add_argument("--only", choices=["01", "02", "03", "04", "05", "06", "07"], help="Only capture the specified file (1-7).")
     args = parser.parse_args()
 
     PROOF_DIR.mkdir(exist_ok=True)

@@ -78,8 +78,10 @@ DEFAULT_CONTRACT_HASHES = {
 # args_list: list of [name, cl_type, value] tuples.
 # ---------------------------------------------------------------------------
 
+
 def _ts():
     return int(time.time())
+
 
 INTERACTIONS = [
     # === AuditTrail::record_finding (3 calls) ===
@@ -92,9 +94,11 @@ INTERACTIONS = [
             ["risk_type", "String", "price_manipulation"],
             ["severity", "String", "HIGH"],
             ["confidence", "U8", 92],
-            ["description", "String",
-             "AI-detected 22% price drop in 1h on CasperSwap DEX pair CSPR/USDT. "
-             "Anomaly agent classified as high-risk flash crash pattern."],
+            [
+                "description",
+                "String",
+                "AI-detected 22% price drop in 1h on CasperSwap DEX pair CSPR/USDT. Anomaly agent classified as high-risk flash crash pattern.",
+            ],
             ["rwa_enriched", "Bool", False],
             ["agent_model", "String", "llama-3.3-70b-versatile"],
             ["block_height", "U64", 0],
@@ -110,9 +114,11 @@ INTERACTIONS = [
             ["risk_type", "String", "collateral_drain"],
             ["severity", "String", "MEDIUM"],
             ["confidence", "U8", 78],
-            ["description", "String",
-             "RWA agent detected unusual collateral withdrawal pattern from "
-             "tokenized treasury vault. Volume exceeds 3-sigma threshold."],
+            [
+                "description",
+                "String",
+                "RWA agent detected unusual collateral withdrawal pattern from tokenized treasury vault. Volume exceeds 3-sigma threshold.",
+            ],
             ["rwa_enriched", "Bool", True],
             ["agent_model", "String", "llama-3.3-70b-versatile"],
             ["block_height", "U64", 0],
@@ -135,7 +141,6 @@ INTERACTIONS = [
             ["timestamp", "U64", _ts()],
         ],
     ),
-
     # === RiskOracle::update_score (3 calls) ===
     (
         "RiskOracle::update_score[CasperSwap_HIGH]",
@@ -176,7 +181,6 @@ INTERACTIONS = [
             ["finding_id", "U64", 2],
         ],
     ),
-
     # === SentinelAlertLog::log_alert (4 calls) ===
     (
         "SentinelAlertLog::log_alert[HIGH_price_crash]",
@@ -234,7 +238,6 @@ INTERACTIONS = [
             ["delivered", "Bool", False],
         ],
     ),
-
     # === SentinelRegistry::register (2 calls) ===
     (
         "SentinelRegistry::register[pipeline_v3]",
@@ -258,7 +261,6 @@ INTERACTIONS = [
             ["timestamp", "U64", _ts()],
         ],
     ),
-
     # === SentinelCredit::deposit (2 calls) ===
     (
         "SentinelCredit::deposit[pipeline_account]",
@@ -278,7 +280,6 @@ INTERACTIONS = [
             ["amount", "U512", "250000000000"],
         ],
     ),
-
     # === AgentBehaviorIndex::record_decision (3 calls) ===
     (
         "AgentBehaviorIndex::record_decision[anomaly_classify]",
@@ -316,7 +317,6 @@ INTERACTIONS = [
             ["block_height", "U64", 0],
         ],
     ),
-
     # === RiskPolicyManager::upgrade_policy (2 calls) ===
     (
         "RiskPolicyManager::upgrade_policy[v2_conservative]",
@@ -348,7 +348,6 @@ INTERACTIONS = [
             ["updated_by", "String", "risk_admin_operator"],
         ],
     ),
-
     # === SubscriberVault::open_vault (2 calls) ===
     (
         "SubscriberVault::open_vault[pro_30d]",
@@ -437,10 +436,15 @@ def main():
         contract_hash_hex = contract_hashes.get(contract_name)
         if not contract_hash_hex:
             logger.error("[%d/%d] SKIP %s — no contract hash for %s", i, len(INTERACTIONS), label, contract_name)
-            results.append({
-                "label": label, "contract": contract_name, "entry_point": entry_point,
-                "deploy_hash": None, "status": "skipped_no_contract_hash",
-            })
+            results.append(
+                {
+                    "label": label,
+                    "contract": contract_name,
+                    "entry_point": entry_point,
+                    "deploy_hash": None,
+                    "status": "skipped_no_contract_hash",
+                }
+            )
             failed_count += 1
             continue
 
@@ -459,31 +463,34 @@ def main():
         if result.get("success"):
             verified_count += 1
             cost_cspr = int(result.get("cost_motes", "0")) / 1e9
-            logger.info("  VERIFIED SUCCESS  hash=%s  block=%s  cost=%.4f CSPR",
-                        result["deploy_hash"][:16], result.get("block_hash", "")[:16], cost_cspr)
-            results.append({
-                "label": label,
-                "contract": contract_name,
-                "entry_point": entry_point,
-                "deploy_hash": result["deploy_hash"],
-                "link": result.get("link", f"https://testnet.cspr.live/deploy/{result['deploy_hash']}"),
-                "status": "verified_success",
-                "block_hash": result.get("block_hash", ""),
-                "gas_cost_motes": result.get("cost_motes", "0"),
-            })
+            logger.info("  VERIFIED SUCCESS  hash=%s  block=%s  cost=%.4f CSPR", result["deploy_hash"][:16], result.get("block_hash", "")[:16], cost_cspr)
+            results.append(
+                {
+                    "label": label,
+                    "contract": contract_name,
+                    "entry_point": entry_point,
+                    "deploy_hash": result["deploy_hash"],
+                    "link": result.get("link", f"https://testnet.cspr.live/deploy/{result['deploy_hash']}"),
+                    "status": "verified_success",
+                    "block_hash": result.get("block_hash", ""),
+                    "gas_cost_motes": result.get("cost_motes", "0"),
+                }
+            )
         else:
             failed_count += 1
             err = result.get("error", "unknown")
             logger.error("  FAILED: %s", err)
-            results.append({
-                "label": label,
-                "contract": contract_name,
-                "entry_point": entry_point,
-                "deploy_hash": result.get("deploy_hash"),
-                "link": result.get("link"),
-                "status": "execution_failed",
-                "error": err,
-            })
+            results.append(
+                {
+                    "label": label,
+                    "contract": contract_name,
+                    "entry_point": entry_point,
+                    "deploy_hash": result.get("deploy_hash"),
+                    "link": result.get("link"),
+                    "status": "execution_failed",
+                    "error": err,
+                }
+            )
 
         # brief pause to avoid nonce conflicts
         time.sleep(3)

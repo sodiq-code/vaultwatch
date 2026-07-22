@@ -47,23 +47,45 @@ REQUIRED_ENTRY_POINTS: Dict[str, Set[str]] = {
     "AuditTrail": {"init", "record_finding", "get_count", "transfer_ownership"},
     "RiskOracle": {"init", "update_score", "get_risk_score", "transfer_ownership"},
     "SentinelCredit": {
-        "init", "deposit", "deduct_query", "get_balance", "get_account",
-        "get_query_price", "get_premium_price", "get_total_revenue",
-        "set_prices", "transfer_ownership",
+        "init",
+        "deposit",
+        "deduct_query",
+        "get_balance",
+        "get_account",
+        "get_query_price",
+        "get_premium_price",
+        "get_total_revenue",
+        "set_prices",
+        "transfer_ownership",
     },
     "SentinelRegistry": {
-        "init", "register", "deregister", "increment_alert_count",
-        "get_subscriber", "is_active", "get_count", "transfer_ownership",
+        "init",
+        "register",
+        "deregister",
+        "increment_alert_count",
+        "get_subscriber",
+        "is_active",
+        "get_count",
+        "transfer_ownership",
     },
     "SentinelAlertLog": {"init", "log_alert", "get_log", "get_address_log_ids", "get_total_count"},
     "AgentBehaviorIndex": {"init", "record_decision", "get_metrics", "get_trust_score", "get_agent_count"},
     "RiskPolicyManager": {
-        "init", "upgrade_policy", "get_current_policy",
-        "get_policy_version", "get_current_version", "transfer_ownership",
+        "init",
+        "upgrade_policy",
+        "get_current_policy",
+        "get_policy_version",
+        "get_current_version",
+        "transfer_ownership",
     },
     "SubscriberVault": {
-        "init", "open_vault", "deduct", "top_up",
-        "get_account", "get_balance", "get_total_locked",
+        "init",
+        "open_vault",
+        "deduct",
+        "top_up",
+        "get_account",
+        "get_balance",
+        "get_total_locked",
     },
 }
 
@@ -78,12 +100,8 @@ def test_contract_exists_on_chain(rpc_url, contract_name):
     """``query_global_state`` on each contract hash returns a non-empty
     ``Contract`` stored value."""
     contract = query_contract(rpc_url, CONTRACT_HASHES[contract_name])
-    assert contract.get("contract_package_hash"), (
-        f"{contract_name}: missing contract_package_hash in stored_value.Contract"
-    )
-    assert contract.get("entry_points") is not None, (
-        f"{contract_name}: entry_points missing"
-    )
+    assert contract.get("contract_package_hash"), f"{contract_name}: missing contract_package_hash in stored_value.Contract"
+    assert contract.get("entry_points") is not None, f"{contract_name}: entry_points missing"
 
 
 @pytest.mark.parametrize("contract_name", list(CONTRACT_HASHES.keys()))
@@ -99,9 +117,7 @@ def test_contract_package_hash_matches_expected(rpc_url, contract_name):
     on_chain_pkg = contract.get("contract_package_hash", "")
     on_chain_hex = normalize_package_hash(on_chain_pkg)
     expected_hex = normalize_package_hash(CONTRACT_PACKAGE_HASHES[contract_name])
-    assert on_chain_hex == expected_hex, (
-        f"{contract_name}: on-chain package hash hex {on_chain_hex!r} != expected {expected_hex!r}"
-    )
+    assert on_chain_hex == expected_hex, f"{contract_name}: on-chain package hash hex {on_chain_hex!r} != expected {expected_hex!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -121,10 +137,7 @@ def test_contract_exposes_required_entry_points(rpc_url, contract_name):
     on_chain_eps = {ep["name"] for ep in contract.get("entry_points", [])}
     required = REQUIRED_ENTRY_POINTS[contract_name]
     missing = required - on_chain_eps
-    assert not missing, (
-        f"{contract_name}: missing required entry points on-chain: {sorted(missing)}. "
-        f"Present EPs: {sorted(on_chain_eps)}"
-    )
+    assert not missing, f"{contract_name}: missing required entry points on-chain: {sorted(missing)}. Present EPs: {sorted(on_chain_eps)}"
 
 
 def test_audit_trail_record_finding_arg_types(rpc_url):
@@ -150,10 +163,7 @@ def test_audit_trail_record_finding_arg_types(rpc_url):
         "timestamp": "U64",
     }
     for name, cl_type in expected.items():
-        assert args.get(name) == cl_type, (
-            f"AuditTrail.record_finding arg {name!r}: expected {cl_type}, got {args.get(name)!r}. "
-            f"Full args: {args}"
-        )
+        assert args.get(name) == cl_type, f"AuditTrail.record_finding arg {name!r}: expected {cl_type}, got {args.get(name)!r}. Full args: {args}"
 
 
 def test_risk_oracle_update_score_arg_types(rpc_url):
@@ -170,9 +180,7 @@ def test_risk_oracle_update_score_arg_types(rpc_url):
         "finding_id": "U64",
     }
     for name, cl_type in expected.items():
-        assert args.get(name) == cl_type, (
-            f"RiskOracle.update_score arg {name!r}: expected {cl_type}, got {args.get(name)!r}"
-        )
+        assert args.get(name) == cl_type, f"RiskOracle.update_score arg {name!r}: expected {cl_type}, got {args.get(name)!r}"
 
 
 def test_agent_behavior_index_record_decision_arg_types(rpc_url):
@@ -189,9 +197,7 @@ def test_agent_behavior_index_record_decision_arg_types(rpc_url):
         "block_height": "U64",
     }
     for name, cl_type in expected.items():
-        assert args.get(name) == cl_type, (
-            f"AgentBehaviorIndex.record_decision arg {name!r}: expected {cl_type}, got {args.get(name)!r}"
-        )
+        assert args.get(name) == cl_type, f"AgentBehaviorIndex.record_decision arg {name!r}: expected {cl_type}, got {args.get(name)!r}"
 
 
 def test_sentinel_alert_log_log_alert_arg_types(rpc_url):
@@ -212,9 +218,7 @@ def test_sentinel_alert_log_log_alert_arg_types(rpc_url):
         "delivered": "Bool",
     }
     for name, cl_type in expected.items():
-        assert args.get(name) == cl_type, (
-            f"SentinelAlertLog.log_alert arg {name!r}: expected {cl_type}, got {args.get(name)!r}"
-        )
+        assert args.get(name) == cl_type, f"SentinelAlertLog.log_alert arg {name!r}: expected {cl_type}, got {args.get(name)!r}"
 
 
 def test_risk_policy_manager_upgrade_policy_arg_types(rpc_url):
@@ -235,9 +239,7 @@ def test_risk_policy_manager_upgrade_policy_arg_types(rpc_url):
         "updated_by": "String",
     }
     for name, cl_type in expected.items():
-        assert args.get(name) == cl_type, (
-            f"RiskPolicyManager.upgrade_policy arg {name!r}: expected {cl_type}, got {args.get(name)!r}"
-        )
+        assert args.get(name) == cl_type, f"RiskPolicyManager.upgrade_policy arg {name!r}: expected {cl_type}, got {args.get(name)!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -251,9 +253,7 @@ def test_contract_package_has_versions(rpc_url, contract_name):
     package was installed, not just registered)."""
     pkg = query_contract_package(rpc_url, CONTRACT_PACKAGE_HASHES[contract_name])
     versions = pkg.get("versions", [])
-    assert len(versions) > 0, (
-        f"{contract_name} package has 0 versions — was it ever installed?"
-    )
+    assert len(versions) > 0, f"{contract_name} package has 0 versions — was it ever installed?"
 
 
 @pytest.mark.parametrize("contract_name", list(CONTRACT_PACKAGE_HASHES.keys()))
@@ -268,9 +268,7 @@ def test_contract_package_latest_version_enabled(rpc_url, contract_name):
     # Casper 2.x: each version has an `enabled` flag (defaults true on install).
     # The v2 RiskPolicyManager upgrade disabled v1 (PROOF.md §10.1).
     # We only assert the LATEST version is enabled here.
-    assert latest.get("enabled", True) is True, (
-        f"{contract_name}: latest version {latest.get('contract_version')} is disabled"
-    )
+    assert latest.get("enabled", True) is True, f"{contract_name}: latest version {latest.get('contract_version')} is disabled"
 
 
 def test_risk_policy_manager_v2_upgrade_evidenced_on_chain(rpc_url):
@@ -294,17 +292,11 @@ def test_risk_policy_manager_v2_upgrade_evidenced_on_chain(rpc_url):
     versions = pkg.get("versions", [])
     version_nums = sorted(v.get("contract_version", 0) for v in versions)
     assert version_nums[-1] >= 2, (
-        f"Account-2 RiskPolicyManager package only has versions {version_nums} — "
-        "expected >= 2 (v1 install + v2 upgrade). See PROOF.md §10."
+        f"Account-2 RiskPolicyManager package only has versions {version_nums} — expected >= 2 (v1 install + v2 upgrade). See PROOF.md §10."
     )
     # v1 should be in disabled_versions, v2 should NOT.
     disabled = pkg.get("disabled_versions", [])
     # Each entry is [protocol_version_major, contract_version].
     disabled_contract_versions = {entry[1] for entry in disabled}
-    assert 1 in disabled_contract_versions, (
-        f"RiskPolicyManager v1 should be disabled after the v2 upgrade. "
-        f"disabled_versions: {disabled}"
-    )
-    assert 2 not in disabled_contract_versions, (
-        "RiskPolicyManager v2 should be enabled (not in disabled_versions)"
-    )
+    assert 1 in disabled_contract_versions, f"RiskPolicyManager v1 should be disabled after the v2 upgrade. disabled_versions: {disabled}"
+    assert 2 not in disabled_contract_versions, "RiskPolicyManager v2 should be enabled (not in disabled_versions)"

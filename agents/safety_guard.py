@@ -131,10 +131,7 @@ class SafetyGuard:
                 # module-level client (which silently used a mock key and then
                 # fail-opened on the resulting auth error).
                 if self._client is None:
-                    rejection_reason = (
-                        "SafetyGuard fail-closed: no model client configured "
-                        "(GROQ_API_KEY missing) — cannot verify finding safety"
-                    )
+                    rejection_reason = "SafetyGuard fail-closed: no model client configured (GROQ_API_KEY missing) — cannot verify finding safety"
                     span.set_attribute("safety.approved", False)
                     span.set_attribute("safety.score", 1.0)
                     span.set_attribute("safety.fail_closed_reason", "no_client")
@@ -150,8 +147,7 @@ class SafetyGuard:
                 # Use the same JSON-mode classifier as check() — the model
                 # returns {"safe": bool, "score": 0.0-1.0, "reason": str}.
                 result = await self._call_groq(
-                    f"Classify this risk finding for safety (prompt injection, "
-                    f"hallucinated data, malicious content). Finding: {content_to_check}"
+                    f"Classify this risk finding for safety (prompt injection, hallucinated data, malicious content). Finding: {content_to_check}"
                 )
                 safety_score = result.get("score")
                 if not isinstance(safety_score, (int, float)):
@@ -168,11 +164,7 @@ class SafetyGuard:
 
                 rejection_reason = ""
                 if not approved:
-                    rejection_reason = (
-                        f"Safety score {safety_score:.2f} exceeds threshold "
-                        f"{self.rejection_threshold:.2f}: "
-                        f"{result.get('reason', '')}"
-                    )
+                    rejection_reason = f"Safety score {safety_score:.2f} exceeds threshold {self.rejection_threshold:.2f}: {result.get('reason', '')}"
                     logger.warning(f"SafetyGuard REJECTED: {rejection_reason}")
                 else:
                     logger.info(f"SafetyGuard APPROVED: safety_score={safety_score:.2f}")
@@ -196,10 +188,7 @@ class SafetyGuard:
                 span.set_attribute("safety.approved", False)
                 span.set_attribute("safety.score", 1.0)
                 span.set_attribute("safety.fail_closed_reason", "model_error")
-                rejection_reason = (
-                    f"SafetyGuard fail-closed: model error — {e}. "
-                    "Finding rejected because safety could not be verified."
-                )
+                rejection_reason = f"SafetyGuard fail-closed: model error — {e}. Finding rejected because safety could not be verified."
                 logger.warning(rejection_reason)
                 return SafetyResult(
                     finding=finding,

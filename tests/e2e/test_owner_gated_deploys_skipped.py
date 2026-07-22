@@ -151,6 +151,7 @@ def test_this_file_has_6_skipped_owner_gated_deploys():
     """
     import inspect
     import sys
+
     mod = sys.modules[__name__]
     skipped_test_fns = []
     for name, obj in inspect.getmembers(mod, inspect.isfunction):
@@ -162,7 +163,4 @@ def test_this_file_has_6_skipped_owner_gated_deploys():
             if getattr(mark, "name", None) == "skip":
                 skipped_test_fns.append(name)
                 break
-    assert len(skipped_test_fns) == 6, (
-        f"expected 6 skipped deploy tests, got {len(skipped_test_fns)}: "
-        f"{skipped_test_fns}"
-    )
+    assert len(skipped_test_fns) == 6, f"expected 6 skipped deploy tests, got {len(skipped_test_fns)}: {skipped_test_fns}"

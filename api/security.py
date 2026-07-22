@@ -53,13 +53,15 @@ logger = logging.getLogger("vaultwatch.api.security")
 # ---------------------------------------------------------------------------
 # Public-path allowlist — exempt from both auth and rate limiting
 # ---------------------------------------------------------------------------
-PUBLIC_PATHS: frozenset[str] = frozenset({
-    "/health",
-    "/docs",
-    "/redoc",
-    "/openapi.json",
-    "/metrics/spans",
-})
+PUBLIC_PATHS: frozenset[str] = frozenset(
+    {
+        "/health",
+        "/docs",
+        "/redoc",
+        "/openapi.json",
+        "/metrics/spans",
+    }
+)
 
 
 def _is_public(path: str) -> bool:

@@ -82,22 +82,16 @@ def _explorer_link(deploy_hash: str) -> str:
 
 def _assert_deploy_verified(rpc_url: str, result: Dict[str, Any]) -> str:
     """Common post-deploy assertions + return the verified deploy hash."""
-    assert result.get("success") is True, (
-        f"deploy did not report success: {result}"
-    )
+    assert result.get("success") is True, f"deploy did not report success: {result}"
     deploy_hash = result.get("deploy_hash", "")
-    assert isinstance(deploy_hash, str) and len(deploy_hash) == 64, (
-        f"bad deploy_hash: {deploy_hash!r}"
-    )
+    assert isinstance(deploy_hash, str) and len(deploy_hash) == 64, f"bad deploy_hash: {deploy_hash!r}"
     # Re-verify independently (defence in depth — the helper's own
     # verification could be bypassed by a bug; this is the e2e source of
     # truth).
     v2 = verify_deploy_success(rpc_url, deploy_hash)
     # Cost must be > 0 — proves the deploy actually executed on-chain.
     cost = int(v2.get("cost", 0))
-    assert cost > 0, (
-        f"deploy {deploy_hash} has zero cost — did it actually execute?"
-    )
+    assert cost > 0, f"deploy {deploy_hash} has zero cost — did it actually execute?"
     return deploy_hash
 
 
@@ -269,15 +263,8 @@ def test_deploy_produced_on_chain_writes(rpc_url, deploy_key):
         pytest.skip(f"{deploy_key} did not run (upstream failure)")
     deploy_hash = DEPLOYS_THIS_RUN[deploy_key]
     result = rpc_call(rpc_url, "info_get_deploy", {"deploy_hash": deploy_hash})
-    effects = (
-        result.get("execution_info", {})
-        .get("execution_result", {})
-        .get("Version2", {})
-        .get("effects", [])
-    )
-    assert isinstance(effects, list), (
-        f"effects is not a list (got {type(effects).__name__}): {effects!r}"
-    )
+    effects = result.get("execution_info", {}).get("execution_result", {}).get("Version2", {}).get("effects", [])
+    assert isinstance(effects, list), f"effects is not a list (got {type(effects).__name__}): {effects!r}"
     # Collect the written-value type from each Write operation.
     write_value_types = set()
     for eff in effects:
@@ -288,11 +275,5 @@ def test_deploy_produced_on_chain_writes(rpc_url, deploy_key):
             # {"Account": {...}} or {"Contract": {...}} etc.
             if isinstance(write_payload, dict):
                 write_value_types.update(write_payload.keys())
-    assert write_value_types, (
-        f"deploy {deploy_hash} produced 0 Write transforms — state was not "
-        f"mutated. Effects: {effects}"
-    )
-    print(
-        f"\n  {deploy_key}: {len(write_value_types)} Write value-type(s): "
-        f"{sorted(write_value_types)}"
-    )
+    assert write_value_types, f"deploy {deploy_hash} produced 0 Write transforms — state was not mutated. Effects: {effects}"
+    print(f"\n  {deploy_key}: {len(write_value_types)} Write value-type(s): {sorted(write_value_types)}")

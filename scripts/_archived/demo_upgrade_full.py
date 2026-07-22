@@ -73,9 +73,9 @@ PROOF_FILE = REPO_ROOT / "proof" / "upgrade_hashes.json"
 PACKAGE_HASH_KEY_NAME = "risk_policy_manager_package_hash"
 
 # Payment sizing (mostly refunded; out-of-gas charges the full payment).
-INSTALL_PAYMENT_MOTES = 150_000_000_000       # 150 CSPR for v1 install
-UPGRADE_PAYMENT_MOTES = 300_000_000_000       # 300 CSPR for v2 upgrade (heavier)
-CALL_PAYMENT_MOTES = 5_000_000_000            # 5 CSPR per contract call
+INSTALL_PAYMENT_MOTES = 150_000_000_000  # 150 CSPR for v1 install
+UPGRADE_PAYMENT_MOTES = 300_000_000_000  # 300 CSPR for v2 upgrade (heavier)
+CALL_PAYMENT_MOTES = 5_000_000_000  # 5 CSPR per contract call
 
 # The distinctive policy we set on v1 (baseline for the shared-state proof).
 # v2's get_policy_with_reasoning reads this exact value via the shared `state`
@@ -100,6 +100,7 @@ def log(msg: str) -> None:
 # JSON-RPC helpers
 # ---------------------------------------------------------------------------
 
+
 def rpc_call(rpc_url: str, method: str, params) -> dict:
     payload = {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}
     r = requests.post(rpc_url, json=payload, headers={"Content-Type": "application/json"}, timeout=45)
@@ -116,11 +117,15 @@ def get_state_root_hash(rpc_url: str) -> str:
 
 def get_account(rpc_url: str, srh: str, account_hash: str) -> dict:
     """Query an account by its account-hash (hex, no prefix)."""
-    res = rpc_call(rpc_url, "query_global_state", {
-        "state_identifier": {"StateRootHash": srh},
-        "key": f"account-hash-{account_hash}",
-        "path": [],
-    })
+    res = rpc_call(
+        rpc_url,
+        "query_global_state",
+        {
+            "state_identifier": {"StateRootHash": srh},
+            "key": f"account-hash-{account_hash}",
+            "path": [],
+        },
+    )
     return (res.get("stored_value") or {}).get("Account", {})
 
 
@@ -131,20 +136,28 @@ def get_deployer_account_hash(rpc_url: str) -> str | None:
 
 
 def query_package(rpc_url: str, srh: str, package_hash: str) -> dict:
-    res = rpc_call(rpc_url, "query_global_state", {
-        "state_identifier": {"StateRootHash": srh},
-        "key": f"hash-{package_hash}",
-        "path": [],
-    })
+    res = rpc_call(
+        rpc_url,
+        "query_global_state",
+        {
+            "state_identifier": {"StateRootHash": srh},
+            "key": f"hash-{package_hash}",
+            "path": [],
+        },
+    )
     return (res.get("stored_value") or {}).get("ContractPackage", {})
 
 
 def query_contract(rpc_url: str, srh: str, contract_hash: str) -> dict:
-    res = rpc_call(rpc_url, "query_global_state", {
-        "state_identifier": {"StateRootHash": srh},
-        "key": f"hash-{contract_hash}",
-        "path": [],
-    })
+    res = rpc_call(
+        rpc_url,
+        "query_global_state",
+        {
+            "state_identifier": {"StateRootHash": srh},
+            "key": f"hash-{contract_hash}",
+            "path": [],
+        },
+    )
     return (res.get("stored_value") or {}).get("Contract", {})
 
 
@@ -183,20 +196,20 @@ def state_uref_of(contract: dict) -> str | None:
 # Node helper runner
 # ---------------------------------------------------------------------------
 
+
 def run_node_helper(helper: Path, request: dict, timeout: int = 300) -> dict:
     req_file = REPO_ROOT / ".upgrade_req.tmp.json"
     req_file.write_text(json.dumps(request))
     try:
         proc = subprocess.run(
             ["node", str(helper), str(req_file)],
-            capture_output=True, text=True, timeout=timeout,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
         )
         out = proc.stdout.strip()
         if not out:
-            raise RuntimeError(
-                f"helper {helper.name} produced no stdout; "
-                f"stderr={proc.stderr[:800]}; exit={proc.returncode}"
-            )
+            raise RuntimeError(f"helper {helper.name} produced no stdout; stderr={proc.stderr[:800]}; exit={proc.returncode}")
         return json.loads(out)
     finally:
         try:
@@ -209,6 +222,7 @@ def run_node_helper(helper: Path, request: dict, timeout: int = 300) -> dict:
 # Lifecycle steps
 # ---------------------------------------------------------------------------
 
+
 def step_install_v1(rpc_url: str) -> dict:
     """Install a fresh, upgradable RiskPolicyManager v1 package."""
     request = {
@@ -220,13 +234,13 @@ def step_install_v1(rpc_url: str) -> dict:
     }
     log("Step 1 — INSTALL v1 RiskPolicyManager (fresh, upgradable package)...")
     log(f"  v1 wasm: {V1_WASM.name} ({V1_WASM.stat().st_size} bytes)")
-    log(f"  payment: {INSTALL_PAYMENT_MOTES/1e9:.0f} CSPR")
+    log(f"  payment: {INSTALL_PAYMENT_MOTES / 1e9:.0f} CSPR")
     result = run_node_helper(INSTALL_HELPER, request, timeout=300)
     if result.get("success"):
         log("  ✅ v1 INSTALL VERIFIED SUCCESS on-chain")
         log(f"     deploy:  {result['deploy_hash']}")
         log(f"     block:   {result['block_hash']}")
-        log(f"     cost:    {int(result['cost_motes'])/1e9:.4f} CSPR")
+        log(f"     cost:    {int(result['cost_motes']) / 1e9:.4f} CSPR")
         log(f"     link:    {result['link']}")
     else:
         log(f"  ❌ v1 INSTALL FAILED: {result.get('error')}")
@@ -248,7 +262,7 @@ def step_call(rpc_url: str, contract_hash: str, entry_point: str, args: list, la
     if result.get("success"):
         log(f"  ✅ {entry_point} SUCCEEDED")
         log(f"     deploy: {result['deploy_hash']}")
-        log(f"     cost:   {int(result['cost_motes'])/1e9:.4f} CSPR")
+        log(f"     cost:   {int(result['cost_motes']) / 1e9:.4f} CSPR")
     else:
         log(f"  ❌ {entry_point} FAILED: {result.get('error')}")
     return result
@@ -267,13 +281,13 @@ def step_upgrade_v2(rpc_url: str, package_hash: str) -> dict:
     log("Step 4 — UPGRADE to v2 via add_contract_version()...")
     log(f"  v1 package hash: {package_hash}")
     log(f"  v2 wasm: {V2_WASM.name} ({V2_WASM.stat().st_size} bytes)")
-    log(f"  payment: {UPGRADE_PAYMENT_MOTES/1e9:.0f} CSPR")
+    log(f"  payment: {UPGRADE_PAYMENT_MOTES / 1e9:.0f} CSPR")
     result = run_node_helper(UPGRADE_HELPER, request, timeout=300)
     if result.get("success"):
         log("  ✅ v2 UPGRADE VERIFIED SUCCESS on-chain")
         log(f"     deploy:  {result['deploy_hash']}")
         log(f"     block:   {result['block_hash']}")
-        log(f"     cost:    {int(result['cost_motes'])/1e9:.4f} CSPR")
+        log(f"     cost:    {int(result['cost_motes']) / 1e9:.4f} CSPR")
         log(f"     link:    {result['link']}")
     else:
         log(f"  ❌ v2 UPGRADE FAILED: {result.get('error')}")
@@ -284,11 +298,20 @@ def step_upgrade_v2(rpc_url: str, package_hash: str) -> dict:
 # Verification matrix
 # ---------------------------------------------------------------------------
 
-def verify(rpc_url: str, deployer_account_hash: str, package_hash: str,
-           v1_contract_hash: str, v1_state_uref: str,
-           install_result: dict | None, upgrade_result: dict | None,
-           set_policy_result: dict | None, get_policy_v1_result: dict | None,
-           get_reasoning_v2_result: dict | None, get_policy_v2_result: dict | None) -> dict:
+
+def verify(
+    rpc_url: str,
+    deployer_account_hash: str,
+    package_hash: str,
+    v1_contract_hash: str,
+    v1_state_uref: str,
+    install_result: dict | None,
+    upgrade_result: dict | None,
+    set_policy_result: dict | None,
+    get_policy_v1_result: dict | None,
+    get_reasoning_v2_result: dict | None,
+    get_policy_v2_result: dict | None,
+) -> dict:
     srh = get_state_root_hash(rpc_url)
     log(f"State root hash: {srh[:20]}...")
 
@@ -330,8 +353,7 @@ def verify(rpc_url: str, deployer_account_hash: str, package_hash: str,
         v2 = max(versions, key=lambda v: v.get("contract_version", 0))
         ch = v2.get("contract_hash", "")
         v2_contract_hash = ch.replace("contract-", "") if ch.startswith("contract-") else ch
-    log(f"Check 1 — package versions: {len(versions)} "
-        f"({[v.get('contract_version') for v in versions]}) disabled={len(disabled)}")
+    log(f"Check 1 — package versions: {len(versions)} ({[v.get('contract_version') for v in versions]}) disabled={len(disabled)}")
     report["v2_contract_hash"] = v2_contract_hash
     report["checks"]["package_has_2_versions"] = {
         "count": len(versions),
@@ -348,8 +370,12 @@ def verify(rpc_url: str, deployer_account_hash: str, package_hash: str,
     v2_eps = {ep["name"] for ep in v2_contract.get("entry_points", [])}
     has_new_ep = "get_policy_with_reasoning" in v2_eps
     v1_eps_expected = {
-        "init", "upgrade_policy", "get_current_policy", "get_policy_version",
-        "get_current_version", "transfer_ownership",
+        "init",
+        "upgrade_policy",
+        "get_current_policy",
+        "get_policy_version",
+        "get_current_version",
+        "transfer_ownership",
     }
     v1_preserved = v1_eps_expected.issubset(v2_eps)
     log(f"Check 2 — v2 entry points: {len(v2_eps)} | has get_policy_with_reasoning: {has_new_ep} | v1 EPs preserved: {v1_preserved}")
@@ -386,8 +412,8 @@ def verify(rpc_url: str, deployer_account_hash: str, package_hash: str,
             "error": get_reasoning_v2_result.get("error"),
             "pass": ok4,
             "rationale": "success proves v2 reads v1's shared state "
-                         "(get_policy_with_reasoning reads current_policy via get_or_revert; "
-                         "without shared state it would revert with User(1))",
+            "(get_policy_with_reasoning reads current_policy via get_or_revert; "
+            "without shared state it would revert with User(1))",
         }
     else:
         report["checks"]["call_get_policy_with_reasoning_on_v2"] = {"skipped": True}
@@ -419,16 +445,13 @@ def verify(rpc_url: str, deployer_account_hash: str, package_hash: str,
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="VaultWatch full Casper-native contract upgrade lifecycle (Critical Fix 2).")
+    parser = argparse.ArgumentParser(description="VaultWatch full Casper-native contract upgrade lifecycle (Critical Fix 2).")
     parser.add_argument("--rpc", default=DEFAULT_RPC)
-    parser.add_argument("--dry-run", action="store_true",
-                        help="verification queries only (no deploys)")
-    parser.add_argument("--from-existing", metavar="PACKAGE_HASH", default=None,
-                        help="skip the v1 install; upgrade an existing v1 package instead")
-    parser.add_argument("--no-write", action="store_true",
-                        help="do not write proof/upgrade_hashes.json")
+    parser.add_argument("--dry-run", action="store_true", help="verification queries only (no deploys)")
+    parser.add_argument("--from-existing", metavar="PACKAGE_HASH", default=None, help="skip the v1 install; upgrade an existing v1 package instead")
+    parser.add_argument("--no-write", action="store_true", help="do not write proof/upgrade_hashes.json")
     args = parser.parse_args()
 
     for f in (V1_WASM, V2_WASM, SECRET_KEY, INSTALL_HELPER, UPGRADE_HELPER, CALL_HELPER):
@@ -503,7 +526,9 @@ def main() -> int:
         # Step 2: set a known, distinctive policy on v1 (shared-state baseline).
         bp = BASELINE_POLICY
         set_policy_result = step_call(
-            args.rpc, v1_contract_hash, "upgrade_policy",
+            args.rpc,
+            v1_contract_hash,
+            "upgrade_policy",
             [
                 ["min_confidence_threshold", "U8", bp["min_confidence_threshold"]],
                 ["critical_score_threshold", "U8", bp["critical_score_threshold"]],
@@ -522,17 +547,30 @@ def main() -> int:
 
         # Step 3: call get_current_policy on v1 (proves v1 works + baseline).
         get_policy_v1_result = step_call(
-            args.rpc, v1_contract_hash, "get_current_policy", [], "Step 3",
+            args.rpc,
+            v1_contract_hash,
+            "get_current_policy",
+            [],
+            "Step 3",
         )
 
         # Step 4: upgrade to v2 via add_contract_version.
         upgrade_result = step_upgrade_v2(args.rpc, package_hash)
         if not upgrade_result.get("success"):
             log("v2 upgrade did not verify successful; running partial verification.")
-            report = verify(args.rpc, deployer_account_hash or "", package_hash,
-                            v1_contract_hash, v1_state_uref, install_result,
-                            upgrade_result, set_policy_result, get_policy_v1_result,
-                            None, None)
+            report = verify(
+                args.rpc,
+                deployer_account_hash or "",
+                package_hash,
+                v1_contract_hash,
+                v1_state_uref,
+                install_result,
+                upgrade_result,
+                set_policy_result,
+                get_policy_v1_result,
+                None,
+                None,
+            )
             if not args.no_write:
                 PROOF_FILE.parent.mkdir(parents=True, exist_ok=True)
                 PROOF_FILE.write_text(json.dumps(report, indent=2))
@@ -554,19 +592,36 @@ def main() -> int:
 
         # Step 5: call get_policy_with_reasoning on v2 (functional shared-state proof).
         get_reasoning_v2_result = step_call(
-            args.rpc, v2_contract_hash, "get_policy_with_reasoning", [], "Step 5a",
+            args.rpc,
+            v2_contract_hash,
+            "get_policy_with_reasoning",
+            [],
+            "Step 5a",
         )
 
         # Step 6: call get_current_policy on v2 (v1 EP on upgraded superset).
         get_policy_v2_result = step_call(
-            args.rpc, v2_contract_hash, "get_current_policy", [], "Step 5b",
+            args.rpc,
+            v2_contract_hash,
+            "get_current_policy",
+            [],
+            "Step 5b",
         )
 
     # Verification matrix.
-    report = verify(args.rpc, deployer_account_hash or "", package_hash,
-                    v1_contract_hash, v1_state_uref, install_result, upgrade_result,
-                    set_policy_result, get_policy_v1_result,
-                    get_reasoning_v2_result, get_policy_v2_result)
+    report = verify(
+        args.rpc,
+        deployer_account_hash or "",
+        package_hash,
+        v1_contract_hash,
+        v1_state_uref,
+        install_result,
+        upgrade_result,
+        set_policy_result,
+        get_policy_v1_result,
+        get_reasoning_v2_result,
+        get_policy_v2_result,
+    )
 
     log("")
     log("=" * 80)

@@ -142,12 +142,8 @@ def _rpc(method: str, params: list, rpc_url: str = CASPER_RPC_URL) -> Dict[str, 
     Uses urllib (no extra deps). Raises RuntimeError on transport / HTTP error
     or on a JSON-RPC ``error`` field in the response.
     """
-    body = json.dumps(
-        {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}
-    ).encode()
-    req = urllib.request.Request(
-        rpc_url, data=body, headers={"Content-Type": "application/json"}
-    )
+    body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": method, "params": params}).encode()
+    req = urllib.request.Request(rpc_url, data=body, headers={"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=15) as resp:
         data = json.loads(resp.read())
     if "error" in data:
@@ -192,9 +188,7 @@ def _get_state_uref_addr(contract_hash: str, rpc_url: str = CASPER_RPC_URL) -> b
         [{"StateRootHash": srh}, f"hash-{contract_hash}", []],
         rpc_url,
     )
-    named_keys = (
-        r.get("result", {}).get("stored_value", {}).get("Contract", {}).get("named_keys", [])
-    )
+    named_keys = r.get("result", {}).get("stored_value", {}).get("Contract", {}).get("named_keys", [])
     for nk in named_keys:
         if nk.get("name") == "state":
             uref_str = nk["key"]  # e.g. "uref-dca768b2...-007"
@@ -221,9 +215,7 @@ def compute_var_dict_address(state_uref_addr: bytes, field_index: int) -> str:
     return addr.hex()
 
 
-def compute_mapping_dict_address(
-    state_uref_addr: bytes, field_index: int, key_bytes: bytes
-) -> str:
+def compute_mapping_dict_address(state_uref_addr: bytes, field_index: int, key_bytes: bytes) -> str:
     """Compute the Casper ``Key::Dictionary`` address for a ``Mapping<K,V>`` entry.
 
     ``key_bytes`` must be the bytesrepr serialization of ``K`` (e.g.
@@ -297,9 +289,7 @@ def _read_string(data: bytes, offset: int) -> tuple[str, int]:
     length = struct.unpack_from("<I", data, offset)[0]
     offset += 4
     if offset + length > len(data):
-        raise ValueError(
-            f"String body read past end of buffer: need {length} bytes at {offset}, have {len(data)}"
-        )
+        raise ValueError(f"String body read past end of buffer: need {length} bytes at {offset}, have {len(data)}")
     raw = data[offset : offset + length]
     return raw.decode("utf-8", errors="replace"), offset + length
 
@@ -433,9 +423,7 @@ async def read_finding(
     try:
         uref_addr = await asyncio.to_thread(_get_state_uref_addr, ch)
         key_bytes = encode_u64_key(finding_id)
-        dict_addr = compute_mapping_dict_address(
-            uref_addr, AUDIT_TRAIL_FINDINGS_INDEX, key_bytes
-        )
+        dict_addr = compute_mapping_dict_address(uref_addr, AUDIT_TRAIL_FINDINGS_INDEX, key_bytes)
         cl_value = await _query_dict(ch, dict_addr)
         if cl_value is None:
             return None
@@ -462,9 +450,7 @@ async def read_risk_score(
     try:
         uref_addr = await asyncio.to_thread(_get_state_uref_addr, ch)
         key_bytes = encode_string_key(address)
-        dict_addr = compute_mapping_dict_address(
-            uref_addr, RISK_ORACLE_SCORES_INDEX, key_bytes
-        )
+        dict_addr = compute_mapping_dict_address(uref_addr, RISK_ORACLE_SCORES_INDEX, key_bytes)
         cl_value = await _query_dict(ch, dict_addr)
         if cl_value is None:
             return None

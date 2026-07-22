@@ -94,9 +94,7 @@ DEFAULT_POLICY: Dict[str, Any] = {
 def _rpc(method: str, params: list) -> Dict[str, Any]:
     """Make a synchronous JSON-RPC call to the Casper node."""
     body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": method, "params": params}).encode()
-    req = urllib.request.Request(
-        CASPER_RPC_URL, data=body, headers={"Content-Type": "application/json"}
-    )
+    req = urllib.request.Request(CASPER_RPC_URL, data=body, headers={"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=15) as resp:
         return json.loads(resp.read())
 
@@ -145,9 +143,7 @@ def _get_state_uref_addr(contract_hash: str) -> bytes:
     )
     if "error" in r:
         raise RuntimeError(f"query contract {contract_hash}: {r['error']}")
-    named_keys = (
-        r.get("result", {}).get("stored_value", {}).get("Contract", {}).get("named_keys", [])
-    )
+    named_keys = r.get("result", {}).get("stored_value", {}).get("Contract", {}).get("named_keys", [])
     for nk in named_keys:
         if nk.get("name") == "state":
             uref_str = nk["key"]  # e.g. "uref-dca768b2...-007"
@@ -297,9 +293,7 @@ async def read_current_policy(contract_hash: str = RISK_POLICY_MANAGER_HASH) -> 
         if "error" in r:
             logger.warning("policy read failed (query): %s — using defaults", r["error"])
             return dict(DEFAULT_POLICY)
-        cl_value = (
-            r.get("result", {}).get("stored_value", {}).get("CLValue", {})
-        )
+        cl_value = r.get("result", {}).get("stored_value", {}).get("CLValue", {})
         inner_bytes = _decode_cl_value_list_u8(cl_value)
         if not inner_bytes:
             logger.warning("policy read returned empty CLValue — using defaults")
@@ -326,6 +320,7 @@ def make_policy_reader(
 
     The callable takes no args and returns the current on-chain policy dict.
     """
+
     # Resolve the env override at call time so tests can point at a different
     # contract / RPC without restarting the process.
     async def _reader() -> Dict[str, Any]:

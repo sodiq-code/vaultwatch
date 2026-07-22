@@ -22,6 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 # Hash verification — the core of Critical Fix 5
 # ---------------------------------------------------------------------------
 
+
 def test_contract_package_hashes_are_real_64_char():
     """All 8 CONTRACT_PACKAGE_HASHES must be 64-hex-char real Casper hashes,
     not the old 45-hex-char (50 with 'hash-' prefix) fake hashes."""
@@ -30,10 +31,9 @@ def test_contract_package_hashes_are_real_64_char():
     assert len(srv.CONTRACT_PACKAGE_HASHES) == 8
     for name, h in srv.CONTRACT_PACKAGE_HASHES.items():
         assert h.startswith("hash-"), f"{name}: must start with 'hash-'"
-        hex_part = h[len("hash-"):]
+        hex_part = h[len("hash-") :]
         assert len(hex_part) == 64, (
-            f"{name}: hex part is {len(hex_part)} chars — expected 64 (real Casper hash). "
-            f"The old fake hashes were 45 chars (50 with prefix)."
+            f"{name}: hex part is {len(hex_part)} chars — expected 64 (real Casper hash). The old fake hashes were 45 chars (50 with prefix)."
         )
         # Must be valid hex
         int(hex_part, 16)
@@ -45,8 +45,14 @@ def test_contract_hashes_are_real_64_char():
 
     assert len(srv.CONTRACT_HASHES) == 8
     expected_names = {
-        "AgentBehaviorIndex", "SubscriberVault", "RiskOracle", "SentinelCredit",
-        "AuditTrail", "SentinelRegistry", "SentinelAlertLog", "RiskPolicyManager",
+        "AgentBehaviorIndex",
+        "SubscriberVault",
+        "RiskOracle",
+        "SentinelCredit",
+        "AuditTrail",
+        "SentinelRegistry",
+        "SentinelAlertLog",
+        "RiskPolicyManager",
     }
     assert set(srv.CONTRACT_HASHES.keys()) == expected_names
     for name, h in srv.CONTRACT_HASHES.items():
@@ -61,15 +67,13 @@ def test_no_fake_50_char_hashes_remain():
 
     for name, h in srv.CONTRACT_PACKAGE_HASHES.items():
         total_len = len(h)
-        assert total_len != 50, (
-            f"{name}: package hash is still the 50-char fake ({h}). "
-            f"Must be the real 69-char hash ('hash-' + 64 hex)."
-        )
+        assert total_len != 50, f"{name}: package hash is still the 50-char fake ({h}). Must be the real 69-char hash ('hash-' + 64 hex)."
 
 
 # ---------------------------------------------------------------------------
 # Tool callability — FastMCP FunctionTool fix
 # ---------------------------------------------------------------------------
+
 
 def test_all_4_critical_tools_directly_callable():
     """The 4 critical tools must be directly callable async functions (not
@@ -88,6 +92,7 @@ def test_all_4_critical_tools_directly_callable():
 # ---------------------------------------------------------------------------
 # agent_attestation — real AgentBehaviorIndex.record_decision() deploy
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_agent_attestation_submits_real_deploy():
@@ -141,9 +146,7 @@ async def test_agent_attestation_failure_returns_error():
 
     mock_fail = {"success": False, "error": "insufficient funds", "deploy_hash": ""}
     with patch.object(srv, "_submit_contract_call_real", new=AsyncMock(return_value=mock_fail)):
-        result = await srv.agent_attestation(
-            agent_name="TestAgent", decision_summary="test", confidence=50
-        )
+        result = await srv.agent_attestation(agent_name="TestAgent", decision_summary="test", confidence=50)
     assert result["status"] == "attestation_failed"
     assert result["on_chain_verified"] is False
     assert result["error"] == "insufficient funds"
@@ -152,6 +155,7 @@ async def test_agent_attestation_failure_returns_error():
 # ---------------------------------------------------------------------------
 # reputation_query — real query_global_state on 3 contracts
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_reputation_query_makes_real_rpc_calls():
@@ -167,8 +171,10 @@ async def test_reputation_query_makes_real_rpc_calls():
     async def mock_exists(contract_name):
         return {"exists": True, "contract_hash": srv.CONTRACT_HASHES.get(contract_name, "")}
 
-    with patch.object(srv, "_query_contract_state_real", new=AsyncMock(side_effect=mock_query)) as mock_q, \
-         patch.object(srv, "_query_contract_exists_real", new=AsyncMock(side_effect=mock_exists)):
+    with (
+        patch.object(srv, "_query_contract_state_real", new=AsyncMock(side_effect=mock_query)) as mock_q,
+        patch.object(srv, "_query_contract_exists_real", new=AsyncMock(side_effect=mock_exists)),
+    ):
         result = await srv.reputation_query(address="AnomalyAgent")
 
     # Must have queried AgentBehaviorIndex, SentinelCredit, AND SubscriberVault
@@ -195,28 +201,18 @@ async def test_reputation_query_subscriber_uses_real_balances():
         if contract_name == "AgentBehaviorIndex":
             return {"error": "not found"}  # not an agent
         if contract_name == "SentinelCredit":
-            return {
-                "stored_value": {
-                    "CLValue": {
-                        "parsed": {"escrowed_balance": 5000000000, "total_deposited": 10000000000}
-                    }
-                }
-            }
+            return {"stored_value": {"CLValue": {"parsed": {"escrowed_balance": 5000000000, "total_deposited": 10000000000}}}}
         if contract_name == "SubscriberVault":
-            return {
-                "stored_value": {
-                    "CLValue": {
-                        "parsed": {"escrowed_balance": 3000000000, "total_deposits": 5000000000}
-                    }
-                }
-            }
+            return {"stored_value": {"CLValue": {"parsed": {"escrowed_balance": 3000000000, "total_deposits": 5000000000}}}}
         return {}
 
     async def mock_exists(contract_name):
         return {"exists": True, "contract_hash": srv.CONTRACT_HASHES.get(contract_name, "")}
 
-    with patch.object(srv, "_query_contract_state_real", new=AsyncMock(side_effect=mock_query)), \
-         patch.object(srv, "_query_contract_exists_real", new=AsyncMock(side_effect=mock_exists)):
+    with (
+        patch.object(srv, "_query_contract_state_real", new=AsyncMock(side_effect=mock_query)),
+        patch.object(srv, "_query_contract_exists_real", new=AsyncMock(side_effect=mock_exists)),
+    ):
         result = await srv.reputation_query(address="casper1subscriber123")
 
     assert result["query_address"] == "casper1subscriber123"
@@ -227,14 +223,14 @@ async def test_reputation_query_subscriber_uses_real_balances():
     components = result.get("components", {})
     escrow = components.get("escrow", {})
     assert escrow.get("escrowed_balance_motes") == 8_000_000_000, (
-        f"Expected 8e9 motes (5e9 SentinelCredit + 3e9 SubscriberVault from real RPC), "
-        f"got {escrow.get('escrowed_balance_motes')}"
+        f"Expected 8e9 motes (5e9 SentinelCredit + 3e9 SubscriberVault from real RPC), got {escrow.get('escrowed_balance_motes')}"
     )
 
 
 # ---------------------------------------------------------------------------
 # x402_subscribe — real SubscriberVault.open_vault() deploy
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_x402_subscribe_submits_real_deploy():
@@ -286,6 +282,7 @@ async def test_x402_subscribe_submits_real_deploy():
 # policy_hotswap — real RiskPolicyManager.upgrade_policy() deploy
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_policy_hotswap_queries_current_policy_then_submits_deploy():
     """policy_hotswap must (1) query the REAL current policy on-chain (for
@@ -314,8 +311,10 @@ async def test_policy_hotswap_queries_current_policy_then_submits_deploy():
         "error": None,
     }
 
-    with patch.object(srv, "_query_contract_state_real", new=AsyncMock(return_value=mock_prev)) as mock_q, \
-         patch.object(srv, "_submit_contract_call_real", new=AsyncMock(return_value=mock_deploy)) as mock_call:
+    with (
+        patch.object(srv, "_query_contract_state_real", new=AsyncMock(return_value=mock_prev)) as mock_q,
+        patch.object(srv, "_submit_contract_call_real", new=AsyncMock(return_value=mock_deploy)) as mock_call,
+    ):
         result = await srv.policy_hotswap(
             new_min_confidence=85,
             new_critical_threshold=90,
@@ -355,8 +354,10 @@ async def test_policy_hotswap_no_set_threshold():
     import vaultwatch_mcp.server as srv
 
     # Run with mocks so no real RPC is made
-    with patch.object(srv, "_query_contract_state_real", new=AsyncMock(return_value={"error": "mock"})), \
-         patch.object(srv, "_submit_contract_call_real", new=AsyncMock(return_value={"success": False, "error": "mock"})):
+    with (
+        patch.object(srv, "_query_contract_state_real", new=AsyncMock(return_value={"error": "mock"})),
+        patch.object(srv, "_submit_contract_call_real", new=AsyncMock(return_value={"success": False, "error": "mock"})),
+    ):
         result = await srv.policy_hotswap()
 
     # The entry_point in the response must be upgrade_policy, never set_threshold

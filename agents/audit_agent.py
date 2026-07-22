@@ -277,9 +277,7 @@ class AuditAgent:
                     # write, falling back to 0 if the query is unavailable.
                     finding_id = 0
                     try:
-                        count_state = self.casper_client.query_contract_state(
-                            audit_trail_hash, ["finding_count"]
-                        )
+                        count_state = self.casper_client.query_contract_state(audit_trail_hash, ["finding_count"])
                         parsed = _parse_finding_count(count_state)
                         if parsed is not None:
                             finding_id = parsed
@@ -338,10 +336,7 @@ class AuditAgent:
             # Fail-safe: with no model client configured, use the static
             # template — the on-chain write must never block on LLM availability.
             if self._client is None:
-                return (
-                    f"{base.risk_type} | {base.severity} | "
-                    f"{base.confidence:.0%} confidence | {base.event.address[:20]}"
-                )
+                return f"{base.risk_type} | {base.severity} | {base.confidence:.0%} confidence | {base.event.address[:20]}"
             response = self._client.chat.completions.create(
                 model="llama-3.1-8b-instant",
                 messages=[
@@ -533,15 +528,11 @@ class AuditAgent:
                     span.set_attribute("attestation.error", str(exc))
                     logger.error(f"Attestation on-chain write failed: {exc}")
                     # Fall back to mock hash
-                    mock_hash = hashlib.sha256(
-                        f"attestation-{attestation.get('dataHash', '')}-{timestamp}".encode()
-                    ).hexdigest()
+                    mock_hash = hashlib.sha256(f"attestation-{attestation.get('dataHash', '')}-{timestamp}".encode()).hexdigest()
                     return f"0x{mock_hash}_mock_attestation"
             else:
                 # Mock mode (no Casper client)
-                mock_hash = hashlib.sha256(
-                    f"attestation-{attestation.get('dataHash', '')}-{timestamp}".encode()
-                ).hexdigest()
+                mock_hash = hashlib.sha256(f"attestation-{attestation.get('dataHash', '')}-{timestamp}".encode()).hexdigest()
                 mock_tx = f"0x{mock_hash}_mock_attestation_{int(time.time())}"
                 span.set_attribute("attestation.mock_mode", True)
                 span.set_attribute("attestation.mock_tx", mock_tx)

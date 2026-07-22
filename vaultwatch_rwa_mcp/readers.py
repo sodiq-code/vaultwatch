@@ -286,10 +286,18 @@ def parse_finding_bytes(data: bytes) -> Dict[str, Any]:
     timestamp, off = _rd_u64(data, off)
     tx_hash, off = _rd_string(data, off)
     return {
-        "id": id_, "address": address, "risk_type": risk_type, "severity": severity,
-        "confidence": confidence, "description": description, "rwa_enriched": rwa_enriched,
-        "agent_model": agent_model, "block_height": block_height, "timestamp": timestamp,
-        "tx_hash": tx_hash, "source": "on-chain",
+        "id": id_,
+        "address": address,
+        "risk_type": risk_type,
+        "severity": severity,
+        "confidence": confidence,
+        "description": description,
+        "rwa_enriched": rwa_enriched,
+        "agent_model": agent_model,
+        "block_height": block_height,
+        "timestamp": timestamp,
+        "tx_hash": tx_hash,
+        "source": "on-chain",
     }
 
 
@@ -304,9 +312,13 @@ def parse_risk_score_bytes(data: bytes) -> Dict[str, Any]:
     last_updated, off = _rd_u64(data, off)
     finding_id, off = _rd_u64(data, off)
     return {
-        "address": address, "score": score, "risk_type": risk_type,
-        "confidence": confidence, "last_updated": last_updated,
-        "finding_id": finding_id, "source": "on-chain",
+        "address": address,
+        "score": score,
+        "risk_type": risk_type,
+        "confidence": confidence,
+        "last_updated": last_updated,
+        "finding_id": finding_id,
+        "source": "on-chain",
     }
 
 
@@ -324,10 +336,15 @@ def parse_alert_record_bytes(data: bytes) -> Dict[str, Any]:
     timestamp, off = _rd_u64(data, off)
     delivered, off = _rd_bool(data, off)
     return {
-        "log_id": log_id, "subscriber_address": subscriber_address,
-        "finding_id": finding_id, "severity": severity, "risk_type": risk_type,
-        "block_height": block_height, "timestamp": timestamp,
-        "delivered": delivered, "source": "on-chain",
+        "log_id": log_id,
+        "subscriber_address": subscriber_address,
+        "finding_id": finding_id,
+        "severity": severity,
+        "risk_type": risk_type,
+        "block_height": block_height,
+        "timestamp": timestamp,
+        "delivered": delivered,
+        "source": "on-chain",
     }
 
 
@@ -342,8 +359,12 @@ def parse_subscriber_bytes(data: bytes) -> Dict[str, Any]:
     registered_at, off = _rd_u64(data, off)
     alert_count, off = _rd_u64(data, off)
     return {
-        "address": address, "webhook_url": webhook_url, "min_severity": min_severity,
-        "active": active, "registered_at": registered_at, "alert_count": alert_count,
+        "address": address,
+        "webhook_url": webhook_url,
+        "min_severity": min_severity,
+        "active": active,
+        "registered_at": registered_at,
+        "alert_count": alert_count,
         "source": "on-chain",
     }
 
@@ -364,14 +385,16 @@ def parse_agent_metrics_bytes(data: bytes) -> Dict[str, Any]:
     last_updated_block, off = _rd_u64(data, off)
     trust_score, off = _rd_u8(data, off)
     return {
-        "agent_name": agent_name, "total_decisions": total_decisions,
+        "agent_name": agent_name,
+        "total_decisions": total_decisions,
         "corrections_applied": corrections_applied,
         "safety_rejections": safety_rejections,
         "avg_confidence": avg_confidence,
         "high_confidence_count": high_confidence_count,
         "low_confidence_count": low_confidence_count,
         "last_updated_block": last_updated_block,
-        "trust_score": trust_score, "source": "on-chain",
+        "trust_score": trust_score,
+        "source": "on-chain",
     }
 
 
@@ -385,8 +408,12 @@ def parse_credit_account_bytes(data: bytes) -> Dict[str, Any]:
     total_spent, off = _rd_u512(data, off)
     query_count, off = _rd_u64(data, off)
     return {
-        "owner": owner, "balance": balance, "total_deposited": total_deposited,
-        "total_spent": total_spent, "query_count": query_count, "source": "on-chain",
+        "owner": owner,
+        "balance": balance,
+        "total_deposited": total_deposited,
+        "total_spent": total_spent,
+        "query_count": query_count,
+        "source": "on-chain",
     }
 
 
@@ -406,12 +433,16 @@ def parse_vault_account_bytes(data: bytes) -> Dict[str, Any]:
     total_withdrawals, off = _rd_u512(data, off)
     created_at_block, off = _rd_u64(data, off)
     return {
-        "owner_address": owner_address, "escrowed_balance": escrowed_balance,
-        "locked_until_block": locked_until_block, "auto_renew": auto_renew,
+        "owner_address": owner_address,
+        "escrowed_balance": escrowed_balance,
+        "locked_until_block": locked_until_block,
+        "auto_renew": auto_renew,
         "monthly_spend_limit": monthly_spend_limit,
         "current_period_spent": current_period_spent,
-        "total_deposits": total_deposits, "total_withdrawals": total_withdrawals,
-        "created_at_block": created_at_block, "source": "on-chain",
+        "total_deposits": total_deposits,
+        "total_withdrawals": total_withdrawals,
+        "created_at_block": created_at_block,
+        "source": "on-chain",
     }
 
 
@@ -446,11 +477,15 @@ def parse_risk_policy_bytes(data: bytes) -> Dict[str, Any]:
     else:
         updated_by = remaining.decode("utf-8", errors="replace")
     return {
-        "version": version, "min_confidence_threshold": min_conf,
-        "critical_score_threshold": crit, "high_score_threshold": high,
-        "medium_score_threshold": med, "max_retry_count": max_retry,
+        "version": version,
+        "min_confidence_threshold": min_conf,
+        "critical_score_threshold": crit,
+        "high_score_threshold": high,
+        "medium_score_threshold": med,
+        "max_retry_count": max_retry,
         "safety_rejection_threshold": safety_rej,
-        "updated_at_block": updated_at_block, "updated_by": updated_by,
+        "updated_at_block": updated_at_block,
+        "updated_by": updated_by,
         "source": "on-chain",
     }
 
@@ -475,8 +510,7 @@ def _parse_bool(data: bytes) -> bool:
 # ---------------------------------------------------------------------------
 async def _query_dict(contract_hash: str, dict_address: str) -> Optional[Dict[str, Any]]:
     srh = await asyncio.to_thread(_get_state_root_hash)
-    r = await _async_rpc("query_global_state",
-                         [{"StateRootHash": srh}, f"dictionary-{dict_address}", []])
+    r = await _async_rpc("query_global_state", [{"StateRootHash": srh}, f"dictionary-{dict_address}", []])
     if "error" in r:
         # -32000 == ValueNotFound (key not set yet) — normal for fresh entries
         if r["error"].get("code") == -32000:
@@ -702,10 +736,12 @@ async def query_contract_package(contract_name: str) -> Dict[str, Any]:
     pkg = r.get("result", {}).get("stored_value", {}).get("ContractPackage", {})
     versions = []
     for v in pkg.get("versions", []):
-        versions.append({
-            "protocol_version": v.get("protocol_version", {}),
-            "contract_hash": v.get("contract_hash", ""),
-        })
+        versions.append(
+            {
+                "protocol_version": v.get("protocol_version", {}),
+                "contract_hash": v.get("contract_hash", ""),
+            }
+        )
     return {
         "exists": True,
         "contract": contract_name,

@@ -84,9 +84,7 @@ class VaultWatchPipeline:
 
         self.scanner = ScannerAgent(groq_api_key=groq_key)
         self.anomaly = AnomalyAgent(groq_api_key=groq_key)
-        self.correction = SelfCorrectionAgent(
-            groq_api_key=groq_key, policy_reader=policy_reader
-        )
+        self.correction = SelfCorrectionAgent(groq_api_key=groq_key, policy_reader=policy_reader)
         self.rwa = RWAAgent(groq_api_key=groq_key)
         self.safety = SafetyGuard(groq_api_key=groq_key, policy_reader=policy_reader)
         self.audit = AuditAgent(casper_client=self.casper)

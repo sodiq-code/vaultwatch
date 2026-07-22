@@ -77,24 +77,30 @@ def read_section(data: bytes, offset: int) -> tuple[int, bytes, int]:
 
 def _read_uleb(data: bytes, i: int) -> tuple[int, int]:
     """Read unsigned LEB128."""
-    result = 0; shift = 0
+    result = 0
+    shift = 0
     while True:
-        b = data[i]; i += 1
+        b = data[i]
+        i += 1
         result |= (b & 0x7F) << shift
         shift += 7
-        if not (b & 0x80): break
+        if not (b & 0x80):
+            break
     return result, i
 
 
 def _read_sleb(data: bytes, i: int) -> tuple[int, int]:
     """Read signed LEB128."""
-    result = 0; shift = 0
+    result = 0
+    shift = 0
     while True:
-        b = data[i]; i += 1
+        b = data[i]
+        i += 1
         result |= (b & 0x7F) << shift
         shift += 7
         if not (b & 0x80):
-            if b & 0x40: result |= -(1 << shift)
+            if b & 0x40:
+                result |= -(1 << shift)
             break
     return result, i
 
@@ -109,21 +115,45 @@ def _skip_instruction(data: bytes, i: int) -> int:
     Raises ValueError on truly unknown opcodes (which would indicate either a
     parser gap or a corrupt module).
     """
-    op = data[i]; i += 1
+    op = data[i]
+    i += 1
 
     # 0xFC-prefixed: bulk-memory + saturating trunc + reference-types
     if op == 0xFC:
         sub, i = _read_uleb(data, i)
-        if sub <= 0x07: return i                       # trunc_sat: no immediates
-        if sub == 0x08: _r, i = _read_uleb(data, i); i += 1; return i  # memory.init
-        if sub == 0x09: _r, i = _read_uleb(data, i); return i          # table.fill
-        if sub == 0x0A: _r, i = _read_uleb(data, i); _r, i = _read_uleb(data, i); return i  # memory.copy
-        if sub == 0x0B: _r, i = _read_uleb(data, i); return i          # memory.fill
-        if sub == 0x0C: _r, i = _read_uleb(data, i); _r, i = _read_uleb(data, i); return i  # table.copy
-        if sub == 0x0D: _r, i = _read_uleb(data, i); _r, i = _read_uleb(data, i); return i  # table.init
-        if sub == 0x0E: _r, i = _read_uleb(data, i); return i          # elem.drop
-        if sub == 0x0F: _r, i = _read_uleb(data, i); return i          # data.drop
-        if sub in (0x10, 0x11, 0x12, 0x13, 0x14): _r, i = _read_uleb(data, i); return i
+        if sub <= 0x07:
+            return i  # trunc_sat: no immediates
+        if sub == 0x08:
+            _r, i = _read_uleb(data, i)
+            i += 1
+            return i  # memory.init
+        if sub == 0x09:
+            _r, i = _read_uleb(data, i)
+            return i  # table.fill
+        if sub == 0x0A:
+            _r, i = _read_uleb(data, i)
+            _r, i = _read_uleb(data, i)
+            return i  # memory.copy
+        if sub == 0x0B:
+            _r, i = _read_uleb(data, i)
+            return i  # memory.fill
+        if sub == 0x0C:
+            _r, i = _read_uleb(data, i)
+            _r, i = _read_uleb(data, i)
+            return i  # table.copy
+        if sub == 0x0D:
+            _r, i = _read_uleb(data, i)
+            _r, i = _read_uleb(data, i)
+            return i  # table.init
+        if sub == 0x0E:
+            _r, i = _read_uleb(data, i)
+            return i  # elem.drop
+        if sub == 0x0F:
+            _r, i = _read_uleb(data, i)
+            return i  # data.drop
+        if sub in (0x10, 0x11, 0x12, 0x13, 0x14):
+            _r, i = _read_uleb(data, i)
+            return i
         raise ValueError(f"unknown 0xFC sub-opcode {sub}")
 
     # 0xFD SIMD, 0xFE atomic, 0xFB exception handling
@@ -132,20 +162,34 @@ def _skip_instruction(data: bytes, i: int) -> int:
         raise ValueError(f"SIMD opcode 0xFD {sub} not supported")
     if op == 0xFE:
         sub, i = _read_uleb(data, i)
-        if sub <= 0x0E: _r, i = _read_uleb(data, i); _r, i = _read_uleb(data, i); return i
-        if sub in (0x30, 0x31): _r, i = _read_uleb(data, i); return i
-        if sub in (0x32, 0x33): i += 1; return i
+        if sub <= 0x0E:
+            _r, i = _read_uleb(data, i)
+            _r, i = _read_uleb(data, i)
+            return i
+        if sub in (0x30, 0x31):
+            _r, i = _read_uleb(data, i)
+            return i
+        if sub in (0x32, 0x33):
+            i += 1
+            return i
         raise ValueError(f"atomic opcode 0xFE {sub}")
     if op == 0xFB:
         sub, i = _read_uleb(data, i)
         if sub == 0x00:  # try <blocktype>
             bt = data[i]
-            if bt == 0x40 or (0x7C <= bt <= 0x7F): i += 1
-            else: _r, i = _read_sleb(data, i)
+            if bt == 0x40 or (0x7C <= bt <= 0x7F):
+                i += 1
+            else:
+                _r, i = _read_sleb(data, i)
             return i
-        if sub == 0x01: _r, i = _read_uleb(data, i); return i
-        if sub == 0x02: return i
-        if sub in (0x03, 0x04, 0x05, 0x06, 0x07): _r, i = _read_uleb(data, i); return i
+        if sub == 0x01:
+            _r, i = _read_uleb(data, i)
+            return i
+        if sub == 0x02:
+            return i
+        if sub in (0x03, 0x04, 0x05, 0x06, 0x07):
+            _r, i = _read_uleb(data, i)
+            return i
         raise ValueError(f"exception opcode 0xFB {sub}")
 
     # No-immediate single-byte opcodes
@@ -155,52 +199,78 @@ def _skip_instruction(data: bytes, i: int) -> int:
     # block / loop / if — blocktype immediate
     if op in (0x02, 0x03, 0x04):
         bt = data[i]
-        if bt == 0x40 or (0x7C <= bt <= 0x7F): i += 1
-        else: _r, i = _read_sleb(data, i)
+        if bt == 0x40 or (0x7C <= bt <= 0x7F):
+            i += 1
+        else:
+            _r, i = _read_sleb(data, i)
         return i
 
     # br / br_if — labelidx
     if op in (0x0C, 0x0D):
-        _r, i = _read_uleb(data, i); return i
+        _r, i = _read_uleb(data, i)
+        return i
 
     # br_table — n labels + default
     if op == 0x0E:
         n, i = _read_uleb(data, i)
-        for _ in range(n + 1): _r, i = _read_uleb(data, i)
+        for _ in range(n + 1):
+            _r, i = _read_uleb(data, i)
         return i
 
     # call — funcidx ; call_indirect — typeidx + tableidx
     if op == 0x10:
-        _r, i = _read_uleb(data, i); return i
+        _r, i = _read_uleb(data, i)
+        return i
     if op == 0x11:
-        _r, i = _read_uleb(data, i); _r, i = _read_uleb(data, i); return i
+        _r, i = _read_uleb(data, i)
+        _r, i = _read_uleb(data, i)
+        return i
 
     # select t
     if op == 0x1C:
-        n, i = _read_uleb(data, i); i += n; return i
+        n, i = _read_uleb(data, i)
+        i += n
+        return i
 
     # local/global/table access (0x20-0x26)
     if 0x20 <= op <= 0x26:
-        _r, i = _read_uleb(data, i); return i
+        _r, i = _read_uleb(data, i)
+        return i
 
     # Memory load/store (0x28-0x3E) — align + offset
     if 0x28 <= op <= 0x3E:
-        _r, i = _read_uleb(data, i); _r, i = _read_uleb(data, i); return i
+        _r, i = _read_uleb(data, i)
+        _r, i = _read_uleb(data, i)
+        return i
 
     # memory.size / memory.grow — 1 reserved byte
     if op in (0x3F, 0x40):
-        i += 1; return i
+        i += 1
+        return i
 
     # Constants
-    if op == 0x41: _r, i = _read_sleb(data, i); return i   # i32.const
-    if op == 0x42: _r, i = _read_sleb(data, i); return i   # i64.const
-    if op == 0x43: i += 4; return i                         # f32.const
-    if op == 0x44: i += 8; return i                         # f64.const
+    if op == 0x41:
+        _r, i = _read_sleb(data, i)
+        return i  # i32.const
+    if op == 0x42:
+        _r, i = _read_sleb(data, i)
+        return i  # i64.const
+    if op == 0x43:
+        i += 4
+        return i  # f32.const
+    if op == 0x44:
+        i += 8
+        return i  # f64.const
 
     # Reference ops
-    if op == 0xD0: i += 1; return i                         # ref.null
-    if op == 0xD1: return i                                  # ref.is_null
-    if op == 0xD2: _r, i = _read_uleb(data, i); return i    # ref.func
+    if op == 0xD0:
+        i += 1
+        return i  # ref.null
+    if op == 0xD1:
+        return i  # ref.is_null
+    if op == 0xD2:
+        _r, i = _read_uleb(data, i)
+        return i  # ref.func
 
     # Numeric / comparison ops (0x45-0xC4): no immediates
     if 0x45 <= op <= 0xC4:
@@ -244,11 +314,7 @@ def scan_code_section_for_bulk_memory(code_section: bytes) -> list[str]:
                 if sub_byte < 0x80:
                     key = 0x0FC00 + sub_byte
                     if key in BULK_MEMORY_OPCODES:
-                        findings.append(
-                            f"0xFC 0x{sub_byte:02x} "
-                            f"({BULK_MEMORY_OPCODES[key]}) at byte {j} "
-                            f"(func #{func_idx})"
-                        )
+                        findings.append(f"0xFC 0x{sub_byte:02x} ({BULK_MEMORY_OPCODES[key]}) at byte {j} (func #{func_idx})")
                 # Skip the full instruction (sub-opcode + its immediates)
                 try:
                     j = _skip_instruction(code_section, j)

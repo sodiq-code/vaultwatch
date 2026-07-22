@@ -145,8 +145,7 @@ def _str(v: str) -> Dict[str, str]:
     return {"type": "string", "value": str(v)}
 
 
-def _enrich(result: Dict[str, Any], *, contract: str, entry_point: str,
-            args_summary: Dict[str, Any]) -> Dict[str, Any]:
+def _enrich(result: Dict[str, Any], *, contract: str, entry_point: str, args_summary: Dict[str, Any]) -> Dict[str, Any]:
     """Attach consistent metadata to a deploy result."""
     success = bool(result.get("success"))
     return {
@@ -161,8 +160,7 @@ def _enrich(result: Dict[str, Any], *, contract: str, entry_point: str,
         "block_hash": result.get("block_hash", result.get("blockHash", "")),
         "gas_cost_motes": result.get("cost_motes", result.get("gasCostMotes", "0")),
         "explorer_url": result.get("link", ""),
-        "deployer_account_hash": result.get("deployer_account_hash",
-                                            result.get("deployerAccountHash", "")),
+        "deployer_account_hash": result.get("deployer_account_hash", result.get("deployerAccountHash", "")),
         "error": result.get("error"),
         "timestamp": int(time.time()),
         "network": C.DEFAULT_CHAIN_NAME,
@@ -200,8 +198,7 @@ def record_finding(
         "block_height": _u64(block_height),
         "timestamp": _u64(ts),
     }
-    summary = {"address": address, "risk_type": risk_type, "severity": severity,
-               "confidence": confidence, "agent_model": agent_model}
+    summary = {"address": address, "risk_type": risk_type, "severity": severity, "confidence": confidence, "agent_model": agent_model}
     try:
         res = w.call_contract(
             contract_hash=C.get_contract_hash("AuditTrail"),
@@ -210,8 +207,7 @@ def record_finding(
             payment_motes=payment_motes,
         )
     except (AgentWalletError, AgentWalletUnfunded) as e:
-        return _enrich({"success": False, "error": str(e)},
-                       contract="AuditTrail", entry_point="record_finding", args_summary=summary)
+        return _enrich({"success": False, "error": str(e)}, contract="AuditTrail", entry_point="record_finding", args_summary=summary)
     return _enrich(res, contract="AuditTrail", entry_point="record_finding", args_summary=summary)
 
 
@@ -247,8 +243,7 @@ def update_risk_score(
             payment_motes=payment_motes,
         )
     except (AgentWalletError, AgentWalletUnfunded) as e:
-        return _enrich({"success": False, "error": str(e)},
-                       contract="RiskOracle", entry_point="update_score", args_summary=summary)
+        return _enrich({"success": False, "error": str(e)}, contract="RiskOracle", entry_point="update_score", args_summary=summary)
     return _enrich(res, contract="RiskOracle", entry_point="update_score", args_summary=summary)
 
 
@@ -295,8 +290,7 @@ def upgrade_policy(
             payment_motes=payment_motes,
         )
     except (AgentWalletError, AgentWalletUnfunded) as e:
-        return _enrich({"success": False, "error": str(e)},
-                       contract="RiskPolicyManager", entry_point="upgrade_policy", args_summary=summary)
+        return _enrich({"success": False, "error": str(e)}, contract="RiskPolicyManager", entry_point="upgrade_policy", args_summary=summary)
     return _enrich(res, contract="RiskPolicyManager", entry_point="upgrade_policy", args_summary=summary)
 
 
@@ -329,8 +323,7 @@ def register_subscriber(
             payment_motes=payment_motes,
         )
     except (AgentWalletError, AgentWalletUnfunded) as e:
-        return _enrich({"success": False, "error": str(e)},
-                       contract="SentinelRegistry", entry_point="register", args_summary=summary)
+        return _enrich({"success": False, "error": str(e)}, contract="SentinelRegistry", entry_point="register", args_summary=summary)
     return _enrich(res, contract="SentinelRegistry", entry_point="register", args_summary=summary)
 
 
@@ -350,8 +343,7 @@ def deregister_subscriber(
             payment_motes=payment_motes,
         )
     except (AgentWalletError, AgentWalletUnfunded) as e:
-        return _enrich({"success": False, "error": str(e)},
-                       contract="SentinelRegistry", entry_point="deregister", args_summary={"address": address})
+        return _enrich({"success": False, "error": str(e)}, contract="SentinelRegistry", entry_point="deregister", args_summary={"address": address})
     return _enrich(res, contract="SentinelRegistry", entry_point="deregister", args_summary={"address": address})
 
 
@@ -394,8 +386,7 @@ def log_alert(
             payment_motes=payment_motes,
         )
     except (AgentWalletError, AgentWalletUnfunded) as e:
-        return _enrich({"success": False, "error": str(e)},
-                       contract="SentinelAlertLog", entry_point="log_alert", args_summary=summary)
+        return _enrich({"success": False, "error": str(e)}, contract="SentinelAlertLog", entry_point="log_alert", args_summary=summary)
     return _enrich(res, contract="SentinelAlertLog", entry_point="log_alert", args_summary=summary)
 
 
@@ -429,8 +420,7 @@ def record_agent_decision(
             payment_motes=payment_motes,
         )
     except (AgentWalletError, AgentWalletUnfunded) as e:
-        return _enrich({"success": False, "error": str(e)},
-                       contract="AgentBehaviorIndex", entry_point="record_decision", args_summary=summary)
+        return _enrich({"success": False, "error": str(e)}, contract="AgentBehaviorIndex", entry_point="record_decision", args_summary=summary)
     return _enrich(res, contract="AgentBehaviorIndex", entry_point="record_decision", args_summary=summary)
 
 
@@ -458,8 +448,7 @@ def withdraw_credit(
             payment_motes=payment_motes,
         )
     except (AgentWalletError, AgentWalletUnfunded) as e:
-        return _enrich({"success": False, "error": str(e)},
-                       contract="SentinelCredit", entry_point="withdraw", args_summary=summary)
+        return _enrich({"success": False, "error": str(e)}, contract="SentinelCredit", entry_point="withdraw", args_summary=summary)
     return _enrich(res, contract="SentinelCredit", entry_point="withdraw", args_summary=summary)
 
 
@@ -489,8 +478,7 @@ def withdraw_vault(
             payment_motes=payment_motes,
         )
     except (AgentWalletError, AgentWalletUnfunded) as e:
-        return _enrich({"success": False, "error": str(e)},
-                       contract="SubscriberVault", entry_point="withdraw", args_summary=summary)
+        return _enrich({"success": False, "error": str(e)}, contract="SubscriberVault", entry_point="withdraw", args_summary=summary)
     return _enrich(res, contract="SubscriberVault", entry_point="withdraw", args_summary=summary)
 
 
@@ -534,11 +522,14 @@ async def open_vault(
         "auto_renew": auto_renew,
     }
     if not _X402_HELPER.exists():
-        return _enrich({"success": False, "error": f"x402 helper not found: {_X402_HELPER}"},
-                       contract="SubscriberVault", entry_point="open_vault", args_summary=summary)
+        return _enrich(
+            {"success": False, "error": f"x402 helper not found: {_X402_HELPER}"}, contract="SubscriberVault", entry_point="open_vault", args_summary=summary
+        )
     try:
         proc = await asyncio.create_subprocess_exec(
-            "node", str(_X402_HELPER), "submit-vault-payment",
+            "node",
+            str(_X402_HELPER),
+            "submit-vault-payment",
             cwd=str(_PKG_ROOT),
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
@@ -547,12 +538,15 @@ async def open_vault(
         stdout, stderr = await proc.communicate(json.dumps(payload).encode("utf-8"))
         if proc.returncode != 0:
             err = stderr.decode("utf-8", errors="replace").strip()[:500]
-            return _enrich({"success": False, "error": f"x402 helper exited {proc.returncode}: {err}"},
-                           contract="SubscriberVault", entry_point="open_vault", args_summary=summary)
+            return _enrich(
+                {"success": False, "error": f"x402 helper exited {proc.returncode}: {err}"},
+                contract="SubscriberVault",
+                entry_point="open_vault",
+                args_summary=summary,
+            )
         result = json.loads(stdout.decode("utf-8"))
     except Exception as e:
-        return _enrich({"success": False, "error": f"x402 subprocess error: {e}"},
-                       contract="SubscriberVault", entry_point="open_vault", args_summary=summary)
+        return _enrich({"success": False, "error": f"x402 subprocess error: {e}"}, contract="SubscriberVault", entry_point="open_vault", args_summary=summary)
     # Normalise the x402 helper's camelCase keys into the common envelope.
     normalised = {
         "success": bool(result.get("success")),
@@ -560,8 +554,7 @@ async def open_vault(
         "block_hash": result.get("blockHash", result.get("block_hash", "")),
         "cost_motes": result.get("gasCostMotes", result.get("cost_motes", "0")),
         "link": result.get("link", ""),
-        "deployer_account_hash": result.get("deployerAccountHash",
-                                            result.get("deployer_account_hash", "")),
+        "deployer_account_hash": result.get("deployerAccountHash", result.get("deployer_account_hash", "")),
         "error": result.get("error"),
     }
     return _enrich(normalised, contract="SubscriberVault", entry_point="open_vault", args_summary=summary)

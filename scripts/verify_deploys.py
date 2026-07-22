@@ -111,19 +111,18 @@ def verify_deploy_rpc(node_url: str, deploy_hash: str, auth_key: str = "") -> di
             if v2 is not None:
                 err = v2.get("error_message")
                 if err is None:
-                    return {"deploy_hash": deploy_hash, "status": "success",
-                            "block_hash": block_hash, "gas": str(v2.get("cost", "0"))}
-                return {"deploy_hash": deploy_hash, "status": "failed",
-                        "block_hash": block_hash, "error": err}
+                    return {"deploy_hash": deploy_hash, "status": "success", "block_hash": block_hash, "gas": str(v2.get("cost", "0"))}
+                return {"deploy_hash": deploy_hash, "status": "failed", "block_hash": block_hash, "error": err}
             # 1.x-style Success/Failure nested under execution_result
             if "Success" in exec_result:
-                return {"deploy_hash": deploy_hash, "status": "success",
-                        "block_hash": block_hash,
-                        "gas": exec_result["Success"].get("cost", "0")}
+                return {"deploy_hash": deploy_hash, "status": "success", "block_hash": block_hash, "gas": exec_result["Success"].get("cost", "0")}
             if "Failure" in exec_result:
-                return {"deploy_hash": deploy_hash, "status": "failed",
-                        "block_hash": block_hash,
-                        "error": exec_result["Failure"].get("error_message", "unknown")}
+                return {
+                    "deploy_hash": deploy_hash,
+                    "status": "failed",
+                    "block_hash": block_hash,
+                    "error": exec_result["Failure"].get("error_message", "unknown"),
+                }
         # Casper 1.x: deploy.execution_results[]
         deploy = result.get("deploy", {})
         exec_results = deploy.get("execution_results", [])
@@ -131,22 +130,21 @@ def verify_deploy_rpc(node_url: str, deploy_hash: str, auth_key: str = "") -> di
             outcome = exec_results[0].get("result", {})
             block_hash = exec_results[0].get("block_hash", "")
             if "Success" in outcome:
-                return {"deploy_hash": deploy_hash, "status": "success",
-                        "block_hash": block_hash, "gas": outcome["Success"].get("cost", "0")}
+                return {"deploy_hash": deploy_hash, "status": "success", "block_hash": block_hash, "gas": outcome["Success"].get("cost", "0")}
             elif "Failure" in outcome:
                 err = outcome["Failure"].get("error_message", "unknown")
-                return {"deploy_hash": deploy_hash, "status": "failed",
-                        "block_hash": block_hash, "error": err}
-        return {"deploy_hash": deploy_hash, "status": "pending",
-                "detail": "accepted but not yet executed"}
+                return {"deploy_hash": deploy_hash, "status": "failed", "block_hash": block_hash, "error": err}
+        return {"deploy_hash": deploy_hash, "status": "pending", "detail": "accepted but not yet executed"}
     except RuntimeError as e:
         error_str = str(e)
         # If the deploy was pruned from the node ("No such deploy"), mark it
         # as pruned so we can fall back to on-chain verification later.
         if "No such deploy" in error_str:
-            return {"deploy_hash": deploy_hash, "status": "pruned",
-                    "detail": "deploy data pruned from node (era transition); "
-                              "falling back to on-chain contract verification"}
+            return {
+                "deploy_hash": deploy_hash,
+                "status": "pruned",
+                "detail": "deploy data pruned from node (era transition); falling back to on-chain contract verification",
+            }
         return {"deploy_hash": deploy_hash, "status": "error", "error": error_str}
     except Exception as e:
         return {"deploy_hash": deploy_hash, "status": "error", "error": str(e)}
@@ -159,9 +157,12 @@ def verify_account_rpc(node_url: str, account_hash_or_pubkey: str, auth_key: str
         result = rpc(node_url, "state_get_account_info", params, auth_key)
         account = result.get("account", {})
         named_keys = account.get("named_keys", [])
-        return {"account": account_hash_or_pubkey, "named_keys_count": len(named_keys),
-                "named_keys": named_keys,
-                "named_key_names": [nk.get("name", "") for nk in named_keys][:20]}
+        return {
+            "account": account_hash_or_pubkey,
+            "named_keys_count": len(named_keys),
+            "named_keys": named_keys,
+            "named_key_names": [nk.get("name", "") for nk in named_keys][:20],
+        }
     except Exception as e:
         return {"account": account_hash_or_pubkey, "error": str(e)}
 
@@ -182,8 +183,7 @@ def verify_deploy_rest(api_url: str, deploy_hash: str, api_key: str) -> dict:
     try:
         r = httpx.get(f"{api_url}/deploys/{deploy_hash}", headers=headers, timeout=15)
         if r.status_code == 401:
-            return {"deploy_hash": deploy_hash, "status": "error",
-                    "error": "CSPR.cloud API key required — set CSPR_CLOUD_API_KEY"}
+            return {"deploy_hash": deploy_hash, "status": "error", "error": "CSPR.cloud API key required — set CSPR_CLOUD_API_KEY"}
         r.raise_for_status()
         data = r.json()
         # CSPR.cloud normalized deploy fields
@@ -194,30 +194,23 @@ def verify_deploy_rest(api_url: str, deploy_hash: str, api_key: str) -> dict:
         timestamp = data.get("timestamp", "")
 
         if deploy_status == "processed" and exec_result == "success":
-            return {"deploy_hash": deploy_hash, "status": "success",
-                    "block_hash": block_hash, "gas": str(gas),
-                    "timestamp": timestamp}
+            return {"deploy_hash": deploy_hash, "status": "success", "block_hash": block_hash, "gas": str(gas), "timestamp": timestamp}
         if deploy_status == "processed" and exec_result == "failure":
             err_msg = data.get("error_message", data.get("failure_error", "unknown"))
-            return {"deploy_hash": deploy_hash, "status": "failed",
-                    "block_hash": block_hash, "error": err_msg,
-                    "timestamp": timestamp}
+            return {"deploy_hash": deploy_hash, "status": "failed", "block_hash": block_hash, "error": err_msg, "timestamp": timestamp}
         if deploy_status == "pending":
-            return {"deploy_hash": deploy_hash, "status": "pending",
-                    "detail": "deploy accepted but not yet executed"}
+            return {"deploy_hash": deploy_hash, "status": "pending", "detail": "deploy accepted but not yet executed"}
         if deploy_status == "expired":
-            return {"deploy_hash": deploy_hash, "status": "failed",
-                    "block_hash": "", "error": "deploy expired without execution",
-                    "timestamp": timestamp}
-        return {"deploy_hash": deploy_hash, "status": "unknown",
-                "detail": f"status={deploy_status}, exec_result={exec_result}"}
+            return {"deploy_hash": deploy_hash, "status": "failed", "block_hash": "", "error": "deploy expired without execution", "timestamp": timestamp}
+        return {"deploy_hash": deploy_hash, "status": "unknown", "detail": f"status={deploy_status}, exec_result={exec_result}"}
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 404:
-            return {"deploy_hash": deploy_hash, "status": "pruned",
-                    "detail": "deploy not found on testnet (pruned); "
-                              "falling back to on-chain contract verification"}
-        return {"deploy_hash": deploy_hash, "status": "error",
-                "error": f"HTTP {e.response.status_code}: {e.response.text[:200]}"}
+            return {
+                "deploy_hash": deploy_hash,
+                "status": "pruned",
+                "detail": "deploy not found on testnet (pruned); falling back to on-chain contract verification",
+            }
+        return {"deploy_hash": deploy_hash, "status": "error", "error": f"HTTP {e.response.status_code}: {e.response.text[:200]}"}
     except Exception as e:
         return {"deploy_hash": deploy_hash, "status": "error", "error": str(e)}
 
@@ -236,9 +229,12 @@ def verify_account_rest(api_url: str, account_pubkey: str, api_key: str) -> dict
         r.raise_for_status()
         data = r.json()
         named_keys = data.get("named_keys", [])
-        return {"account": account_pubkey, "named_keys_count": len(named_keys),
-                "named_keys": named_keys,
-                "named_key_names": [nk.get("name", "") for nk in named_keys][:20]}
+        return {
+            "account": account_pubkey,
+            "named_keys_count": len(named_keys),
+            "named_keys": named_keys,
+            "named_key_names": [nk.get("name", "") for nk in named_keys][:20],
+        }
     except Exception as e:
         return {"account": account_pubkey, "error": str(e)}
 
@@ -255,8 +251,7 @@ def verify_contract_onchain(contract_name: str, named_keys: list) -> dict:
     """
     expected_key_name = CONTRACT_NAMED_KEY_MAP.get(contract_name)
     if not expected_key_name:
-        return {"contract": contract_name, "status": "error",
-                "error": f"No named_key mapping for contract '{contract_name}'"}
+        return {"contract": contract_name, "status": "error", "error": f"No named_key mapping for contract '{contract_name}'"}
 
     for nk in named_keys:
         if nk.get("name") == expected_key_name:
@@ -268,15 +263,20 @@ def verify_contract_onchain(contract_name: str, named_keys: list) -> dict:
                 if nk2.get("name") == access_key_name:
                     access_hash = nk2.get("key", "")
                     break
-            return {"contract": contract_name, "status": "success",
-                    "verification_method": "on-chain (named_keys)",
-                    "named_key": expected_key_name,
-                    "package_hash": package_hash,
-                    "access_token": access_hash}
+            return {
+                "contract": contract_name,
+                "status": "success",
+                "verification_method": "on-chain (named_keys)",
+                "named_key": expected_key_name,
+                "package_hash": package_hash,
+                "access_token": access_hash,
+            }
 
-    return {"contract": contract_name, "status": "failed",
-            "error": f"Named key '{expected_key_name}' NOT found in deployer account — "
-                     f"deploy either failed or was never executed"}
+    return {
+        "contract": contract_name,
+        "status": "failed",
+        "error": f"Named key '{expected_key_name}' NOT found in deployer account — deploy either failed or was never executed",
+    }
 
 
 # ── Main ──────────────────────────────────────────────────────────────
@@ -296,19 +296,16 @@ Examples:
   python3 scripts/verify_deploys.py --method rpc --node-url https://node.testnet.casper.network/rpc
   python3 scripts/verify_deploys.py --method rest --api-key YOUR_CSPR_CLOUD_KEY
   python3 scripts/verify_deploys.py --account 0203cd257525b180a32cab4efc0d9d9a365bf9bc1b8d2e76ebfb9186a4eeb23bace7
-""")
-    parser.add_argument("--method", choices=["rpc", "rest", "auto"], default="auto",
-                        help="Verification method: rpc (JSON-RPC), rest (CSPR.cloud REST API), or auto")
-    parser.add_argument("--node-url", default=DEFAULT_RPC_NODE,
-                        help="Casper JSON-RPC node URL (default: node.testnet.casper.network/rpc)")
-    parser.add_argument("--api-url", default=DEFAULT_REST_API,
-                        help="CSPR.cloud REST API URL (default: api.testnet.cspr.cloud)")
-    parser.add_argument("--api-key", default=os.getenv("CSPR_CLOUD_API_KEY", ""),
-                        help="CSPR.cloud API key (or set CSPR_CLOUD_API_KEY env var)")
-    parser.add_argument("--deploy-hashes", default=str(DEFAULT_HASHES_FILE),
-                        help="JSON file mapping contract name → deploy/transaction hash")
-    parser.add_argument("--account", default=None,
-                        help="Deployer public key (02...) or account hash to check named_keys")
+""",
+    )
+    parser.add_argument(
+        "--method", choices=["rpc", "rest", "auto"], default="auto", help="Verification method: rpc (JSON-RPC), rest (CSPR.cloud REST API), or auto"
+    )
+    parser.add_argument("--node-url", default=DEFAULT_RPC_NODE, help="Casper JSON-RPC node URL (default: node.testnet.casper.network/rpc)")
+    parser.add_argument("--api-url", default=DEFAULT_REST_API, help="CSPR.cloud REST API URL (default: api.testnet.cspr.cloud)")
+    parser.add_argument("--api-key", default=os.getenv("CSPR_CLOUD_API_KEY", ""), help="CSPR.cloud API key (or set CSPR_CLOUD_API_KEY env var)")
+    parser.add_argument("--deploy-hashes", default=str(DEFAULT_HASHES_FILE), help="JSON file mapping contract name → deploy/transaction hash")
+    parser.add_argument("--account", default=None, help="Deployer public key (02...) or account hash to check named_keys")
     args = parser.parse_args()
 
     hashes_path = Path(args.deploy_hashes)
@@ -324,11 +321,13 @@ Examples:
         # Try RPC first; if it fails with connection error, fall back to REST
         try:
             import httpx
-            test_r = httpx.post(args.node_url, json={"jsonrpc": "2.0", "id": 1,
-                            "method": "info_get_status", "params": {}},
-                            headers={"Content-Type": "application/json",
-                                     "Authorization": f"Bearer {args.api_key}" if args.api_key else ""},
-                            timeout=10)
+
+            test_r = httpx.post(
+                args.node_url,
+                json={"jsonrpc": "2.0", "id": 1, "method": "info_get_status", "params": {}},
+                headers={"Content-Type": "application/json", "Authorization": f"Bearer {args.api_key}" if args.api_key else ""},
+                timeout=10,
+            )
             if test_r.status_code == 200:
                 method = "rpc"
             elif test_r.status_code == 401:
@@ -352,7 +351,7 @@ Examples:
     account = args.account or NEW_DEPLOYER
     named_keys = []
     print(f"[verify] Method: {method}")
-    print(f"[verify] Fetching deployer account named_keys for on-chain verification…")
+    print("[verify] Fetching deployer account named_keys for on-chain verification…")
 
     if method == "rpc":
         acct = verify_account_rpc(args.node_url, account, args.api_key)
@@ -398,18 +397,13 @@ Examples:
                     "verification_method": "on-chain (named_keys)",
                     "named_key": onchain["named_key"],
                     "package_hash": onchain["package_hash"],
-                    "detail": f"Contract installed → deploy succeeded (on-chain proof)"
+                    "detail": "Contract installed → deploy succeeded (on-chain proof)",
                 }
                 status = "success"
                 onchain_verified_count += 1
                 pruned_count += 1
             else:
-                r = {
-                    "deploy_hash": dh,
-                    "status": "failed",
-                    "verification_method": "on-chain (named_keys)",
-                    "error": onchain["error"]
-                }
+                r = {"deploy_hash": dh, "status": "failed", "verification_method": "on-chain (named_keys)", "error": onchain["error"]}
                 status = "failed"
                 failed_count += 1
                 pruned_count += 1
@@ -417,8 +411,7 @@ Examples:
             r = {
                 "deploy_hash": dh,
                 "status": "error",
-                "error": "Deploy pruned from node AND on-chain verification unavailable "
-                         "(could not fetch account named_keys)"
+                "error": "Deploy pruned from node AND on-chain verification unavailable (could not fetch account named_keys)",
             }
             status = "error"
 
@@ -440,15 +433,14 @@ Examples:
         print(f"| {marker} {name:<22} | {dh[:16]}… | {status:<7} | {ver_method:<22} | {str(detail)[:35]} |")
 
     # ── Check 2: named keys summary ──────────────────────────────────
-    print(f"\n[verify] ── On-chain Account Verification ──────────────────────")
+    print("\n[verify] ── On-chain Account Verification ──────────────────────")
     print(f"[verify] Deployer: {account[:20]}…")
     if "error" not in acct:
         n = acct["named_keys_count"]
         marker = "✅" if n > 0 else "❌"
         print(f"  {marker} named_keys count: {n}")
         if n > 0:
-            contract_keys = [nk.get("name", "") for nk in named_keys
-                           if nk.get("name", "").endswith("_package_hash")]
+            contract_keys = [nk.get("name", "") for nk in named_keys if nk.get("name", "").endswith("_package_hash")]
             print(f"     contract package hashes found: {len(contract_keys)}")
             print(f"     contracts: {contract_keys}")
         else:
@@ -460,7 +452,7 @@ Examples:
         all_ok = False
 
     # ── Historical comparison ─────────────────────────────────────────
-    print(f"\n[verify] ── Historical Comparison ──────────────────────────────")
+    print("\n[verify] ── Historical Comparison ──────────────────────────────")
     print(f"[verify] Old deployer {OLD_DEPLOYER[:20]}…")
     if method == "rpc":
         old = verify_account_rpc(args.node_url, OLD_DEPLOYER, args.api_key)
@@ -475,7 +467,7 @@ Examples:
         print(f"  Could not verify old account: {old['error']}")
 
     # ── Verification Summary ──────────────────────────────────────────
-    print(f"\n[verify] ── Summary ────────────────────────────────────────────")
+    print("\n[verify] ── Summary ────────────────────────────────────────────")
     print(f"  Total deploys checked: {len(deploy_hashes)}")
     print(f"  Verified via deploy lookup (RPC/REST): {rpc_verified_count}")
     print(f"  Verified via on-chain (named_keys):    {onchain_verified_count}")

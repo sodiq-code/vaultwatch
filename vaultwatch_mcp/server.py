@@ -207,9 +207,7 @@ async def _submit_real_deploy(helper_path: str, request_payload: dict, command: 
             stdout=_asyncio.subprocess.PIPE,
             stderr=_asyncio.subprocess.PIPE,
         )
-        stdout, stderr = await proc.communicate(
-            _json.dumps(request_payload).encode("utf-8")
-        )
+        stdout, stderr = await proc.communicate(_json.dumps(request_payload).encode("utf-8"))
         if proc.returncode != 0:
             err = stderr.decode("utf-8", errors="replace").strip()
             return {
@@ -703,6 +701,7 @@ get_subscriber_balance_tool = mcp.tool()(get_subscriber_balance)
 # FunctionTool). The MCP-registered tool object is held in
 # ``_agent_attestation_tool`` for the server runtime.
 
+
 async def agent_attestation(
     agent_name: str,
     decision_summary: str,
@@ -749,9 +748,7 @@ async def agent_attestation(
             "block_height": {"type": "u64", "value": "0"},
         }
 
-        deploy_result = await _submit_contract_call_real(
-            "AgentBehaviorIndex", "record_decision", typed_args
-        )
+        deploy_result = await _submit_contract_call_real("AgentBehaviorIndex", "record_decision", typed_args)
 
         success = bool(deploy_result.get("success"))
         deploy_hash = deploy_result.get("deploy_hash", "")
@@ -802,6 +799,7 @@ _agent_attestation_tool = mcp.tool()(agent_attestation)
 
 
 # ─── Tool 17: reputation_query  ────────────────────────
+
 
 async def reputation_query(
     address: str,
@@ -854,9 +852,7 @@ async def reputation_query(
         # the agent's metrics (Odra Mapping<String, AgentMetrics> stored under
         # the contract's "state" named key). For a fresh agent with no
         # record_decision() calls, the metrics will be empty/None.
-        abi_result = await _query_contract_state_real(
-            "AgentBehaviorIndex", ["metrics", address]
-        )
+        abi_result = await _query_contract_state_real("AgentBehaviorIndex", ["metrics", address])
         # Use _query_contract_exists_real for the verified flag — it confirms
         # the contract is deployed and queryable (the path-based read may
         # return "not found" for a fresh address with no on-chain state yet,
@@ -864,22 +860,16 @@ async def reputation_query(
         abi_exists = await _query_contract_exists_real("AgentBehaviorIndex")
         abi_verified = abi_exists.get("exists", False)
         abi_metrics_raw = (
-            abi_result.get("stored_value", {}).get("CLValue", {}).get("parsed")
-            if isinstance(abi_result, dict) and not abi_result.get("error")
-            else None
+            abi_result.get("stored_value", {}).get("CLValue", {}).get("parsed") if isinstance(abi_result, dict) and not abi_result.get("error") else None
         )
 
         # Query SentinelCredit for the address's balance (real RPC)
-        sc_result = await _query_contract_state_real(
-            "SentinelCredit", ["accounts", address]
-        )
+        sc_result = await _query_contract_state_real("SentinelCredit", ["accounts", address])
         sc_exists = await _query_contract_exists_real("SentinelCredit")
         sc_verified = sc_exists.get("exists", False)
 
         # Query SubscriberVault for the address's vault balance (real RPC)
-        sv_result = await _query_contract_state_real(
-            "SubscriberVault", ["accounts", address]
-        )
+        sv_result = await _query_contract_state_real("SubscriberVault", ["accounts", address])
         sv_exists = await _query_contract_exists_real("SubscriberVault")
         sv_verified = sv_exists.get("exists", False)
 
@@ -977,6 +967,7 @@ _reputation_query_tool = mcp.tool()(reputation_query)
 
 # ─── Tool 18: x402_subscribe  ──────────────────────────
 
+
 async def x402_subscribe(
     subscriber_address: str,
     plan: str = "standard",
@@ -1015,9 +1006,7 @@ async def x402_subscribe(
             "plan": plan,
             "amountMotes": str(motes),
         }
-        enc_result = await _submit_real_deploy(
-            _X402_HELPER, enc_payload, command="encode-payment-required"
-        )
+        enc_result = await _submit_real_deploy(_X402_HELPER, enc_payload, command="encode-payment-required")
 
         # Submit the REAL on-chain SubscriberVault.open_vault() deploy
         submit_payload = {
@@ -1034,9 +1023,7 @@ async def x402_subscribe(
         if os.getenv("VAULTWATCH_SIGNER_ALGO"):
             submit_payload["keyAlgorithm"] = os.environ["VAULTWATCH_SIGNER_ALGO"]
 
-        submit_result = await _submit_real_deploy(
-            _X402_HELPER, submit_payload, command="submit-vault-payment"
-        )
+        submit_result = await _submit_real_deploy(_X402_HELPER, submit_payload, command="submit-vault-payment")
 
         success = bool(submit_result.get("success"))
         deploy_hash = submit_result.get("deployHash", "")
@@ -1079,6 +1066,7 @@ _x402_subscribe_tool = mcp.tool()(x402_subscribe)
 
 # ─── Tool 19: policy_hotswap  ──────────────────────────
 
+
 async def policy_hotswap(
     new_min_confidence: int = 80,
     new_critical_threshold: int = 85,
@@ -1118,9 +1106,7 @@ async def policy_hotswap(
         package_hash = CONTRACT_PACKAGE_HASHES.get("RiskPolicyManager", "")
 
         # 1. Query the REAL current policy on-chain (for rollback snapshot)
-        prev_result = await _query_contract_state_real(
-            "RiskPolicyManager", ["current_policy"]
-        )
+        prev_result = await _query_contract_state_real("RiskPolicyManager", ["current_policy"])
         previous_policy = {
             "min_confidence_threshold": 75,
             "critical_score_threshold": 80,
@@ -1129,11 +1115,7 @@ async def policy_hotswap(
         }
         if isinstance(prev_result, dict) and not prev_result.get("error"):
             try:
-                parsed = (
-                    prev_result.get("stored_value", {})
-                    .get("CLValue", {})
-                    .get("parsed", {})
-                )
+                parsed = prev_result.get("stored_value", {}).get("CLValue", {}).get("parsed", {})
                 if isinstance(parsed, dict):
                     previous_policy = {
                         "min_confidence_threshold": int(parsed.get("min_confidence_threshold", 75)),
@@ -1164,9 +1146,7 @@ async def policy_hotswap(
             "block_height": {"type": "u64", "value": "0"},
             "updated_by": {"type": "string", "value": reason[:80]},
         }
-        deploy_result = await _submit_contract_call_real(
-            "RiskPolicyManager", "upgrade_policy", typed_args
-        )
+        deploy_result = await _submit_contract_call_real("RiskPolicyManager", "upgrade_policy", typed_args)
 
         success = bool(deploy_result.get("success"))
         deploy_hash = deploy_result.get("deploy_hash", "")

@@ -19,7 +19,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 from opentelemetry import trace
 from groq import Groq
 import httpx
@@ -47,6 +47,7 @@ class RWAFeedData:
       - attestation_proof: SHA-256 hashes + timestamps per category
       - data_source_map: per-category provenance (coingecko_api / fred_api / vaultwatch_mock)
     """
+
     feed_source: str = "rwa_feed_api"
     x402_payment_id: str = ""
     timestamp: int = 0
@@ -343,12 +344,8 @@ class RWAAgent:
 
                 # ---- Step 4: Merge feed data with Groq web intelligence ----
                 merged_context = self._merge_context(feed_summary, groq_context)
-                merged_collateral = self._merge_collateral_signals(
-                    self._extract_collateral_from_feed(feed_data), groq_collateral
-                )
-                merged_yield = self._merge_yield_data(
-                    self._extract_yield_from_feed(feed_data), groq_yield
-                )
+                merged_collateral = self._merge_collateral_signals(self._extract_collateral_from_feed(feed_data), groq_collateral)
+                merged_yield = self._merge_yield_data(self._extract_yield_from_feed(feed_data), groq_yield)
                 merged_depeg = self._merge_depeg_alerts(groq_depeg, feed_data)
 
                 # Feed data counts as 1 additional source
@@ -429,17 +426,9 @@ class RWAAgent:
                 )
         if feed.bonds:
             for tb in feed.bonds.get("treasury", [])[:2]:
-                parts.append(
-                    f"T-Bill {tb.get('bond_id', '?')}: "
-                    f"yield={tb.get('yield_pct', 0):.2f}%, "
-                    f"maturity_risk={tb.get('maturity_risk', 0):.3%}"
-                )
+                parts.append(f"T-Bill {tb.get('bond_id', '?')}: yield={tb.get('yield_pct', 0):.2f}%, maturity_risk={tb.get('maturity_risk', 0):.3%}")
             for cb in feed.bonds.get("corporate", [])[:1]:
-                parts.append(
-                    f"Corp Bond {cb.get('bond_id', '?')}: "
-                    f"yield={cb.get('yield_pct', 0):.2f}%, "
-                    f"spread={cb.get('spread_bps', 0)}bps"
-                )
+                parts.append(f"Corp Bond {cb.get('bond_id', '?')}: yield={cb.get('yield_pct', 0):.2f}%, spread={cb.get('spread_bps', 0)}bps")
         if feed.commodities:
             parts.append(
                 f"Gold=${feed.commodities.get('gold_price_usd_per_oz', 0):,.2f}/oz, "
@@ -449,18 +438,10 @@ class RWAAgent:
         if feed.credit:
             ratings = feed.credit.get("ratings", [])
             for r in ratings[:2]:
-                parts.append(
-                    f"Credit {r.get('entity', '?')}: "
-                    f"rating={r.get('rating', '?')}, "
-                    f"default_prob={r.get('default_probability', 0):.2%}"
-                )
+                parts.append(f"Credit {r.get('entity', '?')}: rating={r.get('rating', '?')}, default_prob={r.get('default_probability', 0):.2%}")
         if feed.tokenized_assets:
             for a in feed.tokenized_assets.get("on_chain_assets", [])[:2]:
-                parts.append(
-                    f"Tokenized {a.get('token_symbol', '?')}: "
-                    f"collateral_ratio={a.get('collateral_ratio', 0):.2f}x, "
-                    f"chain={a.get('chain_id', '?')}"
-                )
+                parts.append(f"Tokenized {a.get('token_symbol', '?')}: collateral_ratio={a.get('collateral_ratio', 0):.2f}x, chain={a.get('chain_id', '?')}")
         return "\n".join(parts) if parts else ""
 
     def _extract_collateral_from_feed(self, feed: RWAFeedData) -> list[str]:

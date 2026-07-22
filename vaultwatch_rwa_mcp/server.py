@@ -277,15 +277,24 @@ async def rwa_risk_is_high_risk(address: str, threshold: int = 70) -> dict:
     score = await R.read_risk_score(address)
     if score is None:
         return {
-            "contract": "RiskOracle", "address": address, "threshold": threshold,
-            "is_high_risk": False, "score": None,
-            "source": "not_found", "note": "no RiskOracle score recorded for this address",
+            "contract": "RiskOracle",
+            "address": address,
+            "threshold": threshold,
+            "is_high_risk": False,
+            "score": None,
+            "source": "not_found",
+            "note": "no RiskOracle score recorded for this address",
         }
     return {
-        "contract": "RiskOracle", "address": address, "threshold": threshold,
-        "score": score.get("score"), "is_high_risk": score.get("score", 0) >= threshold,
-        "risk_type": score.get("risk_type"), "confidence": score.get("confidence"),
-        "contract_hash": C.get_contract_hash("RiskOracle"), "source": "on-chain",
+        "contract": "RiskOracle",
+        "address": address,
+        "threshold": threshold,
+        "score": score.get("score"),
+        "is_high_risk": score.get("score", 0) >= threshold,
+        "risk_type": score.get("risk_type"),
+        "confidence": score.get("confidence"),
+        "contract_hash": C.get_contract_hash("RiskOracle"),
+        "source": "on-chain",
     }
 
 
@@ -364,12 +373,15 @@ async def rwa_sentinel_is_active(address: str) -> dict:
     sub = await R.read_subscriber(address)
     if sub is None:
         return {
-            "contract": "SentinelRegistry", "address": address,
-            "is_active": False, "source": "not_found",
+            "contract": "SentinelRegistry",
+            "address": address,
+            "is_active": False,
+            "source": "not_found",
             "note": "no subscriber record for this address",
         }
     return {
-        "contract": "SentinelRegistry", "address": address,
+        "contract": "SentinelRegistry",
+        "address": address,
         "is_active": sub.get("active", False),
         "min_severity": sub.get("min_severity"),
         "alert_count": sub.get("alert_count"),
@@ -467,11 +479,7 @@ async def rwa_credit_get_prices() -> dict:
     return {
         "contract": "SentinelCredit",
         "prices_motes": prices,
-        "prices_cspr": (
-            {"query_price": prices["query_price"] / 1_000_000_000,
-             "premium_price": prices["premium_price"] / 1_000_000_000}
-            if prices else None
-        ),
+        "prices_cspr": ({"query_price": prices["query_price"] / 1_000_000_000, "premium_price": prices["premium_price"] / 1_000_000_000} if prices else None),
         "contract_hash": C.get_contract_hash("SentinelCredit"),
         "source": "on-chain" if prices is not None else "unavailable",
     }
@@ -647,9 +655,15 @@ def rwa_audit_record_finding(
         timestamp: unix seconds (default: now).
     """
     return W.record_finding(
-        address=address, risk_type=risk_type, severity=severity,
-        confidence=confidence, description=description, rwa_enriched=rwa_enriched,
-        agent_model=agent_model, block_height=block_height, timestamp=timestamp,
+        address=address,
+        risk_type=risk_type,
+        severity=severity,
+        confidence=confidence,
+        description=description,
+        rwa_enriched=rwa_enriched,
+        agent_model=agent_model,
+        block_height=block_height,
+        timestamp=timestamp,
     )
 
 
@@ -676,8 +690,12 @@ def rwa_risk_update_score(
         finding_id: the AuditTrail finding id that triggered this score.
     """
     return W.update_risk_score(
-        address=address, score=score, risk_type=risk_type, confidence=confidence,
-        block_height=block_height, finding_id=finding_id,
+        address=address,
+        score=score,
+        risk_type=risk_type,
+        confidence=confidence,
+        block_height=block_height,
+        finding_id=finding_id,
     )
 
 
@@ -738,7 +756,10 @@ def rwa_sentinel_register(
         timestamp: unix seconds (default: now).
     """
     return W.register_subscriber(
-        address=address, webhook_url=webhook_url, min_severity=min_severity, timestamp=timestamp,
+        address=address,
+        webhook_url=webhook_url,
+        min_severity=min_severity,
+        timestamp=timestamp,
     )
 
 
@@ -777,8 +798,13 @@ def rwa_alert_log(
         delivered: whether the webhook delivery succeeded.
     """
     return W.log_alert(
-        subscriber_address=subscriber_address, finding_id=finding_id, severity=severity,
-        risk_type=risk_type, block_height=block_height, timestamp=timestamp, delivered=delivered,
+        subscriber_address=subscriber_address,
+        finding_id=finding_id,
+        severity=severity,
+        risk_type=risk_type,
+        block_height=block_height,
+        timestamp=timestamp,
+        delivered=delivered,
     )
 
 
@@ -804,8 +830,10 @@ def rwa_agent_record_decision(
         block_height: block at which the decision was made.
     """
     return W.record_agent_decision(
-        agent_name=agent_name, confidence=confidence,
-        correction_applied=correction_applied, safety_rejected=safety_rejected,
+        agent_name=agent_name,
+        confidence=confidence,
+        correction_applied=correction_applied,
+        safety_rejected=safety_rejected,
         block_height=block_height,
     )
 
@@ -835,7 +863,9 @@ def rwa_vault_withdraw(subscriber_address: str, amount_motes: int, current_block
         current_block: the current block height (for lock-period check).
     """
     return W.withdraw_vault(
-        subscriber_address=subscriber_address, amount_motes=amount_motes, current_block=current_block,
+        subscriber_address=subscriber_address,
+        amount_motes=amount_motes,
+        current_block=current_block,
     )
 
 
@@ -903,18 +933,9 @@ def _cli_list_tools() -> int:
                 "network": C.DEFAULT_CHAIN_NAME,
                 "rpc_url": C.DEFAULT_RPC_URL,
                 "contracts": len(C.CONTRACTS),
-                "tools": [
-                    {"name": t.name, "description": (t.description or "").splitlines()[0][:120]}
-                    for t in tools
-                ],
-                "resources": [
-                    {"uri": str(r.uri), "description": (r.description or "")[:120]}
-                    for r in resources
-                ],
-                "prompts": [
-                    {"name": p.name, "description": (p.description or "")[:120]}
-                    for p in prompts
-                ],
+                "tools": [{"name": t.name, "description": (t.description or "").splitlines()[0][:120]} for t in tools],
+                "resources": [{"uri": str(r.uri), "description": (r.description or "")[:120]} for r in resources],
+                "prompts": [{"name": p.name, "description": (p.description or "")[:120]} for p in prompts],
             }
 
     payload = asyncio.run(_run())
@@ -997,8 +1018,7 @@ def main() -> None:
         sys.stderr.write("Run with --help for usage.\n")
         sys.exit(2)
 
-    logger.info("vaultwatch-rwa-mcp v%s starting (network=%s, rpc=%s)",
-                __version__, C.DEFAULT_CHAIN_NAME, C.DEFAULT_RPC_URL)
+    logger.info("vaultwatch-rwa-mcp v%s starting (network=%s, rpc=%s)", __version__, C.DEFAULT_CHAIN_NAME, C.DEFAULT_RPC_URL)
     mcp.run()
 
 

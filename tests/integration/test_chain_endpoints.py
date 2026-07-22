@@ -68,9 +68,7 @@ def test_finding_count_on_chain(client, monkeypatch):
 
 
 def test_finding_count_falls_back_to_in_memory(client, monkeypatch, clean_findings_store):
-    clean_findings_store.extend(
-        [{"id": "F-1"}, {"id": "F-2"}, {"id": "F-3"}]
-    )
+    clean_findings_store.extend([{"id": "F-1"}, {"id": "F-2"}, {"id": "F-3"}])
 
     async def fake_count(*a, **kw):
         return None
@@ -201,10 +199,7 @@ def test_finding_by_id_on_chain(client, monkeypatch):
 
 
 def test_finding_by_id_falls_back_to_memory(client, monkeypatch, clean_findings_store):
-    clean_findings_store.append(
-        {"id": "F-7", "numeric_id": 7, "protocol": "CasperLend", "summary": "collateral drop",
-         "severity": "HIGH", "confidence": 0.87}
-    )
+    clean_findings_store.append({"id": "F-7", "numeric_id": 7, "protocol": "CasperLend", "summary": "collateral drop", "severity": "HIGH", "confidence": 0.87})
 
     async def fake_read(finding_id, contract_hash=None):
         return None
@@ -264,8 +259,7 @@ def test_risk_score_handles_url_encoded_address(client, monkeypatch):
 
     async def fake_score(address, contract_hash=None):
         captured["address"] = address
-        return {"address": address, "score": 50, "risk_type": "x",
-                "confidence": 60, "last_updated": 1, "finding_id": 1, "source": "on-chain"}
+        return {"address": address, "score": 50, "risk_type": "x", "confidence": 60, "last_updated": 1, "finding_id": 1, "source": "on-chain"}
 
     monkeypatch.setattr("api.main.casper_rpc.read_risk_score", fake_score)
     # The address contains a hyphen (no special encoding needed) — verify it

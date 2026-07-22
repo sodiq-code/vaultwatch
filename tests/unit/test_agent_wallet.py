@@ -196,15 +196,18 @@ class TestCallContract:
 
             class _Proc:
                 returncode = 0
-                stdout = json.dumps({
-                    "success": True,
-                    "deploy_hash": "abc123",
-                    "block_hash": "def456",
-                    "cost_motes": "5000000000",
-                    "link": "https://testnet.cspr.live/deploy/abc123",
-                    "error": None,
-                }).encode("utf-8")
+                stdout = json.dumps(
+                    {
+                        "success": True,
+                        "deploy_hash": "abc123",
+                        "block_hash": "def456",
+                        "cost_motes": "5000000000",
+                        "link": "https://testnet.cspr.live/deploy/abc123",
+                        "error": None,
+                    }
+                ).encode("utf-8")
                 stderr = b""
+
             return _Proc()
 
         with patch("subprocess.run", side_effect=fake_run):
@@ -234,10 +237,12 @@ class TestCallContract:
 
         def fake_run(cmd, input, capture_output, timeout, cwd):
             captured["input"] = json.loads(input.decode("utf-8"))
+
             class _Proc:
                 returncode = 0
                 stdout = json.dumps({"success": True, "deploy_hash": "x"}).encode()
                 stderr = b""
+
             return _Proc()
 
         with patch("subprocess.run", side_effect=fake_run):
@@ -257,6 +262,7 @@ class TestCallContract:
                 returncode = 1
                 stdout = b""
                 stderr = b"simulated helper failure"
+
             return _Proc()
 
         with patch("subprocess.run", side_effect=fake_run):
@@ -307,6 +313,7 @@ class TestSingleton:
         """get_agent_wallet() returns the same AgentWallet on repeated calls."""
         # Reset the singleton
         import agents.agent_wallet as aw_module
+
         monkeypatch.setattr(aw_module, "_WALLET_SINGLETON", None)
         monkeypatch.setenv("VAULTWATCH_AGENT_KEY_PATH", str(temp_agent_wallet_path))
 

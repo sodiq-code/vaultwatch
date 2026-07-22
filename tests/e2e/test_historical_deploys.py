@@ -67,9 +67,7 @@ def test_contract_install_deploy_still_successful_or_pruned(rpc_url, contract_na
             "STATE installed by this deploy is still verifiable via query_global_state — "
             "see test_contracts_on_chain.py."
         )
-    assert int(v2.get("cost", 0)) > 0, (
-        f"{contract_name} install {deploy_hash} has zero cost — wasn't actually executed?"
-    )
+    assert int(v2.get("cost", 0)) > 0, f"{contract_name} install {deploy_hash} has zero cost — wasn't actually executed?"
 
 
 # ---------------------------------------------------------------------------
@@ -94,9 +92,7 @@ def test_interaction_deploy_still_successful(rpc_url, deploy_hash):
             "real regression. The proof (PROOF.md §8) claims it was verified-success "
             "on 2026-07-21. If the testnet pruned it, the proof's table needs updating."
         )
-    assert int(v2.get("cost", 0)) > 0, (
-        f"interaction deploy {deploy_hash} has zero cost — wasn't actually executed?"
-    )
+    assert int(v2.get("cost", 0)) > 0, f"interaction deploy {deploy_hash} has zero cost — wasn't actually executed?"
 
 
 # ---------------------------------------------------------------------------
@@ -107,16 +103,14 @@ def test_interaction_deploy_still_successful(rpc_url, deploy_hash):
 def test_install_deploy_count_is_8():
     """PROOF.md §1 lists exactly 8 contract install deploys."""
     assert len(INSTALL_DEPLOY_HASHES) == 8, (
-        f"expected 8 install deploys, got {len(INSTALL_DEPLOY_HASHES)}. "
-        "transaction_hashes_live.json may have been modified."
+        f"expected 8 install deploys, got {len(INSTALL_DEPLOY_HASHES)}. transaction_hashes_live.json may have been modified."
     )
 
 
 def test_interaction_deploy_count_is_21():
     """PROOF.md §8 lists exactly 21 verified interaction deploys."""
     assert len(HISTORICAL_INTERACTION_HASHES) == 21, (
-        f"expected 21 interaction deploys, got {len(HISTORICAL_INTERACTION_HASHES)}. "
-        "proof/interaction_hashes.json may have been modified."
+        f"expected 21 interaction deploys, got {len(HISTORICAL_INTERACTION_HASHES)}. proof/interaction_hashes.json may have been modified."
     )
 
 
@@ -133,9 +127,7 @@ def test_all_historical_hashes_are_unique():
     """All 29 historical deploy hashes must be distinct (a duplicate would
     mean the proof's table is double-counting)."""
     all_hashes = list(INSTALL_DEPLOY_HASHES.values()) + list(HISTORICAL_INTERACTION_HASHES)
-    assert len(set(all_hashes)) == len(all_hashes), (
-        f"duplicate deploy hashes detected: {len(all_hashes) - len(set(all_hashes))} dupes"
-    )
+    assert len(set(all_hashes)) == len(all_hashes), f"duplicate deploy hashes detected: {len(all_hashes) - len(set(all_hashes))} dupes"
 
 
 def test_all_historical_hashes_are_64_char_hex():
@@ -144,9 +136,7 @@ def test_all_historical_hashes_are_64_char_hex():
     all_hashes = list(INSTALL_DEPLOY_HASHES.values()) + list(HISTORICAL_INTERACTION_HASHES)
     for h in all_hashes:
         assert len(h) == 64, f"hash {h!r} is {len(h)} chars (expected 64)"
-        assert all(c in "0123456789abcdef" for c in h), (
-            f"hash {h!r} contains non-hex characters"
-        )
+        assert all(c in "0123456789abcdef" for c in h), f"hash {h!r} contains non-hex characters"
 
 
 # ---------------------------------------------------------------------------
@@ -156,10 +146,7 @@ def test_all_historical_hashes_are_64_char_hex():
 
 def test_upgrade_lifecycle_deploy_count_is_6():
     """PROOF.md §10.1 lists exactly 6 upgrade-lifecycle deploys."""
-    assert len(UPGRADE_DEPLOY_HASHES) == 6, (
-        f"expected 6 upgrade deploys, got {len(UPGRADE_DEPLOY_HASHES)}. "
-        "proof/upgrade_hashes.json may have been modified."
-    )
+    assert len(UPGRADE_DEPLOY_HASHES) == 6, f"expected 6 upgrade deploys, got {len(UPGRADE_DEPLOY_HASHES)}. proof/upgrade_hashes.json may have been modified."
 
 
 @pytest.mark.parametrize("deploy_hash", list(UPGRADE_DEPLOY_HASHES))
@@ -173,8 +160,7 @@ def test_upgrade_lifecycle_deploy_still_successful(rpc_url, deploy_hash):
     v2 = verify_deploy_exists_or_pruned(rpc_url, deploy_hash)
     if v2 is None:
         pytest.fail(
-            f"upgrade deploy {deploy_hash} is missing from testnet — this is a real "
-            "regression. PROOF.md §10.1 claims it was verified-success on 2026-07-21."
+            f"upgrade deploy {deploy_hash} is missing from testnet — this is a real regression. PROOF.md §10.1 claims it was verified-success on 2026-07-21."
         )
     assert int(v2.get("cost", 0)) > 0
 
@@ -189,10 +175,7 @@ def test_x402_payment_deploy_still_successful(rpc_url):
     on-chain with Success execution result."""
     v2 = verify_deploy_exists_or_pruned(rpc_url, X402_PAYMENT_DEPLOY_HASH)
     if v2 is None:
-        pytest.fail(
-            f"x402 payment deploy {X402_PAYMENT_DEPLOY_HASH} is missing from testnet — "
-            "PROOF.md §11.2 claims it was verified-success on 2026-07-21."
-        )
+        pytest.fail(f"x402 payment deploy {X402_PAYMENT_DEPLOY_HASH} is missing from testnet — PROOF.md §11.2 claims it was verified-success on 2026-07-21.")
     assert int(v2.get("cost", 0)) > 0
 
 
@@ -216,33 +199,19 @@ def test_audit_trail_install_deploy_has_execution_effects(rpc_url):
     v2 = verify_deploy_exists_or_pruned(rpc_url, deploy_hash)
     if v2 is None:
         pytest.skip(
-            f"AuditTrail install deploy {deploy_hash} has been pruned from testnet. "
-            "The contract itself remains queryable — see test_contracts_on_chain.py."
+            f"AuditTrail install deploy {deploy_hash} has been pruned from testnet. The contract itself remains queryable — see test_contracts_on_chain.py."
         )
     # Reach into the raw deploy result for the effects. The
     # verify_deploy_exists_or_pruned helper returns the Version2 result
     # (which is execution_result.Version2). We need the sibling `effects`
     # field too — re-fetch.
     result = rpc_call(rpc_url, "info_get_deploy", {"deploy_hash": deploy_hash})
-    effects = (
-        result.get("execution_info", {})
-        .get("execution_result", {})
-        .get("Version2", {})
-        .get("effects", {})
-    )
+    effects = result.get("execution_info", {}).get("execution_result", {}).get("Version2", {}).get("effects", {})
     transforms = effects.get("transforms", [])
-    assert len(transforms) > 0, (
-        f"install deploy {deploy_hash} has 0 execution-effect transforms — "
-        "the contract was not actually installed."
-    )
+    assert len(transforms) > 0, f"install deploy {deploy_hash} has 0 execution-effect transforms — the contract was not actually installed."
     # The install must produce at least one Write of type Contract or ContractPackage.
-    write_kinds = {
-        t.get("transform", {}).get("Write", {}).get("stored_value", {}).get("type")
-        for t in transforms
-        if "Write" in t.get("transform", {})
-    }
+    write_kinds = {t.get("transform", {}).get("Write", {}).get("stored_value", {}).get("type") for t in transforms if "Write" in t.get("transform", {})}
     write_kinds.discard(None)
     assert "ContractPackage" in write_kinds or "Contract" in write_kinds, (
-        f"install deploy {deploy_hash} did not write a Contract/ContractPackage entity. "
-        f"Write kinds: {write_kinds}"
+        f"install deploy {deploy_hash} did not write a Contract/ContractPackage entity. Write kinds: {write_kinds}"
     )

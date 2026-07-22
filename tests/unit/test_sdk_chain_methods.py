@@ -91,9 +91,7 @@ async def test_audit_trail_get_finding_hits_correct_path(client):
 @pytest.mark.asyncio
 async def test_audit_trail_get_finding_404_propagates(client):
     mock_http = MagicMock()
-    mock_http.get = AsyncMock(
-        return_value=_mock_response(404, {"detail": "finding 99 not found"})
-    )
+    mock_http.get = AsyncMock(return_value=_mock_response(404, {"detail": "finding 99 not found"}))
     with patch.object(client, "_http", return_value=mock_http):
         with pytest.raises(httpx.HTTPStatusError):
             await client.audit_trail.get_finding(99)
@@ -126,9 +124,7 @@ async def test_audit_trail_get_findings_passes_limit(client):
 @pytest.mark.asyncio
 async def test_audit_trail_get_count(client):
     mock_http = MagicMock()
-    mock_http.get = AsyncMock(
-        return_value=_mock_response(200, {"count": 7, "source": "on-chain", "network": "casper-test"})
-    )
+    mock_http.get = AsyncMock(return_value=_mock_response(200, {"count": 7, "source": "on-chain", "network": "casper-test"}))
     with patch.object(client, "_http", return_value=mock_http):
         result = await client.audit_trail.get_count()
     assert result["count"] == 7
@@ -160,8 +156,7 @@ async def test_risk_oracle_get_score_hits_correct_path(client):
 
 @pytest.mark.asyncio
 async def test_risk_oracle_get_score_url_encodes_address(client):
-    payload = {"address": "a b", "score": 1, "risk_type": "x", "confidence": 1,
-               "last_updated": 1, "finding_id": 1, "source": "on-chain"}
+    payload = {"address": "a b", "score": 1, "risk_type": "x", "confidence": 1, "last_updated": 1, "finding_id": 1, "source": "on-chain"}
     mock_http = MagicMock()
     mock_http.get = AsyncMock(return_value=_mock_response(200, payload))
     with patch.object(client, "_http", return_value=mock_http):
@@ -174,9 +169,7 @@ async def test_risk_oracle_get_score_url_encodes_address(client):
 @pytest.mark.asyncio
 async def test_risk_oracle_get_score_404_propagates(client):
     mock_http = MagicMock()
-    mock_http.get = AsyncMock(
-        return_value=_mock_response(404, {"detail": "no risk score on chain"})
-    )
+    mock_http.get = AsyncMock(return_value=_mock_response(404, {"detail": "no risk score on chain"}))
     with patch.object(client, "_http", return_value=mock_http):
         with pytest.raises(httpx.HTTPStatusError):
             await client.risk_oracle.get_score("account-hash-unknown")
@@ -195,8 +188,7 @@ def test_audit_trail_get_finding_sync(client):
 
 
 def test_risk_oracle_get_score_sync(client):
-    payload = {"address": "a", "score": 50, "risk_type": "x", "confidence": 50,
-               "last_updated": 1, "finding_id": 1, "source": "on-chain"}
+    payload = {"address": "a", "score": 50, "risk_type": "x", "confidence": 50, "last_updated": 1, "finding_id": 1, "source": "on-chain"}
     mock_http = MagicMock()
     mock_http.get = AsyncMock(return_value=_mock_response(200, payload))
     with patch.object(client, "_http", return_value=mock_http):

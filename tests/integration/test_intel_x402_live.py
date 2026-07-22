@@ -219,12 +219,8 @@ async def test_serve_intel_without_casper_client_serves_findings(seeded_findings
 # 2026-07-11). This file is gitignored. Skip the live test if the key is
 # absent OR if the account is depleted (balance 0 CSPR).
 _OWNER_KEY_PATH = "secret_key.depleted_2026-07-21T17-06-18.pem"
-_OWNER_PUBLIC_KEY = (
-    "0203cd257525b180a32cab4efc0d9d9a365bf9bc1b8d2e76ebfb9186a4eeb23bace7"
-)
-_OWNER_ACCOUNT_HASH = (
-    "account-hash-aff1536a1cc925dab64b18049e0b63d5ec48580480a8d8306003663070c83136"
-)
+_OWNER_PUBLIC_KEY = "0203cd257525b180a32cab4efc0d9d9a365bf9bc1b8d2e76ebfb9186a4eeb23bace7"
+_OWNER_ACCOUNT_HASH = "account-hash-aff1536a1cc925dab64b18049e0b63d5ec48580480a8d8306003663070c83136"
 
 
 def _owner_balance_cspr() -> int:
@@ -233,14 +229,18 @@ def _owner_balance_cspr() -> int:
     transient network issue)."""
     import json
     import urllib.request
+
     try:
         req = urllib.request.Request(
             "https://node.testnet.casper.network/rpc",
-            data=json.dumps({
-                "jsonrpc": "2.0", "id": 1,
-                "method": "state_get_account_info",
-                "params": {"public_key": _OWNER_PUBLIC_KEY},
-            }).encode(),
+            data=json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "state_get_account_info",
+                    "params": {"public_key": _OWNER_PUBLIC_KEY},
+                }
+            ).encode(),
             headers={"Content-Type": "application/json"},
         )
         with urllib.request.urlopen(req, timeout=10) as resp:
@@ -248,21 +248,28 @@ def _owner_balance_cspr() -> int:
         purse = r["result"]["account"]["main_purse"]
         req2 = urllib.request.Request(
             "https://node.testnet.casper.network/rpc",
-            data=json.dumps({
-                "jsonrpc": "2.0", "id": 1,
-                "method": "chain_get_state_root_hash", "params": {},
-            }).encode(),
+            data=json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "chain_get_state_root_hash",
+                    "params": {},
+                }
+            ).encode(),
             headers={"Content-Type": "application/json"},
         )
         with urllib.request.urlopen(req2, timeout=10) as resp:
             srh = json.loads(resp.read())["result"]["state_root_hash"]
         req3 = urllib.request.Request(
             "https://node.testnet.casper.network/rpc",
-            data=json.dumps({
-                "jsonrpc": "2.0", "id": 1,
-                "method": "state_get_balance",
-                "params": {"state_root_hash": srh, "purse_uref": purse},
-            }).encode(),
+            data=json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "state_get_balance",
+                    "params": {"state_root_hash": srh, "purse_uref": purse},
+                }
+            ).encode(),
             headers={"Content-Type": "application/json"},
         )
         with urllib.request.urlopen(req3, timeout=10) as resp:

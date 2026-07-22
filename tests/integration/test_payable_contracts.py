@@ -41,12 +41,11 @@ def test_sentinel_credit_deposit_has_payable_attribute():
     src = (CONTRACTS_SRC / "sentinel_credit.rs").read_text()
     # Find the deposit function and check it has #[odra(payable)]
     deposit_match = re.search(
-        r'#\[odra\(payable\)\]\s*\n\s*pub fn deposit\(',
+        r"#\[odra\(payable\)\]\s*\n\s*pub fn deposit\(",
         src,
     )
     assert deposit_match is not None, (
-        "SentinelCredit.deposit must have #[odra(payable)] attribute — "
-        "without it, the contract cannot accept real CSPR transfers."
+        "SentinelCredit.deposit must have #[odra(payable)] attribute — without it, the contract cannot accept real CSPR transfers."
     )
 
 
@@ -54,20 +53,15 @@ def test_sentinel_credit_deposit_checks_attached_value():
     """deposit() must verify attached_value() == amount to prevent accounting drift."""
     src = (CONTRACTS_SRC / "sentinel_credit.rs").read_text()
     assert "self.env().attached_value()" in src, (
-        "SentinelCredit.deposit must call self.env().attached_value() to "
-        "verify the attached CSPR matches the amount argument."
+        "SentinelCredit.deposit must call self.env().attached_value() to verify the attached CSPR matches the amount argument."
     )
-    assert "attached != amount" in src or "attached != amount" in src, (
-        "deposit() must revert if attached_value != amount."
-    )
+    assert "attached != amount" in src or "attached != amount" in src, "deposit() must revert if attached_value != amount."
 
 
 def test_sentinel_credit_has_withdraw_entry_point():
     """SentinelCredit must have a withdraw() entry point that transfers real CSPR."""
     src = (CONTRACTS_SRC / "sentinel_credit.rs").read_text()
-    assert "pub fn withdraw(" in src, (
-        "SentinelCredit must have a withdraw() entry point."
-    )
+    assert "pub fn withdraw(" in src, "SentinelCredit must have a withdraw() entry point."
     # withdraw must use transfer_tokens to send real CSPR back to caller
     # Extract the withdraw function body (from 'pub fn withdraw' to the next 'pub fn' or end of impl)
     withdraw_start = src.index("pub fn withdraw(")
@@ -88,27 +82,20 @@ def test_sentinel_credit_withdraw_checks_balance():
     """withdraw() must check the account has sufficient balance before transferring."""
     src = (CONTRACTS_SRC / "sentinel_credit.rs").read_text()
     withdraw_section = re.search(
-        r'pub fn withdraw\([^)]*\)\s*\{.*?\n    \}',
+        r"pub fn withdraw\([^)]*\)\s*\{.*?\n    \}",
         src,
         re.DOTALL,
     )
     assert withdraw_section is not None
     withdraw_code = withdraw_section.group(0)
-    assert "account.balance < amount" in withdraw_code, (
-        "withdraw() must check account.balance < amount and revert if insufficient."
-    )
+    assert "account.balance < amount" in withdraw_code, "withdraw() must check account.balance < amount and revert if insufficient."
 
 
 def test_sentinel_credit_has_get_contract_balance():
     """SentinelCredit must have get_contract_balance() that reads the main purse."""
     src = (CONTRACTS_SRC / "sentinel_credit.rs").read_text()
-    assert "pub fn get_contract_balance" in src, (
-        "SentinelCredit must have a get_contract_balance() entry point."
-    )
-    assert "self.env().self_balance()" in src, (
-        "get_contract_balance() must use self.env().self_balance() to read "
-        "the contract's main purse balance."
-    )
+    assert "pub fn get_contract_balance" in src, "SentinelCredit must have a get_contract_balance() entry point."
+    assert "self.env().self_balance()" in src, "get_contract_balance() must use self.env().self_balance() to read the contract's main purse balance."
 
 
 # ---------------------------------------------------------------------------
@@ -120,42 +107,34 @@ def test_subscriber_vault_open_vault_has_payable_attribute():
     """SubscriberVault.open_vault must have #[odra(payable)] attribute."""
     src = (CONTRACTS_SRC / "subscriber_vault.rs").read_text()
     open_vault_match = re.search(
-        r'#\[odra\(payable\)\]\s*\n\s*pub fn open_vault\(',
+        r"#\[odra\(payable\)\]\s*\n\s*pub fn open_vault\(",
         src,
     )
     assert open_vault_match is not None, (
-        "SubscriberVault.open_vault must have #[odra(payable)] attribute — "
-        "without it, the contract cannot accept real CSPR for escrow."
+        "SubscriberVault.open_vault must have #[odra(payable)] attribute — without it, the contract cannot accept real CSPR for escrow."
     )
 
 
 def test_subscriber_vault_open_vault_checks_attached_value():
     """open_vault() must verify attached_value() == initial_deposit."""
     src = (CONTRACTS_SRC / "subscriber_vault.rs").read_text()
-    assert "self.env().attached_value()" in src, (
-        "SubscriberVault.open_vault must call self.env().attached_value()."
-    )
+    assert "self.env().attached_value()" in src, "SubscriberVault.open_vault must call self.env().attached_value()."
 
 
 def test_subscriber_vault_top_up_has_payable_attribute():
     """SubscriberVault.top_up must have #[odra(payable)] attribute."""
     src = (CONTRACTS_SRC / "subscriber_vault.rs").read_text()
     top_up_match = re.search(
-        r'#\[odra\(payable\)\]\s*\n\s*pub fn top_up\(',
+        r"#\[odra\(payable\)\]\s*\n\s*pub fn top_up\(",
         src,
     )
-    assert top_up_match is not None, (
-        "SubscriberVault.top_up must have #[odra(payable)] attribute — "
-        "topping up should also transfer real CSPR."
-    )
+    assert top_up_match is not None, "SubscriberVault.top_up must have #[odra(payable)] attribute — topping up should also transfer real CSPR."
 
 
 def test_subscriber_vault_has_withdraw_entry_point():
     """SubscriberVault must have a withdraw() entry point."""
     src = (CONTRACTS_SRC / "subscriber_vault.rs").read_text()
-    assert "pub fn withdraw(" in src, (
-        "SubscriberVault must have a withdraw() entry point."
-    )
+    assert "pub fn withdraw(" in src, "SubscriberVault must have a withdraw() entry point."
     # Extract the withdraw function body
     withdraw_start = src.index("pub fn withdraw(")
     next_fn = src.find("pub fn ", withdraw_start + 10)
@@ -163,9 +142,7 @@ def test_subscriber_vault_has_withdraw_entry_point():
         withdraw_section = src[withdraw_start:]
     else:
         withdraw_section = src[withdraw_start:next_fn]
-    assert "transfer_tokens" in withdraw_section, (
-        "SubscriberVault.withdraw must call self.env().transfer_tokens()."
-    )
+    assert "transfer_tokens" in withdraw_section, "SubscriberVault.withdraw must call self.env().transfer_tokens()."
 
 
 def test_subscriber_vault_withdraw_respects_lock_period():
@@ -177,18 +154,13 @@ def test_subscriber_vault_withdraw_respects_lock_period():
         withdraw_section = src[withdraw_start:]
     else:
         withdraw_section = src[withdraw_start:next_fn]
-    assert "locked_until_block" in withdraw_section, (
-        "withdraw() must check the locked_until_block period and revert if "
-        "the vault is still locked."
-    )
+    assert "locked_until_block" in withdraw_section, "withdraw() must check the locked_until_block period and revert if the vault is still locked."
 
 
 def test_subscriber_vault_has_get_contract_balance():
     """SubscriberVault must have get_contract_balance()."""
     src = (CONTRACTS_SRC / "subscriber_vault.rs").read_text()
-    assert "pub fn get_contract_balance" in src, (
-        "SubscriberVault must have a get_contract_balance() entry point."
-    )
+    assert "pub fn get_contract_balance" in src, "SubscriberVault must have a get_contract_balance() entry point."
 
 
 # ---------------------------------------------------------------------------
@@ -198,54 +170,40 @@ def test_subscriber_vault_has_get_contract_balance():
 
 def test_sentinel_credit_wasm_exists():
     """SentinelCredit.wasm must exist in the wasm directory."""
-    assert (CONTRACTS_WASM / "SentinelCredit.wasm").exists(), (
-        "SentinelCredit.wasm not found in contracts/wasm/"
-    )
+    assert (CONTRACTS_WASM / "SentinelCredit.wasm").exists(), "SentinelCredit.wasm not found in contracts/wasm/"
 
 
 def test_subscriber_vault_wasm_exists():
     """SubscriberVault.wasm must exist in the wasm directory."""
-    assert (CONTRACTS_WASM / "SubscriberVault.wasm").exists(), (
-        "SubscriberVault.wasm not found in contracts/wasm/"
-    )
+    assert (CONTRACTS_WASM / "SubscriberVault.wasm").exists(), "SubscriberVault.wasm not found in contracts/wasm/"
 
 
 def test_sentinel_credit_wasm_contains_withdraw():
     """SentinelCredit.wasm must contain the 'withdraw' entry point string."""
     wasm_path = CONTRACTS_WASM / "SentinelCredit.wasm"
     data = wasm_path.read_bytes()
-    assert b"withdraw" in data, (
-        "SentinelCredit.wasm does not contain 'withdraw' — the WASM was not "
-        "rebuilt with the new payable source code."
-    )
+    assert b"withdraw" in data, "SentinelCredit.wasm does not contain 'withdraw' — the WASM was not rebuilt with the new payable source code."
 
 
 def test_sentinel_credit_wasm_contains_get_contract_balance():
     """SentinelCredit.wasm must contain 'get_contract_balance' string."""
     wasm_path = CONTRACTS_WASM / "SentinelCredit.wasm"
     data = wasm_path.read_bytes()
-    assert b"get_contract_balance" in data, (
-        "SentinelCredit.wasm does not contain 'get_contract_balance'."
-    )
+    assert b"get_contract_balance" in data, "SentinelCredit.wasm does not contain 'get_contract_balance'."
 
 
 def test_subscriber_vault_wasm_contains_withdraw():
     """SubscriberVault.wasm must contain the 'withdraw' entry point string."""
     wasm_path = CONTRACTS_WASM / "SubscriberVault.wasm"
     data = wasm_path.read_bytes()
-    assert b"withdraw" in data, (
-        "SubscriberVault.wasm does not contain 'withdraw' — the WASM was not "
-        "rebuilt with the new payable source code."
-    )
+    assert b"withdraw" in data, "SubscriberVault.wasm does not contain 'withdraw' — the WASM was not rebuilt with the new payable source code."
 
 
 def test_subscriber_vault_wasm_contains_get_contract_balance():
     """SubscriberVault.wasm must contain 'get_contract_balance' string."""
     wasm_path = CONTRACTS_WASM / "SubscriberVault.wasm"
     data = wasm_path.read_bytes()
-    assert b"get_contract_balance" in data, (
-        "SubscriberVault.wasm does not contain 'get_contract_balance'."
-    )
+    assert b"get_contract_balance" in data, "SubscriberVault.wasm does not contain 'get_contract_balance'."
 
 
 def test_wasm_files_contain_main_purse():
@@ -268,15 +226,9 @@ def test_wasm_files_contain_main_purse():
 def test_sentinel_credit_uses_odra_payment_api():
     """SentinelCredit must use Odra's payment API (attached_value, self_balance, transfer_tokens)."""
     src = (CONTRACTS_SRC / "sentinel_credit.rs").read_text()
-    assert "self.env().attached_value()" in src, (
-        "Must use self.env().attached_value() to read the attached CSPR."
-    )
-    assert "self.env().self_balance()" in src, (
-        "Must use self.env().self_balance() to read the contract's main purse."
-    )
-    assert "self.env().transfer_tokens(" in src, (
-        "Must use self.env().transfer_tokens() to transfer CSPR back to caller."
-    )
+    assert "self.env().attached_value()" in src, "Must use self.env().attached_value() to read the attached CSPR."
+    assert "self.env().self_balance()" in src, "Must use self.env().self_balance() to read the contract's main purse."
+    assert "self.env().transfer_tokens(" in src, "Must use self.env().transfer_tokens() to transfer CSPR back to caller."
 
 
 def test_subscriber_vault_uses_odra_payment_api():
@@ -299,28 +251,16 @@ def test_sentinel_credit_has_payment_error_codes():
     # (a thin wrapper over OdraError::user that compiles on both wasm32 and
     # host targets). The error CODES are what matter semantically.
     # Error code 2 = attached_value != amount
-    assert "user_err(2)" in src, (
-        "Must revert with user_err(2) when attached_value != amount."
-    )
+    assert "user_err(2)" in src, "Must revert with user_err(2) when attached_value != amount."
     # Error code 3 = insufficient balance for withdraw
-    assert "user_err(3)" in src, (
-        "Must revert with user_err(3) when withdraw amount > balance."
-    )
+    assert "user_err(3)" in src, "Must revert with user_err(3) when withdraw amount > balance."
     # Error code 4 = account not found
-    assert "user_err(4)" in src, (
-        "Must revert with user_err(4) when account doesn't exist."
-    )
+    assert "user_err(4)" in src, "Must revert with user_err(4) when account doesn't exist."
 
 
 def test_subscriber_vault_has_payment_error_codes():
     """SubscriberVault must have error codes for payment + lock failures."""
     src = (CONTRACTS_SRC / "subscriber_vault.rs").read_text()
-    assert "user_err(2)" in src, (
-        "Must revert with user_err(2) when attached_value != initial_deposit."
-    )
-    assert "user_err(3)" in src, (
-        "Must revert with user_err(3) when withdraw amount > balance."
-    )
-    assert "user_err(5)" in src, (
-        "Must revert with user_err(5) when vault is still locked."
-    )
+    assert "user_err(2)" in src, "Must revert with user_err(2) when attached_value != initial_deposit."
+    assert "user_err(3)" in src, "Must revert with user_err(3) when withdraw amount > balance."
+    assert "user_err(5)" in src, "Must revert with user_err(5) when vault is still locked."

@@ -116,6 +116,7 @@ CONTRACT_PACKAGE_HASHES: Dict[str, str] = {
     "SubscriberVault": "hash-68c4b7cca84982833af3f9346a5a9ea337bfdcd20875bd82f4c7ec7b1505d211",
 }
 
+
 #: Initial install deploy hashes — loaded from transaction_hashes_live.json
 #: (the canonical source). On Casper testnet, deploys are pruned after ~7 days,
 #: so the July 11 installs may no longer resolve via info_get_deploy. The
@@ -211,8 +212,7 @@ def pytest_collection_modifyitems(config: pytest.Config, items: List[pytest.Item
     if config.getoption("--run-e2e"):
         return
     skip_e2e = pytest.mark.skip(
-        reason="E2E suite is opt-in — pass --run-e2e to run against the live Casper testnet "
-        "(each write deploy consumes real CSPR gas).",
+        reason="E2E suite is opt-in — pass --run-e2e to run against the live Casper testnet (each write deploy consumes real CSPR gas).",
     )
     for item in items:
         if "e2e" in item.keywords or "/tests/e2e/" in str(item.fspath):
@@ -239,9 +239,7 @@ def rpc_call(rpc_url: str, method: str, params: Any) -> Dict[str, Any]:
     status, so test failures point at the underlying RPC problem (not a
     confusing KeyError downstream).
     """
-    body = json.dumps(
-        {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}
-    ).encode("utf-8")
+    body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": method, "params": params}).encode("utf-8")
     req = urllib.request.Request(
         rpc_url,
         data=body,
@@ -303,6 +301,7 @@ def signer_pem(request: pytest.FixtureRequest) -> str:
     helper = ROOT / "scripts" / "csprclick_agent_wallet.cjs"
     if helper.exists():
         import subprocess
+
         proc = subprocess.run(
             ["node", str(helper), "create"],
             capture_output=True,
@@ -320,10 +319,7 @@ def signer_pem(request: pytest.FixtureRequest) -> str:
                 f"  Explorer: {info.get('explorer_url')}\n"
                 "Fund the wallet, then re-run with --run-e2e.\n"
             )
-        pytest.skip(
-            "Auto-created a NEW agent wallet — fund it at the faucet URL "
-            "above, then re-run with --run-e2e."
-        )
+        pytest.skip("Auto-created a NEW agent wallet — fund it at the faucet URL above, then re-run with --run-e2e.")
     assert False, (
         "Deployer secret key not found. Place the Account-2 PEM at "
         "vaultwatch/secret_key.pem, OR set VAULTWATCH_AGENT_KEY_PATH, OR "
@@ -351,9 +347,7 @@ def casper_node_status(rpc_url: str) -> Dict[str, Any]:
     """Session-scoped: ``info_get_status`` result (chain name + api_version)."""
     result = rpc_call(rpc_url, "info_get_status", {})
     assert result, "info_get_status returned empty result"
-    assert result.get("chainspec_name") == CHAIN_NAME, (
-        f"wrong chain: expected {CHAIN_NAME!r}, got {result.get('chainspec_name')!r}"
-    )
+    assert result.get("chainspec_name") == CHAIN_NAME, f"wrong chain: expected {CHAIN_NAME!r}, got {result.get('chainspec_name')!r}"
     return result
 
 
@@ -470,10 +464,7 @@ def submit_real_deploy(
     )
     if proc.returncode != 0:
         stderr = proc.stderr.decode("utf-8", errors="replace")[:1000]
-        raise RuntimeError(
-            f"casper_call.cjs exited {proc.returncode} for "
-            f"{contract_name or contract_hash[:8]}::{entry_point}: {stderr}"
-        )
+        raise RuntimeError(f"casper_call.cjs exited {proc.returncode} for {contract_name or contract_hash[:8]}::{entry_point}: {stderr}")
     result = json.loads(proc.stdout.decode("utf-8"))
     return result
 
@@ -493,13 +484,8 @@ def verify_deploy_success(rpc_url: str, deploy_hash: str) -> Dict[str, Any]:
     exec_info = result.get("execution_info", {})
     exec_result = exec_info.get("execution_result", {})
     v2 = exec_result.get("Version2")
-    assert v2 is not None, (
-        f"deploy {deploy_hash} has no Version2 execution result (Casper 1.x format?) — "
-        f"raw: {json.dumps(exec_result)[:500]}"
-    )
-    assert v2.get("error_message") is None, (
-        f"deploy {deploy_hash} FAILED on-chain: {v2.get('error_message')}"
-    )
+    assert v2 is not None, f"deploy {deploy_hash} has no Version2 execution result (Casper 1.x format?) — raw: {json.dumps(exec_result)[:500]}"
+    assert v2.get("error_message") is None, f"deploy {deploy_hash} FAILED on-chain: {v2.get('error_message')}"
     return v2
 
 
@@ -531,14 +517,9 @@ def verify_deploy_exists_or_pruned(rpc_url: str, deploy_hash: str) -> Optional[D
         if "Success" in exec_result:
             return exec_result["Success"]
         # Genuinely malformed — surface it.
-        raise AssertionError(
-            f"deploy {deploy_hash} has no Version2 execution result — "
-            f"raw: {json.dumps(exec_result)[:500]}"
-        )
+        raise AssertionError(f"deploy {deploy_hash} has no Version2 execution result — raw: {json.dumps(exec_result)[:500]}")
     if v2.get("error_message") is not None:
-        raise AssertionError(
-            f"deploy {deploy_hash} FAILED on-chain: {v2.get('error_message')}"
-        )
+        raise AssertionError(f"deploy {deploy_hash} FAILED on-chain: {v2.get('error_message')}")
     return v2
 
 
@@ -576,7 +557,7 @@ def normalize_package_hash(h: str) -> str:
     returning the raw 64-char hex."""
     for prefix in ("hash-", "contract-package-"):
         if h.startswith(prefix):
-            return h[len(prefix):]
+            return h[len(prefix) :]
     return h
 
 
@@ -631,8 +612,8 @@ def query(rpc_url: str):
     """Function-scoped wrapper around ``query_contract``."""
     return lambda contract_name_or_hash: query_contract(
         rpc_url,
-        contract_name_or_hash if len(contract_name_or_hash) == 64 and
-        not contract_name_or_hash.startswith("hash-")
+        contract_name_or_hash
+        if len(contract_name_or_hash) == 64 and not contract_name_or_hash.startswith("hash-")
         else CONTRACT_HASHES.get(contract_name_or_hash, contract_name_or_hash.replace("hash-", "")),
     )
 

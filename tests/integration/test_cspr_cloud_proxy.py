@@ -39,15 +39,39 @@ LEAKED_KEY_PREFIX = "019" + "ef63a-"
 # lockfiles, and proof artifacts (which are append-only historical records
 # not shipped to production).
 _SCANNABLE_EXTS = {
-    ".py", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs",
-    ".json", ".md", ".txt", ".yml", ".yaml", ".toml",
-    ".example", ".env", ".sh", ".html", ".css", ".ini", ".cfg",
+    ".py",
+    ".js",
+    ".jsx",
+    ".ts",
+    ".tsx",
+    ".mjs",
+    ".cjs",
+    ".json",
+    ".md",
+    ".txt",
+    ".yml",
+    ".yaml",
+    ".toml",
+    ".example",
+    ".env",
+    ".sh",
+    ".html",
+    ".css",
+    ".ini",
+    ".cfg",
 }
 
 # Directories to skip during the leaked-key scan.
 _SKIP_DIRS = {
-    "node_modules", ".git", "dist", "build", "__pycache__",
-    ".venv", "venv", ".pytest_cache", ".ruff_cache",
+    "node_modules",
+    ".git",
+    "dist",
+    "build",
+    "__pycache__",
+    ".venv",
+    "venv",
+    ".pytest_cache",
+    ".ruff_cache",
 }
 
 
@@ -102,9 +126,7 @@ def test_leaked_key_not_in_dashboard_liveapi():
     liveapi = ROOT / "dashboard" / "src" / "liveApi.js"
     assert liveapi.exists(), "dashboard/src/liveApi.js not found"
     text = liveapi.read_text(encoding="utf-8")
-    assert LEAKED_KEY_PREFIX not in text, (
-        "dashboard/src/liveApi.js still contains the leaked CSPR.cloud key prefix"
-    )
+    assert LEAKED_KEY_PREFIX not in text, "dashboard/src/liveApi.js still contains the leaked CSPR.cloud key prefix"
     # Also check no Bearer header is sent from the frontend at all
     assert "Bearer " not in text or "Bearer ${" in text, (
         "dashboard/src/liveApi.js should not hardcode any Bearer tokens — "
@@ -124,13 +146,9 @@ def test_dashboard_liveapi_does_not_call_cspr_cloud_rest_directly():
     # The cspr.cloud REST API (api.testnet.cspr.cloud) requires the Bearer
     # token and MUST be proxied.
     assert "api.testnet.cspr.cloud" not in text, (
-        "dashboard/src/liveApi.js calls api.testnet.cspr.cloud directly — "
-        "route through /api/cspr_cloud/* instead so the key stays server-side."
+        "dashboard/src/liveApi.js calls api.testnet.cspr.cloud directly — route through /api/cspr_cloud/* instead so the key stays server-side."
     )
-    assert "api.mainnet.cspr.cloud" not in text, (
-        "dashboard/src/liveApi.js calls api.mainnet.cspr.cloud directly — "
-        "route through /api/cspr_cloud/* instead."
-    )
+    assert "api.mainnet.cspr.cloud" not in text, "dashboard/src/liveApi.js calls api.mainnet.cspr.cloud directly — route through /api/cspr_cloud/* instead."
 
 
 def test_dashboard_liveapi_uses_proxy():
@@ -138,8 +156,7 @@ def test_dashboard_liveapi_uses_proxy():
     liveapi = ROOT / "dashboard" / "src" / "liveApi.js"
     text = liveapi.read_text(encoding="utf-8")
     assert "/cspr_cloud/" in text, (
-        "dashboard/src/liveApi.js should call /cspr_cloud/<path> through the "
-        "FastAPI reverse proxy — found no /cspr_cloud/ reference."
+        "dashboard/src/liveApi.js should call /cspr_cloud/<path> through the FastAPI reverse proxy — found no /cspr_cloud/ reference."
     )
 
 
@@ -165,17 +182,10 @@ def test_script_reads_key_from_env(script_rel):
     script = ROOT / script_rel
     assert script.exists(), f"{script_rel} not found"
     text = script.read_text(encoding="utf-8")
-    assert LEAKED_KEY_PREFIX not in text, (
-        f"{script_rel} still contains the leaked key prefix"
-    )
-    assert "CSPR_CLOUD_API_KEY" in text, (
-        f"{script_rel} should read the key from CSPR_CLOUD_API_KEY env var"
-    )
+    assert LEAKED_KEY_PREFIX not in text, f"{script_rel} still contains the leaked key prefix"
+    assert "CSPR_CLOUD_API_KEY" in text, f"{script_rel} should read the key from CSPR_CLOUD_API_KEY env var"
     # Verify the actual os.getenv call is present
-    assert "os.getenv" in text, (
-        f"{script_rel} should use os.getenv('CSPR_CLOUD_API_KEY', '') "
-        f"to read the key"
-    )
+    assert "os.getenv" in text, f"{script_rel} should use os.getenv('CSPR_CLOUD_API_KEY', '') to read the key"
 
 
 def test_casper_deploy_cjs_no_hardcoded_key():
@@ -184,9 +194,7 @@ def test_casper_deploy_cjs_no_hardcoded_key():
     JSON, sourced from env by the calling Python script."""
     cjs = ROOT / "scripts" / "casper_deploy.cjs"
     text = cjs.read_text(encoding="utf-8")
-    assert LEAKED_KEY_PREFIX not in text, (
-        "scripts/casper_deploy.cjs still contains the leaked key prefix"
-    )
+    assert LEAKED_KEY_PREFIX not in text, "scripts/casper_deploy.cjs still contains the leaked key prefix"
 
 
 # ---------------------------------------------------------------------------
@@ -203,9 +211,11 @@ def _import_app():
     """Import the FastAPI app (after env is patched). Force re-import if
     it was already imported so env-var changes take effect."""
     import importlib
+
     if "api.main" in sys.modules:
         importlib.reload(sys.modules["api.main"])
     import api.main as api_mod
+
     return api_mod
 
 
@@ -223,12 +233,8 @@ def test_cspr_cloud_status_endpoint_does_not_leak_key(monkeypatch):
     assert body["configured"] is True
     assert body["upstream"] == "https://api.testnet.cspr.cloud"
     # The key must NEVER appear in the response
-    assert "secret-test-key-do-not-leak-12345" not in r.text, (
-        "/cspr_cloud/status leaked the API key in the response body"
-    )
-    assert "secret-test-key-do-not-leak-12345" not in str(r.headers), (
-        "/cspr_cloud/status leaked the API key in the response headers"
-    )
+    assert "secret-test-key-do-not-leak-12345" not in r.text, "/cspr_cloud/status leaked the API key in the response body"
+    assert "secret-test-key-do-not-leak-12345" not in str(r.headers), "/cspr_cloud/status leaked the API key in the response headers"
 
 
 def test_cspr_cloud_status_endpoint_reports_unconfigured(monkeypatch):
@@ -263,6 +269,7 @@ def test_cspr_cloud_proxy_get_forwards_with_bearer_header(monkeypatch):
 
     with patch("httpx.AsyncClient", return_value=mock_client):
         from fastapi.testclient import TestClient
+
         client = TestClient(api_mod.app)
         r = client.get("/cspr_cloud/blocks?page_size=1")
 
@@ -275,12 +282,8 @@ def test_cspr_cloud_proxy_get_forwards_with_bearer_header(monkeypatch):
     forwarded_url = call_args.args[0] if call_args.args else call_args.kwargs.get("url")
     forwarded_headers = call_args.kwargs.get("headers", {})
 
-    assert forwarded_url == "https://api.testnet.cspr.cloud/blocks?page_size=1", (
-        f"proxy forwarded to wrong URL: {forwarded_url}"
-    )
-    assert forwarded_headers.get("Authorization") == "Bearer test-bearer-token-xyz", (
-        f"proxy did not inject Bearer header from env: {forwarded_headers}"
-    )
+    assert forwarded_url == "https://api.testnet.cspr.cloud/blocks?page_size=1", f"proxy forwarded to wrong URL: {forwarded_url}"
+    assert forwarded_headers.get("Authorization") == "Bearer test-bearer-token-xyz", f"proxy did not inject Bearer header from env: {forwarded_headers}"
 
 
 def test_cspr_cloud_proxy_get_forwards_without_key_when_unset(monkeypatch):
@@ -301,15 +304,14 @@ def test_cspr_cloud_proxy_get_forwards_without_key_when_unset(monkeypatch):
 
     with patch("httpx.AsyncClient", return_value=mock_client):
         from fastapi.testclient import TestClient
+
         client = TestClient(api_mod.app)
         r = client.get("/cspr_cloud/blocks?page_size=1")
 
     assert r.status_code == 200
     call_args = mock_client.get.call_args
     forwarded_headers = call_args.kwargs.get("headers", {})
-    assert "Authorization" not in forwarded_headers, (
-        f"proxy sent Authorization header when key was unset: {forwarded_headers}"
-    )
+    assert "Authorization" not in forwarded_headers, f"proxy sent Authorization header when key was unset: {forwarded_headers}"
 
 
 def test_cspr_cloud_proxy_get_forwards_status_and_body_verbatim(monkeypatch):
@@ -330,6 +332,7 @@ def test_cspr_cloud_proxy_get_forwards_status_and_body_verbatim(monkeypatch):
 
     with patch("httpx.AsyncClient", return_value=mock_client):
         from fastapi.testclient import TestClient
+
         client = TestClient(api_mod.app)
         r = client.get("/cspr_cloud/nonexistent")
 
@@ -355,17 +358,14 @@ def test_cspr_cloud_proxy_get_forwards_query_string(monkeypatch):
 
     with patch("httpx.AsyncClient", return_value=mock_client):
         from fastapi.testclient import TestClient
+
         client = TestClient(api_mod.app)
-        client.get(
-            "/cspr_cloud/accounts/0xabc/deploys?page_size=32&fields=deploy_hash,timestamp,cost,status"
-        )
+        client.get("/cspr_cloud/accounts/0xabc/deploys?page_size=32&fields=deploy_hash,timestamp,cost,status")
 
     forwarded_url = mock_client.get.call_args.args[0]
     assert "page_size=32" in forwarded_url
     assert "fields=deploy_hash,timestamp,cost,status" in forwarded_url
-    assert "/cspr_cloud/" not in forwarded_url, (
-        f"proxy leaked its own path into upstream URL: {forwarded_url}"
-    )
+    assert "/cspr_cloud/" not in forwarded_url, f"proxy leaked its own path into upstream URL: {forwarded_url}"
 
 
 def test_cspr_cloud_proxy_get_returns_502_on_upstream_error(monkeypatch):
@@ -382,6 +382,7 @@ def test_cspr_cloud_proxy_get_returns_502_on_upstream_error(monkeypatch):
 
     with patch("httpx.AsyncClient", return_value=mock_client):
         from fastapi.testclient import TestClient
+
         client = TestClient(api_mod.app)
         r = client.get("/cspr_cloud/blocks")
 
@@ -403,6 +404,7 @@ def test_cspr_cloud_proxy_get_returns_504_on_timeout(monkeypatch):
 
     with patch("httpx.AsyncClient", return_value=mock_client):
         from fastapi.testclient import TestClient
+
         client = TestClient(api_mod.app)
         r = client.get("/cspr_cloud/blocks")
 
@@ -423,15 +425,12 @@ def test_cspr_cloud_proxy_does_not_echo_key_in_error_responses(monkeypatch):
 
     with patch("httpx.AsyncClient", return_value=mock_client):
         from fastapi.testclient import TestClient
+
         client = TestClient(api_mod.app)
         r = client.get("/cspr_cloud/blocks")
 
-    assert "secret-do-not-leak-999" not in r.text, (
-        "proxy leaked the API key in an error response"
-    )
-    assert "secret-do-not-leak-999" not in str(r.headers), (
-        "proxy leaked the API key in error response headers"
-    )
+    assert "secret-do-not-leak-999" not in r.text, "proxy leaked the API key in an error response"
+    assert "secret-do-not-leak-999" not in str(r.headers), "proxy leaked the API key in error response headers"
 
 
 # ---------------------------------------------------------------------------
@@ -444,9 +443,7 @@ def test_vite_config_proxies_cspr_cloud():
     so the dashboard can call /cspr_cloud/blocks in dev."""
     vite_cfg = ROOT / "dashboard" / "vite.config.js"
     text = vite_cfg.read_text(encoding="utf-8")
-    assert "/cspr_cloud" in text or "'/cspr_cloud'" in text, (
-        "dashboard/vite.config.js must proxy /cspr_cloud/* to the FastAPI app"
-    )
+    assert "/cspr_cloud" in text or "'/cspr_cloud'" in text, "dashboard/vite.config.js must proxy /cspr_cloud/* to the FastAPI app"
 
 
 def test_env_example_documents_key_without_leaking():
@@ -455,14 +452,10 @@ def test_env_example_documents_key_without_leaking():
     env_example = ROOT / ".env.example"
     text = env_example.read_text(encoding="utf-8")
     assert "CSPR_CLOUD_API_KEY=" in text
-    assert LEAKED_KEY_PREFIX not in text, (
-        ".env.example contains the leaked key prefix"
-    )
+    assert LEAKED_KEY_PREFIX not in text, ".env.example contains the leaked key prefix"
     # The value after the = should be a placeholder, not a real key
     for line in text.splitlines():
         if line.startswith("CSPR_CLOUD_API_KEY=") and not line.strip().startswith("#"):
             value = line.split("=", 1)[1].strip()
             assert value != "", "CSPR_CLOUD_API_KEY value should be a placeholder"
-            assert LEAKED_KEY_PREFIX not in value, (
-                ".env.example CSPR_CLOUD_API_KEY value contains the leaked key"
-            )
+            assert LEAKED_KEY_PREFIX not in value, ".env.example CSPR_CLOUD_API_KEY value contains the leaked key"

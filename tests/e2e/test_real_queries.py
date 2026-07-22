@@ -141,10 +141,7 @@ def test_audit_trail_finding_count_increased(rpc_url):
     """
     raw = read_odra_var(rpc_url, CONTRACT_HASHES["AuditTrail"], field_index=2)
     if raw is None:
-        pytest.skip(
-            "AuditTrail.finding_count Var not found in dictionary — the contract "
-            "may use a different field-index layout. Skipping (no assertion)."
-        )
+        pytest.skip("AuditTrail.finding_count Var not found in dictionary — the contract may use a different field-index layout. Skipping (no assertion).")
     # CLValue is a List<U8> wrapper (Odra wraps every Var<T> in Bytes).
     # Layout: u32 LE length ++ N bytes. The inner N bytes are the
     # bytesrepr-serialised u64 (8 bytes LE).
@@ -157,10 +154,7 @@ def test_audit_trail_finding_count_increased(rpc_url):
     count = struct.unpack_from("<Q", count_bytes, 0)[0]
     # The contract has had 3 verified AuditTrail::record_finding deploys
     # (PROOF.md §8 rows 1-3) plus any e2e deploys. Just assert >= 3.
-    assert count >= 3, (
-        f"AuditTrail.finding_count == {count} — expected >= 3 (PROOF.md §8 "
-        "records 3 verified record_finding deploys)."
-    )
+    assert count >= 3, f"AuditTrail.finding_count == {count} — expected >= 3 (PROOF.md §8 records 3 verified record_finding deploys)."
     print(f"\n  AuditTrail.finding_count == {count}")
 
 
@@ -206,10 +200,7 @@ def test_sentinel_registry_count_after_e2e_register(rpc_url):
     count_bytes = raw[4 : 4 + 8]
     count = struct.unpack_from("<Q", count_bytes, 0)[0]
     # PROOF.md §8 rows 11-12 record 2 verified register deploys + our e2e one.
-    assert count >= 2, (
-        f"SentinelRegistry.subscriber_count == {count} — expected >= 2 (PROOF.md §8 "
-        "records 2 verified register deploys)."
-    )
+    assert count >= 2, f"SentinelRegistry.subscriber_count == {count} — expected >= 2 (PROOF.md §8 records 2 verified register deploys)."
     print(f"\n  SentinelRegistry.subscriber_count == {count}")
 
 
@@ -358,10 +349,7 @@ def test_risk_policy_manager_current_policy_readable_via_odra_dict(rpc_url):
         "safety_rejection_threshold": inner[9],
     }
     updated_at_block = struct.unpack_from("<Q", inner, 10)[0]
-    print(
-        f"\n  RiskPolicyManager(v1).current_policy: version={version}, "
-        f"thresholds={thresholds}, updated_at_block={updated_at_block}"
-    )
+    print(f"\n  RiskPolicyManager(v1).current_policy: version={version}, thresholds={thresholds}, updated_at_block={updated_at_block}")
     assert version >= 1, f"RiskPolicy version should be >= 1, got {version}"
 
 
@@ -414,8 +402,7 @@ def test_subscriber_vault_get_balance_after_open_vault(rpc_url, signer_pem):
         payment_motes=3_000_000_000,
     )
     assert result.get("success") is True, (
-        f"get_balance deploy failed for {SUBSCRIBER_VAULT_ADDRESS}: {result}. "
-        "Did test_real_deploys.test_subscriber_vault_open_vault_real_deploy run first?"
+        f"get_balance deploy failed for {SUBSCRIBER_VAULT_ADDRESS}: {result}. Did test_real_deploys.test_subscriber_vault_open_vault_real_deploy run first?"
     )
     v2 = verify_deploy_success(rpc_url, result["deploy_hash"])
     assert int(v2.get("cost", 0)) > 0

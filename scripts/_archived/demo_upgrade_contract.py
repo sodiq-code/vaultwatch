@@ -55,8 +55,8 @@ UPGRADE_HELPER = REPO_ROOT / "scripts" / "casper_upgrade.cjs"
 CALL_HELPER = REPO_ROOT / "scripts" / "casper_deploy.cjs"
 PROOF_FILE = REPO_ROOT / "proof" / "upgrade_hashes.json"
 
-UPGRADE_PAYMENT_MOTES = 300_000_000_000   # 300 CSPR (upgrade is heavier than v1's 140 CSPR install; mostly refunded)
-CALL_PAYMENT_MOTES = 5_000_000_000        # 5 CSPR (mostly refunded)
+UPGRADE_PAYMENT_MOTES = 300_000_000_000  # 300 CSPR (upgrade is heavier than v1's 140 CSPR install; mostly refunded)
+CALL_PAYMENT_MOTES = 5_000_000_000  # 5 CSPR (mostly refunded)
 
 
 def log(msg: str) -> None:
@@ -79,21 +79,29 @@ def get_state_root_hash(rpc_url: str) -> str:
 
 def query_package(rpc_url: str, srh: str, package_hash: str) -> dict:
     """Query a contract package -> versions[] + access_key + lock_status."""
-    res = rpc_call(rpc_url, "query_global_state", {
-        "state_identifier": {"StateRootHash": srh},
-        "key": f"hash-{package_hash}",
-        "path": [],
-    })
+    res = rpc_call(
+        rpc_url,
+        "query_global_state",
+        {
+            "state_identifier": {"StateRootHash": srh},
+            "key": f"hash-{package_hash}",
+            "path": [],
+        },
+    )
     return (res.get("stored_value") or {}).get("ContractPackage", {})
 
 
 def query_contract(rpc_url: str, srh: str, contract_hash: str) -> dict:
     """Query a contract -> entry_points + named_keys."""
-    res = rpc_call(rpc_url, "query_global_state", {
-        "state_identifier": {"StateRootHash": srh},
-        "key": f"hash-{contract_hash}",
-        "path": [],
-    })
+    res = rpc_call(
+        rpc_url,
+        "query_global_state",
+        {
+            "state_identifier": {"StateRootHash": srh},
+            "key": f"hash-{contract_hash}",
+            "path": [],
+        },
+    )
     return (res.get("stored_value") or {}).get("Contract", {})
 
 
@@ -104,13 +112,13 @@ def run_node_helper(helper: Path, request: dict) -> dict:
     try:
         proc = subprocess.run(
             ["node", str(helper), str(req_file)],
-            capture_output=True, text=True, timeout=300,
+            capture_output=True,
+            text=True,
+            timeout=300,
         )
         out = proc.stdout.strip()
         if not out:
-            raise RuntimeError(
-                f"helper produced no stdout; stderr={proc.stderr[:500]}; exit={proc.returncode}"
-            )
+            raise RuntimeError(f"helper produced no stdout; stderr={proc.stderr[:500]}; exit={proc.returncode}")
         return json.loads(out)
     finally:
         try:
@@ -137,7 +145,7 @@ def execute_upgrade(rpc_url: str) -> dict:
         log("  ✅ UPGRADE VERIFIED SUCCESS on-chain")
         log(f"     deploy:  {result['deploy_hash']}")
         log(f"     block:   {result['block_hash']}")
-        log(f"     cost:    {int(result['cost_motes'])/1e9:.4f} CSPR")
+        log(f"     cost:    {int(result['cost_motes']) / 1e9:.4f} CSPR")
         log(f"     link:    {result['link']}")
     else:
         log(f"  ❌ UPGRADE FAILED: {result.get('error')}")
@@ -216,8 +224,12 @@ def verify(rpc_url: str, upgrade_result: dict | None) -> dict:
 
     # v2 must also preserve all v1 entry points (superset)
     v1_eps_expected = {
-        "init", "upgrade_policy", "get_current_policy", "get_policy_version",
-        "get_current_version", "transfer_ownership",
+        "init",
+        "upgrade_policy",
+        "get_current_policy",
+        "get_policy_version",
+        "get_current_version",
+        "transfer_ownership",
     }
     v1_preserved = v1_eps_expected.issubset(v2_eps)
     report["checks"]["v1_entry_points_preserved_in_v2"] = {

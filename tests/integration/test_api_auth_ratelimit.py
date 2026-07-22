@@ -121,8 +121,7 @@ def test_auth_uses_constant_time_comparison(client, monkeypatch):
     # The middleware MUST have delegated to hmac.compare_digest — not used
     # a bare ``!=`` short-circuit. This is the regression guard.
     assert fake_hmac.compare_digest.called, (
-        "AuthMiddleware did not call hmac.compare_digest — a non-constant-time "
-        "``!=`` short-circuit may have been reintroduced, leaking a timing oracle."
+        "AuthMiddleware did not call hmac.compare_digest — a non-constant-time ``!=`` short-circuit may have been reintroduced, leaking a timing oracle."
     )
 
     # Correct key — must also go through compare_digest (and accept).

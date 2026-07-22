@@ -284,9 +284,7 @@ class IntelAgent:
                     # Prefer the real testnet write path (casper-js-sdk v5).
                     # ``call_contract_real`` is async and returns the helper's
                     # full JSON response (deploy_hash, block_hash, success).
-                    if hasattr(casper_client, "call_contract_real") and not getattr(
-                        casper_client, "mock", False
-                    ):
+                    if hasattr(casper_client, "call_contract_real") and not getattr(casper_client, "mock", False):
                         result_json = await casper_client.call_contract_real(
                             contract_hash=sentinel_credit_hash,
                             entry_point="deduct_query",
@@ -296,10 +294,7 @@ class IntelAgent:
                             err = result_json.get("error") or "deduct_query failed on-chain"
                             span.set_attribute("intel.credit_denied", True)
                             span.set_attribute("intel.deduct_error", str(err)[:200])
-                            return {
-                                "error": f"Credit deduction failed: {err}. "
-                                "Ensure the caller is the SentinelCredit owner."
-                            }
+                            return {"error": f"Credit deduction failed: {err}. Ensure the caller is the SentinelCredit owner."}
                         deploy_hash = result_json.get("deploy_hash", "")
                         span.set_attribute("intel.deduct_deploy_hash", deploy_hash)
                         span.set_attribute("intel.deduct_verified", True)
@@ -314,23 +309,15 @@ class IntelAgent:
                         )
                         if not deploy_hash:
                             span.set_attribute("intel.credit_denied", True)
-                            return {
-                                "error": "Insufficient credit. "
-                                "Deposit CSPR to SentinelCredit contract."
-                            }
+                            return {"error": "Insufficient credit. Deposit CSPR to SentinelCredit contract."}
                         span.set_attribute("intel.credit_deducted", True)
                 except Exception as exc:
                     span.set_attribute("intel.credit_denied", True)
                     span.record_exception(exc)
-                    return {
-                        "error": "Insufficient credit or deduction failed: "
-                        f"{exc}. Deposit CSPR to SentinelCredit contract."
-                    }
+                    return {"error": f"Insufficient credit or deduction failed: {exc}. Deposit CSPR to SentinelCredit contract."}
 
             # --- Serve findings ----------------------------------------------
-            findings = [
-                f for f in _findings_store if f.get("address", "").startswith(address[:10])
-            ]
+            findings = [f for f in _findings_store if f.get("address", "").startswith(address[:10])]
             if not findings:
                 findings = list(reversed(_findings_store))[:3]
 

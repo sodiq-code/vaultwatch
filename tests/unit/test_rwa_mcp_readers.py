@@ -137,17 +137,17 @@ class TestFindingParser:
         # confidence: u8, description: String, rwa_enriched: bool,
         # agent_model: String, block_height: u64, timestamp: u64, tx_hash: String
         inner = (
-            struct.pack("<Q", 1)                                   # id
-            + R._enc_string("account-hash-abc")                    # address
-            + R._enc_string("wash_trading")                        # risk_type
-            + R._enc_string("HIGH")                                # severity
-            + bytes([88])                                          # confidence
-            + R._enc_string("suspicious volume pattern")           # description
-            + bytes([1])                                           # rwa_enriched (true)
-            + R._enc_string("AnomalyAgent")                        # agent_model
-            + struct.pack("<Q", 5000)                              # block_height
-            + struct.pack("<Q", 1700000000)                        # timestamp
-            + R._enc_string("deadbeef")                            # tx_hash
+            struct.pack("<Q", 1)  # id
+            + R._enc_string("account-hash-abc")  # address
+            + R._enc_string("wash_trading")  # risk_type
+            + R._enc_string("HIGH")  # severity
+            + bytes([88])  # confidence
+            + R._enc_string("suspicious volume pattern")  # description
+            + bytes([1])  # rwa_enriched (true)
+            + R._enc_string("AnomalyAgent")  # agent_model
+            + struct.pack("<Q", 5000)  # block_height
+            + struct.pack("<Q", 1700000000)  # timestamp
+            + R._enc_string("deadbeef")  # tx_hash
         )
         f = R.parse_finding_bytes(inner)
         assert f["id"] == 1
@@ -167,12 +167,12 @@ class TestFindingParser:
 class TestRiskScoreParser:
     def test_parse_risk_score(self):
         inner = (
-            R._enc_string("account-hash-xyz")   # address
-            + bytes([72])                        # score
-            + R._enc_string("liquidity")         # risk_type
-            + bytes([90])                        # confidence
-            + struct.pack("<Q", 1700000000)      # last_updated
-            + struct.pack("<Q", 7)               # finding_id
+            R._enc_string("account-hash-xyz")  # address
+            + bytes([72])  # score
+            + R._enc_string("liquidity")  # risk_type
+            + bytes([90])  # confidence
+            + struct.pack("<Q", 1700000000)  # last_updated
+            + struct.pack("<Q", 7)  # finding_id
         )
         rs = R.parse_risk_score_bytes(inner)
         assert rs["address"] == "account-hash-xyz"
@@ -189,14 +189,15 @@ class TestAlertRecordParser:
         # subscriber_address: Address::Account = tag 0 + 32-byte hash
         acct_hash = bytes.fromhex("0d" + "eb" * 31)  # 32 bytes
         inner = (
-            struct.pack("<Q", 42)                            # log_id
-            + bytes([0]) + acct_hash                          # subscriber_address (Account)
-            + struct.pack("<Q", 9)                            # finding_id
-            + R._enc_string("CRITICAL")                       # severity
-            + R._enc_string("price_crash")                    # risk_type
-            + struct.pack("<Q", 4100)                         # block_height
-            + struct.pack("<Q", 1700000001)                   # timestamp
-            + bytes([1])                                      # delivered (true)
+            struct.pack("<Q", 42)  # log_id
+            + bytes([0])
+            + acct_hash  # subscriber_address (Account)
+            + struct.pack("<Q", 9)  # finding_id
+            + R._enc_string("CRITICAL")  # severity
+            + R._enc_string("price_crash")  # risk_type
+            + struct.pack("<Q", 4100)  # block_height
+            + struct.pack("<Q", 1700000001)  # timestamp
+            + bytes([1])  # delivered (true)
         )
         ar = R.parse_alert_record_bytes(inner)
         assert ar["log_id"] == 42
@@ -212,7 +213,8 @@ class TestAlertRecordParser:
         h = bytes.fromhex("ab" * 32)
         inner = (
             struct.pack("<Q", 1)
-            + bytes([1]) + h
+            + bytes([1])
+            + h
             + struct.pack("<Q", 1)
             + R._enc_string("LOW")
             + R._enc_string("oracle_drift")
@@ -228,12 +230,12 @@ class TestAlertRecordParser:
 class TestSubscriberParser:
     def test_parse_subscriber(self):
         inner = (
-            R._enc_string("account-hash-sub")      # address
-            + R._enc_string("https://hook.x/wh")    # webhook_url
-            + R._enc_string("HIGH")                 # min_severity
-            + bytes([1])                            # active
-            + struct.pack("<Q", 1700000003)         # registered_at
-            + struct.pack("<Q", 3)                  # alert_count
+            R._enc_string("account-hash-sub")  # address
+            + R._enc_string("https://hook.x/wh")  # webhook_url
+            + R._enc_string("HIGH")  # min_severity
+            + bytes([1])  # active
+            + struct.pack("<Q", 1700000003)  # registered_at
+            + struct.pack("<Q", 3)  # alert_count
         )
         sub = R.parse_subscriber_bytes(inner)
         assert sub["address"] == "account-hash-sub"
@@ -247,15 +249,15 @@ class TestSubscriberParser:
 class TestAgentMetricsParser:
     def test_parse_metrics(self):
         inner = (
-            R._enc_string("AnomalyAgent")       # agent_name
-            + struct.pack("<Q", 100)             # total_decisions
-            + struct.pack("<Q", 5)               # corrections_applied
-            + struct.pack("<Q", 2)               # safety_rejections
-            + bytes([87])                        # avg_confidence
-            + struct.pack("<Q", 80)              # high_confidence_count
-            + struct.pack("<Q", 20)              # low_confidence_count
-            + struct.pack("<Q", 4500)            # last_updated_block
-            + bytes([75])                        # trust_score
+            R._enc_string("AnomalyAgent")  # agent_name
+            + struct.pack("<Q", 100)  # total_decisions
+            + struct.pack("<Q", 5)  # corrections_applied
+            + struct.pack("<Q", 2)  # safety_rejections
+            + bytes([87])  # avg_confidence
+            + struct.pack("<Q", 80)  # high_confidence_count
+            + struct.pack("<Q", 20)  # low_confidence_count
+            + struct.pack("<Q", 4500)  # last_updated_block
+            + bytes([75])  # trust_score
         )
         m = R.parse_agent_metrics_bytes(inner)
         assert m["agent_name"] == "AnomalyAgent"
@@ -274,11 +276,14 @@ class TestCreditAccountParser:
         motes = 5_000_000_000
         mag = motes.to_bytes(5, "little")
         inner = (
-            R._enc_string("account-hash-cred")              # owner
-            + struct.pack("<I", len(mag)) + mag              # balance
-            + struct.pack("<I", len(mag)) + mag              # total_deposited
-            + struct.pack("<I", 1) + (1).to_bytes(1, "little")  # total_spent
-            + struct.pack("<Q", 42)                          # query_count
+            R._enc_string("account-hash-cred")  # owner
+            + struct.pack("<I", len(mag))
+            + mag  # balance
+            + struct.pack("<I", len(mag))
+            + mag  # total_deposited
+            + struct.pack("<I", 1)
+            + (1).to_bytes(1, "little")  # total_spent
+            + struct.pack("<Q", 42)  # query_count
         )
         acct = R.parse_credit_account_bytes(inner)
         assert acct["owner"] == "account-hash-cred"
@@ -294,15 +299,20 @@ class TestVaultAccountParser:
         mag = deposit.to_bytes(5, "little")
         zero = b""
         inner = (
-            R._enc_string("account-hash-vault")              # owner_address
-            + struct.pack("<I", len(mag)) + mag              # escrowed_balance
-            + struct.pack("<Q", 1000)                         # locked_until_block
-            + bytes([1])                                      # auto_renew
-            + struct.pack("<I", len(mag)) + mag              # monthly_spend_limit
-            + struct.pack("<I", 1) + (5).to_bytes(1, "little")  # current_period_spent
-            + struct.pack("<I", len(mag)) + mag              # total_deposits
-            + struct.pack("<I", len(zero)) + zero            # total_withdrawals (0)
-            + struct.pack("<Q", 500)                         # created_at_block
+            R._enc_string("account-hash-vault")  # owner_address
+            + struct.pack("<I", len(mag))
+            + mag  # escrowed_balance
+            + struct.pack("<Q", 1000)  # locked_until_block
+            + bytes([1])  # auto_renew
+            + struct.pack("<I", len(mag))
+            + mag  # monthly_spend_limit
+            + struct.pack("<I", 1)
+            + (5).to_bytes(1, "little")  # current_period_spent
+            + struct.pack("<I", len(mag))
+            + mag  # total_deposits
+            + struct.pack("<I", len(zero))
+            + zero  # total_withdrawals (0)
+            + struct.pack("<Q", 500)  # created_at_block
         )
         va = R.parse_vault_account_bytes(inner)
         assert va["owner_address"] == "account-hash-vault"
@@ -321,15 +331,15 @@ class TestRiskPolicyParser:
         # v1 deployed contract: updated_by is a String label
         label = "admin"
         inner = (
-            struct.pack("<I", 1)                 # version (u32)
-            + bytes([75])                         # min_confidence_threshold
-            + bytes([80])                         # critical_score_threshold
-            + bytes([60])                         # high_score_threshold
-            + bytes([40])                         # medium_score_threshold
-            + bytes([2])                          # max_retry_count
-            + bytes([80])                         # safety_rejection_threshold
-            + struct.pack("<Q", 4000)             # updated_at_block
-            + R._enc_string(label)                # updated_by (String)
+            struct.pack("<I", 1)  # version (u32)
+            + bytes([75])  # min_confidence_threshold
+            + bytes([80])  # critical_score_threshold
+            + bytes([60])  # high_score_threshold
+            + bytes([40])  # medium_score_threshold
+            + bytes([2])  # max_retry_count
+            + bytes([80])  # safety_rejection_threshold
+            + struct.pack("<Q", 4000)  # updated_at_block
+            + R._enc_string(label)  # updated_by (String)
         )
         p = R.parse_risk_policy_bytes(inner)
         assert p["version"] == 1
@@ -348,10 +358,15 @@ class TestRiskPolicyParser:
         acct = bytes.fromhex("01" + "23" * 31)  # 32 bytes
         inner = (
             struct.pack("<I", 2)
-            + bytes([80]) + bytes([85]) + bytes([65]) + bytes([45])
-            + bytes([3]) + bytes([90])
+            + bytes([80])
+            + bytes([85])
+            + bytes([65])
+            + bytes([45])
+            + bytes([3])
+            + bytes([90])
             + struct.pack("<Q", 5000)
-            + bytes([0]) + acct  # Address::Account (tag 0)
+            + bytes([0])
+            + acct  # Address::Account (tag 0)
         )
         p = R.parse_risk_policy_bytes(inner)
         assert p["version"] == 2
@@ -386,8 +401,13 @@ class TestDecodeListU8:
 class TestContractRegistry:
     def test_all_8_contracts_present(self):
         expected = {
-            "AuditTrail", "RiskOracle", "SentinelCredit", "SentinelRegistry",
-            "SentinelAlertLog", "AgentBehaviorIndex", "RiskPolicyManager",
+            "AuditTrail",
+            "RiskOracle",
+            "SentinelCredit",
+            "SentinelRegistry",
+            "SentinelAlertLog",
+            "AgentBehaviorIndex",
+            "RiskPolicyManager",
             "SubscriberVault",
         }
         assert set(C.CONTRACTS.keys()) == expected
@@ -415,6 +435,7 @@ class TestContractRegistry:
 
     def test_list_contracts_is_serialisable(self):
         import json
+
         data = C.list_contracts()
         # Must round-trip through JSON (the MCP resource returns JSON).
         json.dumps(data)

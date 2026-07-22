@@ -37,14 +37,38 @@ ENV_EXAMPLE = ROOT / ".env.example"
 # Source file extensions to scan for VITE_GROQ_API_KEY. Excludes binaries,
 # lockfiles, node_modules, dist, etc.
 _SCANNABLE_EXTS = {
-    ".py", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs",
-    ".json", ".md", ".txt", ".yml", ".yaml", ".toml",
-    ".example", ".env", ".sh", ".html", ".css", ".ini", ".cfg",
+    ".py",
+    ".js",
+    ".jsx",
+    ".ts",
+    ".tsx",
+    ".mjs",
+    ".cjs",
+    ".json",
+    ".md",
+    ".txt",
+    ".yml",
+    ".yaml",
+    ".toml",
+    ".example",
+    ".env",
+    ".sh",
+    ".html",
+    ".css",
+    ".ini",
+    ".cfg",
 }
 
 _SKIP_DIRS = {
-    "node_modules", ".git", "dist", "build", "__pycache__",
-    ".venv", "venv", ".pytest_cache", ".ruff_cache",
+    "node_modules",
+    ".git",
+    "dist",
+    "build",
+    "__pycache__",
+    ".venv",
+    "venv",
+    ".pytest_cache",
+    ".ruff_cache",
 }
 
 
@@ -101,27 +125,20 @@ def test_vite_groq_api_key_not_in_dashboard():
 def test_liveapi_has_no_groq_api_key_constant():
     """liveApi.js must NOT define a GROQ_API_KEY constant (browser-exposed)."""
     text = LIVEAPI.read_text(encoding="utf-8")
-    assert "GROQ_API_KEY" not in text, (
-        "dashboard/src/liveApi.js still references GROQ_API_KEY — the Groq key "
-        "must be server-side only (Critical Fix 7)."
-    )
+    assert "GROQ_API_KEY" not in text, "dashboard/src/liveApi.js still references GROQ_API_KEY — the Groq key must be server-side only (Critical Fix 7)."
 
 
 def test_liveapi_has_no_groq_url_constant():
     """liveApi.js must NOT define a GROQ_URL constant."""
     text = LIVEAPI.read_text(encoding="utf-8")
-    assert "GROQ_URL" not in text, (
-        "dashboard/src/liveApi.js still defines GROQ_URL — Groq is now called "
-        "server-side via /api/agent/* (Critical Fix 7)."
-    )
+    assert "GROQ_URL" not in text, "dashboard/src/liveApi.js still defines GROQ_URL — Groq is now called server-side via /api/agent/* (Critical Fix 7)."
 
 
 def test_liveapi_has_no_groqcall_helper():
     """liveApi.js must NOT have a groqCall helper function."""
     text = LIVEAPI.read_text(encoding="utf-8")
     assert "groqCall" not in text, (
-        "dashboard/src/liveApi.js still has a groqCall() helper — Groq calls "
-        "are now proxied server-side via /api/agent/* (Critical Fix 7)."
+        "dashboard/src/liveApi.js still has a groqCall() helper — Groq calls are now proxied server-side via /api/agent/* (Critical Fix 7)."
     )
 
 
@@ -129,8 +146,7 @@ def test_liveapi_has_no_import_meta_vite_groq():
     """liveApi.js must NOT reference import.meta.env.VITE_GROQ*."""
     text = LIVEAPI.read_text(encoding="utf-8")
     assert "import.meta.env.VITE_GROQ" not in text, (
-        "dashboard/src/liveApi.js still reads import.meta.env.VITE_GROQ* — "
-        "the Groq key is no longer shipped to the browser (Critical Fix 7)."
+        "dashboard/src/liveApi.js still reads import.meta.env.VITE_GROQ* — the Groq key is no longer shipped to the browser (Critical Fix 7)."
     )
 
 
@@ -138,8 +154,7 @@ def test_liveapi_has_no_direct_groq_url():
     """liveApi.js must NOT call api.groq.com directly."""
     text = LIVEAPI.read_text(encoding="utf-8")
     assert "api.groq.com" not in text, (
-        "dashboard/src/liveApi.js still calls api.groq.com directly — all "
-        "Groq calls must go through /api/agent/* (Critical Fix 7)."
+        "dashboard/src/liveApi.js still calls api.groq.com directly — all Groq calls must go through /api/agent/* (Critical Fix 7)."
     )
 
 
@@ -150,12 +165,10 @@ def test_liveapi_has_no_groq_authorization_bearer_header():
     # from the frontend. Look for any literal Bearer-header construction
     # that references Groq.
     assert "Authorization': `Bearer" not in text, (
-        "dashboard/src/liveApi.js still constructs an Authorization: Bearer "
-        "header for Groq — the key is now injected server-side (Critical Fix 7)."
+        "dashboard/src/liveApi.js still constructs an Authorization: Bearer header for Groq — the key is now injected server-side (Critical Fix 7)."
     )
     assert 'Authorization": "Bearer' not in text, (
-        "dashboard/src/liveApi.js still constructs an Authorization: Bearer "
-        "header for Groq — the key is now injected server-side (Critical Fix 7)."
+        "dashboard/src/liveApi.js still constructs an Authorization: Bearer header for Groq — the key is now injected server-side (Critical Fix 7)."
     )
 
 
@@ -167,33 +180,25 @@ def test_liveapi_has_no_groq_authorization_bearer_header():
 def test_liveapi_calls_agent_risk_query():
     """liveApi.js must POST to /agent/risk-query."""
     text = LIVEAPI.read_text(encoding="utf-8")
-    assert "/agent/risk-query" in text, (
-        "dashboard/src/liveApi.js should call /agent/risk-query (Critical Fix 7)."
-    )
+    assert "/agent/risk-query" in text, "dashboard/src/liveApi.js should call /agent/risk-query (Critical Fix 7)."
 
 
 def test_liveapi_calls_agent_anomaly_detect():
     """liveApi.js must POST to /agent/anomaly-detect."""
     text = LIVEAPI.read_text(encoding="utf-8")
-    assert "/agent/anomaly-detect" in text, (
-        "dashboard/src/liveApi.js should call /agent/anomaly-detect (Critical Fix 7)."
-    )
+    assert "/agent/anomaly-detect" in text, "dashboard/src/liveApi.js should call /agent/anomaly-detect (Critical Fix 7)."
 
 
 def test_liveapi_calls_agent_rwa_assess():
     """liveApi.js must POST to /agent/rwa-assess."""
     text = LIVEAPI.read_text(encoding="utf-8")
-    assert "/agent/rwa-assess" in text, (
-        "dashboard/src/liveApi.js should call /agent/rwa-assess (Critical Fix 7)."
-    )
+    assert "/agent/rwa-assess" in text, "dashboard/src/liveApi.js should call /agent/rwa-assess (Critical Fix 7)."
 
 
 def test_liveapi_calls_agent_health():
     """liveApi.js must GET /agent/health."""
     text = LIVEAPI.read_text(encoding="utf-8")
-    assert "/agent/health" in text, (
-        "dashboard/src/liveApi.js should call /agent/health (Critical Fix 7)."
-    )
+    assert "/agent/health" in text, "dashboard/src/liveApi.js should call /agent/health (Critical Fix 7)."
 
 
 # ---------------------------------------------------------------------------
@@ -204,33 +209,25 @@ def test_liveapi_calls_agent_health():
 def test_api_main_has_agent_health_endpoint():
     """api/main.py must define GET /agent/health."""
     text = API_MAIN.read_text(encoding="utf-8")
-    assert '@app.get("/agent/health"' in text, (
-        "api/main.py missing GET /agent/health endpoint (Critical Fix 7)."
-    )
+    assert '@app.get("/agent/health"' in text, "api/main.py missing GET /agent/health endpoint (Critical Fix 7)."
 
 
 def test_api_main_has_agent_risk_query_endpoint():
     """api/main.py must define POST /agent/risk-query."""
     text = API_MAIN.read_text(encoding="utf-8")
-    assert '@app.post("/agent/risk-query"' in text, (
-        "api/main.py missing POST /agent/risk-query endpoint (Critical Fix 7)."
-    )
+    assert '@app.post("/agent/risk-query"' in text, "api/main.py missing POST /agent/risk-query endpoint (Critical Fix 7)."
 
 
 def test_api_main_has_agent_anomaly_detect_endpoint():
     """api/main.py must define POST /agent/anomaly-detect."""
     text = API_MAIN.read_text(encoding="utf-8")
-    assert '@app.post("/agent/anomaly-detect"' in text, (
-        "api/main.py missing POST /agent/anomaly-detect endpoint (Critical Fix 7)."
-    )
+    assert '@app.post("/agent/anomaly-detect"' in text, "api/main.py missing POST /agent/anomaly-detect endpoint (Critical Fix 7)."
 
 
 def test_api_main_has_agent_rwa_assess_endpoint():
     """api/main.py must define POST /agent/rwa-assess."""
     text = API_MAIN.read_text(encoding="utf-8")
-    assert '@app.post("/agent/rwa-assess"' in text, (
-        "api/main.py missing POST /agent/rwa-assess endpoint (Critical Fix 7)."
-    )
+    assert '@app.post("/agent/rwa-assess"' in text, "api/main.py missing POST /agent/rwa-assess endpoint (Critical Fix 7)."
 
 
 # ---------------------------------------------------------------------------
@@ -242,9 +239,7 @@ def test_api_main_reads_groq_key_from_os_getenv():
     """api/main.py must read GROQ_API_KEY from os.getenv — not from a request
     header, query param, or body field."""
     text = API_MAIN.read_text(encoding="utf-8")
-    assert 'os.getenv("GROQ_API_KEY"' in text or 'os.getenv("GROQ_API_KEY",' in text, (
-        "api/main.py must read GROQ_API_KEY via os.getenv() (Critical Fix 7)."
-    )
+    assert 'os.getenv("GROQ_API_KEY"' in text or 'os.getenv("GROQ_API_KEY",' in text, "api/main.py must read GROQ_API_KEY via os.getenv() (Critical Fix 7)."
 
 
 def test_api_main_does_not_read_groq_key_from_request_headers():
@@ -266,10 +261,7 @@ def test_api_main_does_not_read_groq_key_from_request_headers():
             line = line.split("#", 1)[0]
         code_lines.append(line)
     code_only = "\n".join(code_lines)
-    assert "groq_api_key" not in code_only, (
-        "api/main.py /agent/* endpoints must not accept a groq_api_key "
-        "field from the client (Critical Fix 7)."
-    )
+    assert "groq_api_key" not in code_only, "api/main.py /agent/* endpoints must not accept a groq_api_key field from the client (Critical Fix 7)."
 
 
 # ---------------------------------------------------------------------------
@@ -307,8 +299,7 @@ def test_agent_request_models_have_no_groq_api_key_field():
     ]
     for token in forbidden_field_decls:
         assert token not in code_only, (
-            f"api/main.py /agent/* section accepts '{token}' from the client "
-            f"— the Groq key must come from os.getenv only (Critical Fix 7)."
+            f"api/main.py /agent/* section accepts '{token}' from the client — the Groq key must come from os.getenv only (Critical Fix 7)."
         )
 
 
@@ -333,10 +324,7 @@ def test_env_example_has_no_vite_groq_api_key():
         if "#" in line:
             line = line.split("#", 1)[0]
         if line.startswith("VITE_GROQ_API_KEY") or "VITE_GROQ_API_KEY=" in line:
-            raise AssertionError(
-                ".env.example assigns VITE_GROQ_API_KEY — the Groq key is "
-                "server-side only (Critical Fix 7)."
-            )
+            raise AssertionError(".env.example assigns VITE_GROQ_API_KEY — the Groq key is server-side only (Critical Fix 7).")
 
 
 def test_env_example_documents_server_side_groq_key():
@@ -350,9 +338,7 @@ def test_env_example_documents_server_side_groq_key():
         if line.startswith("GROQ_API_KEY="):
             found_assignment = True
             break
-    assert found_assignment, (
-        ".env.example must still document the server-side GROQ_API_KEY assignment."
-    )
+    assert found_assignment, ".env.example must still document the server-side GROQ_API_KEY assignment."
 
 
 # ---------------------------------------------------------------------------
@@ -363,9 +349,11 @@ def test_env_example_documents_server_side_groq_key():
 def _import_app():
     """Import the FastAPI app, force re-import if already loaded."""
     import importlib
+
     if "api.main" in sys.modules:
         importlib.reload(sys.modules["api.main"])
     import api.main as api_mod
+
     return api_mod
 
 
@@ -391,12 +379,16 @@ def test_agent_health_returns_dashboard_shape(monkeypatch):
     body = r.json()
     # Must match liveApi.js:liveHealth() shape exactly
     expected_keys = {
-        "status", "version", "mode", "agents", "contracts",
-        "groq_connected", "cspr_price_usd", "network",
+        "status",
+        "version",
+        "mode",
+        "agents",
+        "contracts",
+        "groq_connected",
+        "cspr_price_usd",
+        "network",
     }
-    assert expected_keys.issubset(body.keys()), (
-        f"/agent/health missing keys: {expected_keys - set(body.keys())}"
-    )
+    assert expected_keys.issubset(body.keys()), f"/agent/health missing keys: {expected_keys - set(body.keys())}"
     assert body["status"] == "ok"
     assert body["version"] == "4.0.0"
     assert body["mode"] == "live"
@@ -423,18 +415,15 @@ def test_agent_health_groq_connected_reflects_env(monkeypatch):
 
     with patch("httpx.AsyncClient", return_value=mock_client):
         from fastapi.testclient import TestClient
+
         client = TestClient(api_mod.app)
         r = client.get("/agent/health")
 
     body = r.json()
     assert body["groq_connected"] is True
     # The key itself must NEVER appear in the response
-    assert "secret-groq-key-do-not-leak-abc" not in r.text, (
-        "/agent/health leaked the Groq API key in the response body"
-    )
-    assert "secret-groq-key-do-not-leak-abc" not in str(r.headers), (
-        "/agent/health leaked the Groq API key in the response headers"
-    )
+    assert "secret-groq-key-do-not-leak-abc" not in r.text, "/agent/health leaked the Groq API key in the response body"
+    assert "secret-groq-key-do-not-leak-abc" not in str(r.headers), "/agent/health leaked the Groq API key in the response headers"
 
 
 def test_agent_health_groq_connected_false_when_unset(monkeypatch):
@@ -452,6 +441,7 @@ def test_agent_health_groq_connected_false_when_unset(monkeypatch):
 
     with patch("httpx.AsyncClient", return_value=mock_client):
         from fastapi.testclient import TestClient
+
         client = TestClient(api_mod.app)
         r = client.get("/agent/health")
 
@@ -482,9 +472,9 @@ def test_agent_risk_query_returns_dashboard_shape(monkeypatch):
     safety_mock = MagicMock()
     safety_mock.check = _fake_check
 
-    with patch.object(api_mod, "_get_intel", return_value=intel_mock), \
-         patch.object(api_mod, "_get_safety", return_value=safety_mock):
+    with patch.object(api_mod, "_get_intel", return_value=intel_mock), patch.object(api_mod, "_get_safety", return_value=safety_mock):
         from fastapi.testclient import TestClient
+
         client = TestClient(api_mod.app)
         r = client.post(
             "/agent/risk-query",
@@ -497,12 +487,16 @@ def test_agent_risk_query_returns_dashboard_shape(monkeypatch):
     assert "result" in body
     result = body["result"]
     expected_keys = {
-        "summary", "risk_factors", "confidence", "severity",
-        "recommendation", "groq_model", "on_chain_contract", "on_chain_hash",
+        "summary",
+        "risk_factors",
+        "confidence",
+        "severity",
+        "recommendation",
+        "groq_model",
+        "on_chain_contract",
+        "on_chain_hash",
     }
-    assert expected_keys.issubset(result.keys()), (
-        f"/agent/risk-query result missing keys: {expected_keys - set(result.keys())}"
-    )
+    assert expected_keys.issubset(result.keys()), f"/agent/risk-query result missing keys: {expected_keys - set(result.keys())}"
     assert "CasperSwap" in result["summary"] or "whale" in result["summary"].lower()
     assert isinstance(result["risk_factors"], list)
     assert isinstance(result["confidence"], float)
@@ -537,6 +531,7 @@ def test_agent_anomaly_detect_returns_dashboard_shape(monkeypatch):
 
     with patch.object(api_mod, "_get_anomaly", return_value=anomaly_mock):
         from fastapi.testclient import TestClient
+
         client = TestClient(api_mod.app)
         r = client.post(
             "/agent/anomaly-detect",
@@ -554,12 +549,16 @@ def test_agent_anomaly_detect_returns_dashboard_shape(monkeypatch):
     body = r.json()
     # Must match liveApi.js:liveDetectAnomaly() shape exactly
     expected_keys = {
-        "risk_score", "anomalies", "recommendation", "confidence",
-        "agent", "severity", "self_correction_applied", "on_chain_contract",
+        "risk_score",
+        "anomalies",
+        "recommendation",
+        "confidence",
+        "agent",
+        "severity",
+        "self_correction_applied",
+        "on_chain_contract",
     }
-    assert expected_keys.issubset(body.keys()), (
-        f"/agent/anomaly-detect missing keys: {expected_keys - set(body.keys())}"
-    )
+    assert expected_keys.issubset(body.keys()), f"/agent/anomaly-detect missing keys: {expected_keys - set(body.keys())}"
     assert body["risk_score"] == 87.0
     assert "whale_dump" in body["anomalies"]
     assert body["recommendation"] == "Halt withdrawals immediately"
@@ -591,6 +590,7 @@ def test_agent_rwa_assess_returns_dashboard_shape(monkeypatch):
 
     with patch.object(api_mod, "_get_rwa", return_value=rwa_mock):
         from fastapi.testclient import TestClient
+
         client = TestClient(api_mod.app)
         r = client.post(
             "/agent/rwa-assess",
@@ -610,14 +610,17 @@ def test_agent_rwa_assess_returns_dashboard_shape(monkeypatch):
     assert "assessment" in body
     assessment = body["assessment"]
     expected_keys = {
-        "verdict", "risk_score", "notes", "risk_factors", "groq_model",
-        "collateral_assessment", "regulatory_status",
-        "on_chain_contract", "on_chain_hash",
+        "verdict",
+        "risk_score",
+        "notes",
+        "risk_factors",
+        "groq_model",
+        "collateral_assessment",
+        "regulatory_status",
+        "on_chain_contract",
+        "on_chain_hash",
     }
-    assert expected_keys.issubset(assessment.keys()), (
-        f"/agent/rwa-assess assessment missing keys: "
-        f"{expected_keys - set(assessment.keys())}"
-    )
+    assert expected_keys.issubset(assessment.keys()), f"/agent/rwa-assess assessment missing keys: {expected_keys - set(assessment.keys())}"
     assert assessment["verdict"] == "APPROVED"
     assert assessment["risk_score"] == 12.0
     assert "sovereign" in assessment["notes"].lower()
@@ -655,6 +658,7 @@ def test_agent_endpoints_do_not_accept_groq_api_key_in_body(monkeypatch):
 
     with patch.object(api_mod, "_get_anomaly", return_value=anomaly_mock):
         from fastapi.testclient import TestClient
+
         client = TestClient(api_mod.app)
         # Client tries to inject a fake Groq key — must be ignored by pydantic
         # (extra fields are ignored by default in BaseModel).
@@ -675,9 +679,7 @@ def test_agent_endpoints_do_not_accept_groq_api_key_in_body(monkeypatch):
     # The endpoint must succeed (pydantic ignores extras by default) and
     # MUST NOT use the client-supplied key — the agent only sees the metrics.
     assert r.status_code == 200
-    assert "fake-client-key-attacker-controlled" not in r.text, (
-        "/agent/anomaly-detect echoed the client-supplied fake key in the response"
-    )
+    assert "fake-client-key-attacker-controlled" not in r.text, "/agent/anomaly-detect echoed the client-supplied fake key in the response"
     # Verify the agent only saw the legitimate metrics, not the fake key
     assert "groq_api_key" not in captured_metrics
     assert "api_key" not in captured_metrics

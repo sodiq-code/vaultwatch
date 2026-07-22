@@ -182,10 +182,7 @@ class AgentWallet:
         path = Path(key_path or os.getenv("VAULTWATCH_AGENT_KEY_PATH") or DEFAULT_AGENT_KEY_PATH)
         if not path.exists():
             if not create_if_missing:
-                raise AgentWalletError(
-                    f"No agent wallet at {path}. Run "
-                    f"`node scripts/csprclick_agent_wallet.cjs create` first."
-                )
+                raise AgentWalletError(f"No agent wallet at {path}. Run `node scripts/csprclick_agent_wallet.cjs create` first.")
             cls._create_keypair(path, key_algorithm, rpc_url, chain_name)
 
         return cls.load(key_path=path, rpc_url=rpc_url, chain_name=chain_name)
@@ -267,16 +264,11 @@ class AgentWallet:
     def assert_funded(self, min_cspr: float = 1.0) -> None:
         """Raise :class:`AgentWalletUnfunded` if balance is below ``min_cspr``."""
         if self.balance_motes is None:
-            raise AgentWalletUnfunded(
-                f"Agent wallet {self.public_key} has no on-chain account yet. "
-                f"Fund it at {self.faucet_url} (paste the public key)."
-            )
+            raise AgentWalletUnfunded(f"Agent wallet {self.public_key} has no on-chain account yet. Fund it at {self.faucet_url} (paste the public key).")
         bal_cspr = self.balance_motes / 1_000_000_000
         if bal_cspr < min_cspr:
             raise AgentWalletUnfunded(
-                f"Agent wallet {self.public_key} balance {bal_cspr:.2f} CSPR "
-                f"is below the minimum {min_cspr:.2f} CSPR. "
-                f"Refill at {self.faucet_url}."
+                f"Agent wallet {self.public_key} balance {bal_cspr:.2f} CSPR is below the minimum {min_cspr:.2f} CSPR. Refill at {self.faucet_url}."
             )
 
     def call_contract(
@@ -371,9 +363,7 @@ class AgentWallet:
         if not result.get("ok"):
             raise AgentWalletError(f"agent_wallet.cjs create failed: {result.get('error')}")
         logger.info(
-            "Created NEW agent wallet: public_key=%s account_hash=%s\n"
-            "  Fund it at: %s\n"
-            "  Explorer:   %s",
+            "Created NEW agent wallet: public_key=%s account_hash=%s\n  Fund it at: %s\n  Explorer:   %s",
             result.get("public_key"),
             result.get("account_hash"),
             result.get("faucet_url"),
@@ -421,16 +411,11 @@ class AgentWallet:
         except subprocess.TimeoutExpired as e:
             raise AgentWalletError(f"agent_wallet.cjs {args[0]} timed out") from e
         if proc.returncode != 0:
-            raise AgentWalletError(
-                f"agent_wallet.cjs {args[0]} exited {proc.returncode}: "
-                f"{proc.stderr.strip()[:500] or proc.stdout.strip()[:500]}"
-            )
+            raise AgentWalletError(f"agent_wallet.cjs {args[0]} exited {proc.returncode}: {proc.stderr.strip()[:500] or proc.stdout.strip()[:500]}")
         try:
             return json.loads(proc.stdout)
         except json.JSONDecodeError as e:
-            raise AgentWalletError(
-                f"agent_wallet.cjs {args[0]} returned non-JSON: {proc.stdout[:500]}"
-            ) from e
+            raise AgentWalletError(f"agent_wallet.cjs {args[0]} returned non-JSON: {proc.stdout[:500]}") from e
 
     def _run_call_helper(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Run ``scripts/casper_call.cjs`` with the given JSON payload."""
@@ -449,15 +434,11 @@ class AgentWallet:
             raise AgentWalletError(f"casper_call.cjs timed out after {timeout}s") from e
         if proc.returncode != 0:
             stderr = proc.stderr.decode("utf-8", errors="replace")[:1000]
-            raise AgentWalletError(
-                f"casper_call.cjs exited {proc.returncode}: {stderr}"
-            )
+            raise AgentWalletError(f"casper_call.cjs exited {proc.returncode}: {stderr}")
         try:
             return json.loads(proc.stdout.decode("utf-8"))
         except json.JSONDecodeError as e:
-            raise AgentWalletError(
-                f"casper_call.cjs returned non-JSON: {proc.stdout[:500]}"
-            ) from e
+            raise AgentWalletError(f"casper_call.cjs returned non-JSON: {proc.stdout[:500]}") from e
 
 
 # ---------------------------------------------------------------------------

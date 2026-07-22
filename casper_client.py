@@ -376,9 +376,7 @@ class CasperContractClient:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
-            stdout, stderr = await proc.communicate(
-                json.dumps(payload).encode("utf-8")
-            )
+            stdout, stderr = await proc.communicate(json.dumps(payload).encode("utf-8"))
             if proc.returncode != 0:
                 err = stderr.decode("utf-8", errors="replace").strip()[:500]
                 span.set_attribute("error", err)

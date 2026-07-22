@@ -60,8 +60,12 @@ CONTRACT_REQUIRED_EXPORTS: Dict[str, List[str]] = {
     "RiskPolicyManager": ["call", "init", "upgrade_policy", "get_current_policy"],
     "SubscriberVault": ["call", "init", "open_vault", "withdraw", "top_up"],
     "RiskPolicyManagerV2": [
-        "call", "init", "upgrade_policy", "get_current_policy",
-        "get_policy_with_reasoning", "upgrade",
+        "call",
+        "init",
+        "upgrade_policy",
+        "get_current_policy",
+        "get_policy_with_reasoning",
+        "upgrade",
     ],
 }
 
@@ -107,16 +111,10 @@ def test_check_wasm_bulk_memory_script_passes_on_all_wasms():
         text=True,
         timeout=60,
     )
-    assert proc.returncode == 0, (
-        f"check_wasm_bulk_memory.py FAILED (exit {proc.returncode}):\n"
-        f"--- stdout ---\n{proc.stdout}\n"
-        f"--- stderr ---\n{proc.stderr}"
-    )
+    assert proc.returncode == 0, f"check_wasm_bulk_memory.py FAILED (exit {proc.returncode}):\n--- stdout ---\n{proc.stdout}\n--- stderr ---\n{proc.stderr}"
     # The script should mention each WASM file as PASS.
     for wasm_name in EXPECTED_WASM_FILES:
-        assert wasm_name in proc.stdout, (
-            f"{wasm_name} not mentioned in check_wasm_bulk_memory.py output:\n{proc.stdout}"
-        )
+        assert wasm_name in proc.stdout, f"{wasm_name} not mentioned in check_wasm_bulk_memory.py output:\n{proc.stdout}"
 
 
 @pytest.mark.parametrize("wasm_name", EXPECTED_WASM_FILES)
@@ -130,9 +128,7 @@ def test_wasm_validates(wasm_name):
         text=True,
         timeout=30,
     )
-    assert proc.returncode == 0, (
-        f"wasm-validate FAILED on {wasm_name} (exit {proc.returncode}):\n{proc.stderr}"
-    )
+    assert proc.returncode == 0, f"wasm-validate FAILED on {wasm_name} (exit {proc.returncode}):\n{proc.stderr}"
 
 
 # ---------------------------------------------------------------------------
@@ -151,9 +147,7 @@ def _wasm_objdump(wasm_path: Path, flag: str = "-x") -> str:
         text=True,
         timeout=30,
     )
-    assert proc.returncode == 0, (
-        f"wasm-objdump {flag} FAILED on {wasm_path.name} (exit {proc.returncode}):\n{proc.stderr}"
-    )
+    assert proc.returncode == 0, f"wasm-objdump {flag} FAILED on {wasm_path.name} (exit {proc.returncode}):\n{proc.stderr}"
     return proc.stdout
 
 
@@ -164,10 +158,7 @@ def test_wasm_objdump_section_header(wasm_name):
     out = _wasm_objdump(WASM_DIR / wasm_name, "-x")
     # Every Odra contract WASM has at minimum these sections.
     for required_section in ("Type", "Import", "Function", "Memory", "Export"):
-        assert required_section in out, (
-            f"{wasm_name}: wasm-objdump output missing '{required_section}' section.\n"
-            f"Output:\n{out[:2000]}"
-        )
+        assert required_section in out, f"{wasm_name}: wasm-objdump output missing '{required_section}' section.\nOutput:\n{out[:2000]}"
 
 
 @pytest.mark.parametrize("wasm_name", EXPECTED_WASM_FILES)
@@ -187,10 +178,7 @@ def test_wasm_exports_required_entry_points(wasm_name):
     # wasm-objdump output: "  - func <name> -> <name>" or similar.
     # We just check each required export name appears anywhere in the output.
     missing = [name for name in required if name not in out]
-    assert not missing, (
-        f"{wasm_name}: required exports missing from wasm-objdump output: {missing}.\n"
-        f"Output excerpt:\n{out[:3000]}"
-    )
+    assert not missing, f"{wasm_name}: required exports missing from wasm-objdump output: {missing}.\nOutput excerpt:\n{out[:3000]}"
 
 
 @pytest.mark.parametrize("wasm_name", EXPECTED_WASM_FILES)
@@ -205,10 +193,7 @@ def test_wasm_does_not_import_bulk_memory_intrinsics(wasm_name):
     out = _wasm_objdump(WASM_DIR / wasm_name, "-x")
     forbidden = ["memory.copy", "memory.fill", "table.copy", "table.fill", "table.init"]
     found = [s for s in forbidden if s in out]
-    assert not found, (
-        f"{wasm_name}: wasm-objdump output mentions forbidden bulk-memory intrinsics {found}.\n"
-        f"Output excerpt:\n{out[:3000]}"
-    )
+    assert not found, f"{wasm_name}: wasm-objdump output mentions forbidden bulk-memory intrinsics {found}.\nOutput excerpt:\n{out[:3000]}"
 
 
 # ---------------------------------------------------------------------------
@@ -222,6 +207,4 @@ def test_wasm_size_in_expected_range(wasm_name):
     a stub build (cargo-odra bin build issue from Task 2); a > 1 MB WASM
     indicates the bulk-memory lowering was skipped."""
     size = (WASM_DIR / wasm_name).stat().st_size
-    assert 50_000 <= size <= 1_500_000, (
-        f"{wasm_name}: size {size} bytes is outside the expected 50KB-1.5MB range"
-    )
+    assert 50_000 <= size <= 1_500_000, f"{wasm_name}: size {size} bytes is outside the expected 50KB-1.5MB range"

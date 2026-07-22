@@ -63,10 +63,16 @@ def _patch_rpc(monkeypatch, responses):
             return {"result": {"state_root_hash": "ab" * 32}}
         if method == "query_global_state" and params and params[1].startswith("hash-"):
             # contract hash lookup → return a Contract with a 'state' named key
-            return {"result": {"stored_value": {"Contract": {
-                "named_keys": [{"name": "state", "key": "uref-" + "cd" * 32 + "-007"}],
-                "entry_points": [],
-            }}}}
+            return {
+                "result": {
+                    "stored_value": {
+                        "Contract": {
+                            "named_keys": [{"name": "state", "key": "uref-" + "cd" * 32 + "-007"}],
+                            "entry_points": [],
+                        }
+                    }
+                }
+            }
         # dictionary read
         if i < len(responses):
             return responses[i]
@@ -177,12 +183,7 @@ class TestReadTools:
     @pytest.mark.asyncio
     async def test_rwa_risk_get_score(self, monkeypatch):
         inner = (
-            R._enc_string("account-hash-risky")
-            + bytes([85])
-            + R._enc_string("liquidity")
-            + bytes([92])
-            + struct.pack("<Q", 1700000001)
-            + struct.pack("<Q", 5)
+            R._enc_string("account-hash-risky") + bytes([85]) + R._enc_string("liquidity") + bytes([92]) + struct.pack("<Q", 1700000001) + struct.pack("<Q", 5)
         )
         _patch_rpc(monkeypatch, [_mock_rpc_response_for_dict(_clvalue(inner))])
         async with Client(srv.mcp) as c:
@@ -194,11 +195,7 @@ class TestReadTools:
 
     @pytest.mark.asyncio
     async def test_rwa_risk_is_high_risk_above_threshold(self, monkeypatch):
-        inner = (
-            R._enc_string("addr")
-            + bytes([85]) + R._enc_string("liquidity") + bytes([90])
-            + struct.pack("<Q", 1) + struct.pack("<Q", 1)
-        )
+        inner = R._enc_string("addr") + bytes([85]) + R._enc_string("liquidity") + bytes([90]) + struct.pack("<Q", 1) + struct.pack("<Q", 1)
         _patch_rpc(monkeypatch, [_mock_rpc_response_for_dict(_clvalue(inner))])
         async with Client(srv.mcp) as c:
             r = await c.call_tool("rwa_risk_is_high_risk", {"address": "addr", "threshold": 70})
@@ -208,11 +205,7 @@ class TestReadTools:
 
     @pytest.mark.asyncio
     async def test_rwa_risk_is_high_risk_below_threshold(self, monkeypatch):
-        inner = (
-            R._enc_string("addr")
-            + bytes([50]) + R._enc_string("liquidity") + bytes([90])
-            + struct.pack("<Q", 1) + struct.pack("<Q", 1)
-        )
+        inner = R._enc_string("addr") + bytes([50]) + R._enc_string("liquidity") + bytes([90]) + struct.pack("<Q", 1) + struct.pack("<Q", 1)
         _patch_rpc(monkeypatch, [_mock_rpc_response_for_dict(_clvalue(inner))])
         async with Client(srv.mcp) as c:
             r = await c.call_tool("rwa_risk_is_high_risk", {"address": "addr", "threshold": 70})
@@ -231,10 +224,7 @@ class TestReadTools:
     @pytest.mark.asyncio
     async def test_rwa_policy_get_current(self, monkeypatch):
         label = "admin"
-        inner = (
-            struct.pack("<I", 1) + bytes([75, 80, 60, 40, 2, 80])
-            + struct.pack("<Q", 4000) + R._enc_string(label)
-        )
+        inner = struct.pack("<I", 1) + bytes([75, 80, 60, 40, 2, 80]) + struct.pack("<Q", 4000) + R._enc_string(label)
         _patch_rpc(monkeypatch, [_mock_rpc_response_for_dict(_clvalue(inner))])
         async with Client(srv.mcp) as c:
             r = await c.call_tool("rwa_policy_get_current", {})
@@ -247,9 +237,14 @@ class TestReadTools:
     async def test_rwa_agent_get_metrics(self, monkeypatch):
         inner = (
             R._enc_string("AnomalyAgent")
-            + struct.pack("<Q", 50) + struct.pack("<Q", 3) + struct.pack("<Q", 1)
-            + bytes([88]) + struct.pack("<Q", 40) + struct.pack("<Q", 10)
-            + struct.pack("<Q", 4500) + bytes([82])
+            + struct.pack("<Q", 50)
+            + struct.pack("<Q", 3)
+            + struct.pack("<Q", 1)
+            + bytes([88])
+            + struct.pack("<Q", 40)
+            + struct.pack("<Q", 10)
+            + struct.pack("<Q", 4500)
+            + bytes([82])
         )
         _patch_rpc(monkeypatch, [_mock_rpc_response_for_dict(_clvalue(inner))])
         async with Client(srv.mcp) as c:
@@ -265,10 +260,13 @@ class TestReadTools:
         mag = motes.to_bytes(5, "little")
         inner = (
             R._enc_string("account-hash-cred")
-            + struct.pack("<I", len(mag)) + mag           # balance
-            + struct.pack("<I", len(mag)) + mag           # total_deposited
-            + struct.pack("<I", 1) + (1).to_bytes(1, "little")  # total_spent
-            + struct.pack("<Q", 7)                         # query_count
+            + struct.pack("<I", len(mag))
+            + mag  # balance
+            + struct.pack("<I", len(mag))
+            + mag  # total_deposited
+            + struct.pack("<I", 1)
+            + (1).to_bytes(1, "little")  # total_spent
+            + struct.pack("<Q", 7)  # query_count
         )
         _patch_rpc(monkeypatch, [_mock_rpc_response_for_dict(_clvalue(inner))])
         async with Client(srv.mcp) as c:
@@ -297,10 +295,16 @@ class TestResources:
             d = json.loads(res[0].text)
             assert isinstance(d, list)
             assert len(d) == 8
-            assert d[0]["name"] in {"AuditTrail", "RiskOracle", "SentinelCredit",
-                                     "SentinelRegistry", "SentinelAlertLog",
-                                     "AgentBehaviorIndex", "RiskPolicyManager",
-                                     "SubscriberVault"}
+            assert d[0]["name"] in {
+                "AuditTrail",
+                "RiskOracle",
+                "SentinelCredit",
+                "SentinelRegistry",
+                "SentinelAlertLog",
+                "AgentBehaviorIndex",
+                "RiskPolicyManager",
+                "SubscriberVault",
+            }
 
     @pytest.mark.asyncio
     async def test_rwa_audit_count_resource(self, monkeypatch):
@@ -377,13 +381,16 @@ class TestWriteTools:
         monkeypatch.setattr(W, "get_wallet", lambda: fake_wallet)
         monkeypatch.setattr(srv.W, "get_wallet", lambda: fake_wallet)
         async with Client(srv.mcp) as c:
-            r = await c.call_tool("rwa_audit_record_finding", {
-                "address": "account-hash-target",
-                "risk_type": "wash_trading",
-                "severity": "HIGH",
-                "confidence": 88,
-                "description": "suspicious volume",
-            })
+            r = await c.call_tool(
+                "rwa_audit_record_finding",
+                {
+                    "address": "account-hash-target",
+                    "risk_type": "wash_trading",
+                    "severity": "HIGH",
+                    "confidence": 88,
+                    "description": "suspicious volume",
+                },
+            )
             d = json.loads(r.content[0].text)
             assert d["status"] == "deployed_on_chain"
             assert d["on_chain_verified"] is True
@@ -401,18 +408,25 @@ class TestWriteTools:
     async def test_rwa_policy_upgrade(self, monkeypatch):
         fake_wallet = MagicMock()
         fake_wallet.call_contract.return_value = {
-            "success": True, "deploy_hash": "abc" * 21, "block_hash": "def" * 21,
-            "cost_motes": "2500000000", "link": "https://testnet.cspr.live/deploy/abc",
-            "deployer_account_hash": "account-hash-x", "error": None,
+            "success": True,
+            "deploy_hash": "abc" * 21,
+            "block_hash": "def" * 21,
+            "cost_motes": "2500000000",
+            "link": "https://testnet.cspr.live/deploy/abc",
+            "deployer_account_hash": "account-hash-x",
+            "error": None,
         }
         monkeypatch.setattr(W, "get_wallet", lambda: fake_wallet)
         monkeypatch.setattr(srv.W, "get_wallet", lambda: fake_wallet)
         async with Client(srv.mcp) as c:
-            r = await c.call_tool("rwa_policy_upgrade", {
-                "min_confidence_threshold": 80,
-                "critical_score_threshold": 85,
-                "updated_by": "test-agent",
-            })
+            r = await c.call_tool(
+                "rwa_policy_upgrade",
+                {
+                    "min_confidence_threshold": 80,
+                    "critical_score_threshold": 85,
+                    "updated_by": "test-agent",
+                },
+            )
             d = json.loads(r.content[0].text)
             assert d["status"] == "deployed_on_chain"
             assert d["contract"] == "RiskPolicyManager"
@@ -424,16 +438,24 @@ class TestWriteTools:
     async def test_rwa_agent_record_decision(self, monkeypatch):
         fake_wallet = MagicMock()
         fake_wallet.call_contract.return_value = {
-            "success": True, "deploy_hash": "dec" * 21, "block_hash": "blk" * 21,
-            "cost_motes": "2500000000", "link": "https://testnet.cspr.live/deploy/dec",
-            "deployer_account_hash": "account-hash-y", "error": None,
+            "success": True,
+            "deploy_hash": "dec" * 21,
+            "block_hash": "blk" * 21,
+            "cost_motes": "2500000000",
+            "link": "https://testnet.cspr.live/deploy/dec",
+            "deployer_account_hash": "account-hash-y",
+            "error": None,
         }
         monkeypatch.setattr(W, "get_wallet", lambda: fake_wallet)
         monkeypatch.setattr(srv.W, "get_wallet", lambda: fake_wallet)
         async with Client(srv.mcp) as c:
-            r = await c.call_tool("rwa_agent_record_decision", {
-                "agent_name": "RWAAgent", "confidence": 91,
-            })
+            r = await c.call_tool(
+                "rwa_agent_record_decision",
+                {
+                    "agent_name": "RWAAgent",
+                    "confidence": 91,
+                },
+            )
             d = json.loads(r.content[0].text)
             assert d["status"] == "deployed_on_chain"
             assert d["contract"] == "AgentBehaviorIndex"
@@ -445,17 +467,25 @@ class TestWriteTools:
     async def test_rwa_sentinel_register(self, monkeypatch):
         fake_wallet = MagicMock()
         fake_wallet.call_contract.return_value = {
-            "success": True, "deploy_hash": "reg" * 21, "block_hash": "b" * 63,
-            "cost_motes": "2500000000", "link": "https://testnet.cspr.live/deploy/reg",
-            "deployer_account_hash": "account-hash-z", "error": None,
+            "success": True,
+            "deploy_hash": "reg" * 21,
+            "block_hash": "b" * 63,
+            "cost_motes": "2500000000",
+            "link": "https://testnet.cspr.live/deploy/reg",
+            "deployer_account_hash": "account-hash-z",
+            "error": None,
         }
         monkeypatch.setattr(W, "get_wallet", lambda: fake_wallet)
         monkeypatch.setattr(srv.W, "get_wallet", lambda: fake_wallet)
         async with Client(srv.mcp) as c:
-            r = await c.call_tool("rwa_sentinel_register", {
-                "address": "account-hash-sub", "webhook_url": "https://hook.x/wh",
-                "min_severity": "CRITICAL",
-            })
+            r = await c.call_tool(
+                "rwa_sentinel_register",
+                {
+                    "address": "account-hash-sub",
+                    "webhook_url": "https://hook.x/wh",
+                    "min_severity": "CRITICAL",
+                },
+            )
             d = json.loads(r.content[0].text)
             assert d["status"] == "deployed_on_chain"
             assert d["contract"] == "SentinelRegistry"
@@ -464,15 +494,22 @@ class TestWriteTools:
     @pytest.mark.asyncio
     async def test_rwa_write_handles_wallet_error(self, monkeypatch):
         from agents.agent_wallet import AgentWalletError
+
         fake_wallet = MagicMock()
         fake_wallet.call_contract.side_effect = AgentWalletError("unfunded wallet")
         monkeypatch.setattr(W, "get_wallet", lambda: fake_wallet)
         monkeypatch.setattr(srv.W, "get_wallet", lambda: fake_wallet)
         async with Client(srv.mcp) as c:
-            r = await c.call_tool("rwa_audit_record_finding", {
-                "address": "addr", "risk_type": "t", "severity": "LOW",
-                "confidence": 50, "description": "d",
-            })
+            r = await c.call_tool(
+                "rwa_audit_record_finding",
+                {
+                    "address": "addr",
+                    "risk_type": "t",
+                    "severity": "LOW",
+                    "confidence": 50,
+                    "description": "d",
+                },
+            )
             d = json.loads(r.content[0].text)
             assert d["status"] == "deploy_failed"
             assert d["on_chain_verified"] is False
@@ -495,26 +532,34 @@ class TestWriteTools:
 
             async def communicate(self, stdin):
                 captured["payload"] = json.loads(stdin.decode())
-                return (json.dumps({
-                    "success": True,
-                    "deployHash": "vault" + "0" * 59,
-                    "blockHash": "b" * 64,
-                    "gasCostMotes": "2500000000",
-                    "link": "https://testnet.cspr.live/deploy/vault",
-                    "deployerAccountHash": "account-hash-v",
-                    "error": None,
-                }).encode(), b"")
+                return (
+                    json.dumps(
+                        {
+                            "success": True,
+                            "deployHash": "vault" + "0" * 59,
+                            "blockHash": "b" * 64,
+                            "gasCostMotes": "2500000000",
+                            "link": "https://testnet.cspr.live/deploy/vault",
+                            "deployerAccountHash": "account-hash-v",
+                            "error": None,
+                        }
+                    ).encode(),
+                    b"",
+                )
 
         async def fake_exec(*args, **kwargs):
             return FakeProc()
 
         monkeypatch.setattr(W.asyncio, "create_subprocess_exec", fake_exec)
         async with Client(srv.mcp) as c:
-            r = await c.call_tool("rwa_vault_open", {
-                "subscriber_address": "account-hash-sub",
-                "initial_deposit_motes": 5_000_000_000,
-                "lock_blocks": 0,
-            })
+            r = await c.call_tool(
+                "rwa_vault_open",
+                {
+                    "subscriber_address": "account-hash-sub",
+                    "initial_deposit_motes": 5_000_000_000,
+                    "lock_blocks": 0,
+                },
+            )
             d = json.loads(r.content[0].text)
             assert d["status"] == "deployed_on_chain"
             assert d["contract"] == "SubscriberVault"

@@ -46,10 +46,7 @@ def test_api_version_is_casper_2x(casper_node_status):
     ``add_contract_version`` 4-arg form introduced in Casper 2.x (the v2
     upgrade PROOF.md §10 depends on it)."""
     api_version = casper_node_status.get("api_version", "")
-    assert api_version.startswith("2."), (
-        f"expected Casper 2.x api_version, got {api_version!r} — "
-        "the public testnet node may have rolled back to 1.x."
-    )
+    assert api_version.startswith("2."), f"expected Casper 2.x api_version, got {api_version!r} — the public testnet node may have rolled back to 1.x."
 
 
 def test_build_version_present(casper_node_status):
@@ -71,19 +68,16 @@ def test_node_has_peers(casper_node_status):
 
 def test_deployer_account_exists_on_chain(deployer_account):
     """The deployer account (Account 2) must exist on Casper testnet."""
-    assert deployer_account.get("account_hash") == DEPLOYER_ACCOUNT_HASH, (
-        f"unexpected account hash: {deployer_account.get('account_hash')!r}"
-    )
+    assert deployer_account.get("account_hash") == DEPLOYER_ACCOUNT_HASH, f"unexpected account hash: {deployer_account.get('account_hash')!r}"
 
 
 def test_deployer_account_has_associated_key(deployer_account):
     """The deployer public key must be in ``associated_keys`` with weight 1
     (so it can sign deploys under the default action_thresholds)."""
     keys = deployer_account.get("associated_keys", [])
-    assert any(
-        k.get("account_hash") == DEPLOYER_ACCOUNT_HASH and k.get("weight", 0) >= 1
-        for k in keys
-    ), f"deployer public key {DEPLOYER_PUBLIC_KEY} not in associated_keys: {keys}"
+    assert any(k.get("account_hash") == DEPLOYER_ACCOUNT_HASH and k.get("weight", 0) >= 1 for k in keys), (
+        f"deployer public key {DEPLOYER_PUBLIC_KEY} not in associated_keys: {keys}"
+    )
 
 
 def test_deployer_balance_above_gas_floor(deployer_balance_cspr, request):
@@ -116,10 +110,7 @@ def test_deployer_has_named_keys_for_contracts(deployer_account):
         "subscriber_vault_package_hash",
     }
     missing = expected_ownerships - named_keys
-    assert not missing, (
-        f"deployer missing expected named keys: {missing}. "
-        f"Present named keys: {sorted(named_keys)}"
-    )
+    assert not missing, f"deployer missing expected named keys: {missing}. Present named keys: {sorted(named_keys)}"
 
 
 def test_deployer_action_thresholds_default(deployer_account):
@@ -127,12 +118,8 @@ def test_deployer_action_thresholds_default(deployer_account):
     single deployer key alone is sufficient to install contracts and manage
     keys. Required for the e2e deploys to succeed."""
     thresholds = deployer_account.get("action_thresholds", {})
-    assert thresholds.get("deployment", 0) <= 1, (
-        f"deployment threshold too high for single-key signer: {thresholds}"
-    )
-    assert thresholds.get("key_management", 0) <= 1, (
-        f"key_management threshold too high for single-key signer: {thresholds}"
-    )
+    assert thresholds.get("deployment", 0) <= 1, f"deployment threshold too high for single-key signer: {thresholds}"
+    assert thresholds.get("key_management", 0) <= 1, f"key_management threshold too high for single-key signer: {thresholds}"
 
 
 # ---------------------------------------------------------------------------
@@ -157,9 +144,7 @@ def test_state_root_hash_is_fresh(rpc_url, state_root_hash):
     )
     # query_global_state returns stored_value.Account for account-hash- keys.
     account = result.get("stored_value", {}).get("Account", {})
-    assert account.get("account_hash") == DEPLOYER_ACCOUNT_HASH, (
-        f"state root hash {state_root_hash} did not resolve the deployer account: {result}"
-    )
+    assert account.get("account_hash") == DEPLOYER_ACCOUNT_HASH, f"state root hash {state_root_hash} did not resolve the deployer account: {result}"
 
 
 def test_block_height_advancing(rpc_url):
@@ -169,9 +154,8 @@ def test_block_height_advancing(rpc_url):
     h1 = s1.get("last_added_block_info", {}).get("height", 0)
     # Wait briefly for at least one new block (testnet block time ~ 16s).
     import time
+
     time.sleep(2)
     s2 = rpc_call(rpc_url, "info_get_status", {})
     h2 = s2.get("last_added_block_info", {}).get("height", 0)
-    assert h2 >= h1, (
-        f"block height went backwards: {h1} -> {h2} (chain stalled or forked)"
-    )
+    assert h2 >= h1, f"block height went backwards: {h1} -> {h2} (chain stalled or forked)"

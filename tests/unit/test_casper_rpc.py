@@ -224,12 +224,8 @@ def test_compute_mapping_dict_address_differs_from_var():
     the same field index (the key bytes are appended before hashing)."""
     uref = bytes(range(32))
     var_addr = casper_rpc.compute_var_dict_address(uref, 1)
-    map_addr_empty_key = casper_rpc.compute_mapping_dict_address(
-        uref, 1, casper_rpc.encode_u64_key(0)
-    )
-    map_addr_5 = casper_rpc.compute_mapping_dict_address(
-        uref, 1, casper_rpc.encode_u64_key(5)
-    )
+    map_addr_empty_key = casper_rpc.compute_mapping_dict_address(uref, 1, casper_rpc.encode_u64_key(0))
+    map_addr_5 = casper_rpc.compute_mapping_dict_address(uref, 1, casper_rpc.encode_u64_key(5))
     assert var_addr != map_addr_empty_key
     assert var_addr != map_addr_5
     assert map_addr_empty_key != map_addr_5  # different keys → different addresses
@@ -247,12 +243,8 @@ def test_compute_mapping_dict_address_string_key():
     """RiskOracle uses Mapping<String, RiskScore> — verify the String key
     derivation produces a stable, distinct address."""
     uref = bytes(range(32))
-    a = casper_rpc.compute_mapping_dict_address(
-        uref, 1, casper_rpc.encode_string_key("account-hash-abc")
-    )
-    b = casper_rpc.compute_mapping_dict_address(
-        uref, 1, casper_rpc.encode_string_key("account-hash-xyz")
-    )
+    a = casper_rpc.compute_mapping_dict_address(uref, 1, casper_rpc.encode_string_key("account-hash-abc"))
+    b = casper_rpc.compute_mapping_dict_address(uref, 1, casper_rpc.encode_string_key("account-hash-xyz"))
     assert a != b
     assert len(a) == 64
 

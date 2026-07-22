@@ -71,59 +71,59 @@ CONTRACT_PACKAGE_HASHES: Dict[str, str] = {
 # ---------------------------------------------------------------------------
 FIELD_INDICES: Dict[str, Dict[str, int]] = {
     "AuditTrail": {
-        "findings": 1,        # Mapping<u64, Finding>
-        "finding_count": 2,   # Var<u64>
-        "roles": 3,           # Mapping<Address, u8>
-        "role_admin": 4,      # Var<Address>
-        "paused": 5,          # Var<bool>
+        "findings": 1,  # Mapping<u64, Finding>
+        "finding_count": 2,  # Var<u64>
+        "roles": 3,  # Mapping<Address, u8>
+        "role_admin": 4,  # Var<Address>
+        "paused": 5,  # Var<bool>
     },
     "RiskOracle": {
-        "scores": 1,          # Mapping<String, RiskScore>
+        "scores": 1,  # Mapping<String, RiskScore>
         "roles": 2,
         "role_admin": 3,
         "paused": 4,
     },
     "RiskPolicyManager": {
-        "current_policy": 1,   # Var<RiskPolicy>
-        "policy_history": 2,   # Mapping<u32, RiskPolicy>
+        "current_policy": 1,  # Var<RiskPolicy>
+        "policy_history": 2,  # Mapping<u32, RiskPolicy>
         "roles": 3,
         "role_admin": 4,
         "paused": 5,
     },
     "SentinelAlertLog": {
-        "logs": 1,             # Mapping<u64, AlertRecord>
-        "log_count": 2,        # Var<u64>
-        "address_logs": 3,     # Mapping<Address, Vec<u64>>
+        "logs": 1,  # Mapping<u64, AlertRecord>
+        "log_count": 2,  # Var<u64>
+        "address_logs": 3,  # Mapping<Address, Vec<u64>>
         "roles": 4,
         "role_admin": 5,
         "paused": 6,
     },
     "SentinelCredit": {
-        "accounts": 1,         # Mapping<String, CreditAccount>
-        "query_price": 2,      # Var<U512>
-        "premium_price": 3,    # Var<U512>
-        "total_revenue": 4,    # Var<U512>
+        "accounts": 1,  # Mapping<String, CreditAccount>
+        "query_price": 2,  # Var<U512>
+        "premium_price": 3,  # Var<U512>
+        "total_revenue": 4,  # Var<U512>
         "roles": 5,
         "role_admin": 6,
         "paused": 7,
     },
     "SentinelRegistry": {
-        "subscribers": 1,      # Mapping<String, Subscriber>
-        "subscriber_count": 2, # Var<u64>
+        "subscribers": 1,  # Mapping<String, Subscriber>
+        "subscriber_count": 2,  # Var<u64>
         "roles": 3,
         "role_admin": 4,
         "paused": 5,
     },
     "SubscriberVault": {
-        "accounts": 1,         # Mapping<String, VaultAccount>
-        "total_locked": 2,     # Var<U512>
+        "accounts": 1,  # Mapping<String, VaultAccount>
+        "total_locked": 2,  # Var<U512>
         "roles": 3,
         "role_admin": 4,
         "paused": 5,
     },
     "AgentBehaviorIndex": {
-        "metrics": 1,          # Mapping<String, AgentMetrics>
-        "agent_count": 2,      # Var<u64>
+        "metrics": 1,  # Mapping<String, AgentMetrics>
+        "agent_count": 2,  # Var<u64>
         "roles": 3,
         "role_admin": 4,
         "paused": 5,
@@ -173,56 +173,92 @@ def _rbac_suite() -> List[EntryPoint]:
 
 ENTRY_POINTS: Dict[str, List[EntryPoint]] = {
     "AuditTrail": [
-        EntryPoint("record_finding", "OPERATOR",
-                   args={"address": "string", "risk_type": "string", "severity": "string",
-                         "confidence": "u8", "description": "string", "rwa_enriched": "bool",
-                         "agent_model": "string", "block_height": "u64", "timestamp": "u64"},
-                   returns="u64", notes="appends a Finding; returns new finding id"),
+        EntryPoint(
+            "record_finding",
+            "OPERATOR",
+            args={
+                "address": "string",
+                "risk_type": "string",
+                "severity": "string",
+                "confidence": "u8",
+                "description": "string",
+                "rwa_enriched": "bool",
+                "agent_model": "string",
+                "block_height": "u64",
+                "timestamp": "u64",
+            },
+            returns="u64",
+            notes="appends a Finding; returns new finding id",
+        ),
         EntryPoint("get_finding", "public", args={"id": "u64"}, returns="Finding"),
         EntryPoint("get_count", "public", args={}, returns="u64"),
         *_rbac_suite(),
     ],
     "RiskOracle": [
-        EntryPoint("update_score", "OPERATOR",
-                   args={"address": "string", "score": "u8", "risk_type": "string",
-                         "confidence": "u8", "block_height": "u64", "finding_id": "u64"},
-                   returns="unit"),
+        EntryPoint(
+            "update_score",
+            "OPERATOR",
+            args={"address": "string", "score": "u8", "risk_type": "string", "confidence": "u8", "block_height": "u64", "finding_id": "u64"},
+            returns="unit",
+        ),
         EntryPoint("get_risk_score", "public", args={"address": "string"}, returns="Option<RiskScore>"),
         EntryPoint("is_high_risk", "public", args={"address": "string", "threshold": "u8"}, returns="bool"),
         *_rbac_suite(),
     ],
     "RiskPolicyManager": [
-        EntryPoint("upgrade_policy", "ADMIN",
-                   args={"min_confidence_threshold": "u8", "critical_score_threshold": "u8",
-                         "high_score_threshold": "u8", "medium_score_threshold": "u8",
-                         "max_retry_count": "u8", "safety_rejection_threshold": "u8",
-                         "block_height": "u64", "updated_by": "string"},
-                   returns="unit", notes="hot-swap thresholds without redeployment"),
+        EntryPoint(
+            "upgrade_policy",
+            "ADMIN",
+            args={
+                "min_confidence_threshold": "u8",
+                "critical_score_threshold": "u8",
+                "high_score_threshold": "u8",
+                "medium_score_threshold": "u8",
+                "max_retry_count": "u8",
+                "safety_rejection_threshold": "u8",
+                "block_height": "u64",
+                "updated_by": "string",
+            },
+            returns="unit",
+            notes="hot-swap thresholds without redeployment",
+        ),
         EntryPoint("get_current_policy", "public", args={}, returns="RiskPolicy"),
         EntryPoint("get_policy_version", "public", args={"version": "u32"}, returns="Option<RiskPolicy>"),
         EntryPoint("get_current_version", "public", args={}, returns="u32"),
         *_rbac_suite(),
     ],
     "SentinelAlertLog": [
-        EntryPoint("log_alert", "OPERATOR",
-                   args={"subscriber_address": "address", "finding_id": "u64", "severity": "string",
-                         "risk_type": "string", "block_height": "u64", "timestamp": "u64",
-                         "delivered": "bool"},
-                   returns="u64"),
+        EntryPoint(
+            "log_alert",
+            "OPERATOR",
+            args={
+                "subscriber_address": "address",
+                "finding_id": "u64",
+                "severity": "string",
+                "risk_type": "string",
+                "block_height": "u64",
+                "timestamp": "u64",
+                "delivered": "bool",
+            },
+            returns="u64",
+        ),
         EntryPoint("get_log", "public", args={"log_id": "u64"}, returns="AlertRecord"),
         EntryPoint("get_address_log_ids", "public", args={"address": "address"}, returns="Vec<u64>"),
         EntryPoint("get_total_count", "public", args={}, returns="u64"),
         *_rbac_suite(),
     ],
     "SentinelCredit": [
-        EntryPoint("deposit", "OPERATOR", payable=True,
-                   args={"account_address": "string", "amount": "u512"}, returns="unit",
-                   notes="payable — attached CSPR must equal amount"),
-        EntryPoint("withdraw", "OPERATOR",
-                   args={"account_address": "string", "amount": "u512"}, returns="unit"),
+        EntryPoint(
+            "deposit",
+            "OPERATOR",
+            payable=True,
+            args={"account_address": "string", "amount": "u512"},
+            returns="unit",
+            notes="payable — attached CSPR must equal amount",
+        ),
+        EntryPoint("withdraw", "OPERATOR", args={"account_address": "string", "amount": "u512"}, returns="unit"),
         EntryPoint("get_contract_balance", "public", args={}, returns="u512"),
-        EntryPoint("deduct_query", "OPERATOR",
-                   args={"account_address": "string", "is_premium": "bool"}, returns="bool"),
+        EntryPoint("deduct_query", "OPERATOR", args={"account_address": "string", "is_premium": "bool"}, returns="bool"),
         EntryPoint("get_balance", "public", args={"account_address": "string"}, returns="u512"),
         EntryPoint("get_account", "public", args={"account_address": "string"}, returns="Option<CreditAccount>"),
         EntryPoint("get_query_price", "public", args={}, returns="u512"),
@@ -232,9 +268,7 @@ ENTRY_POINTS: Dict[str, List[EntryPoint]] = {
         *_rbac_suite(),
     ],
     "SentinelRegistry": [
-        EntryPoint("register", "public",
-                   args={"address": "string", "webhook_url": "string", "min_severity": "string",
-                         "timestamp": "u64"}, returns="unit"),
+        EntryPoint("register", "public", args={"address": "string", "webhook_url": "string", "min_severity": "string", "timestamp": "u64"}, returns="unit"),
         EntryPoint("deregister", "public", args={"address": "string"}, returns="unit"),
         EntryPoint("increment_alert_count", "OPERATOR", args={"address": "string"}, returns="unit"),
         EntryPoint("get_subscriber", "public", args={"address": "string"}, returns="Option<Subscriber>"),
@@ -243,32 +277,45 @@ ENTRY_POINTS: Dict[str, List[EntryPoint]] = {
         *_rbac_suite(),
     ],
     "SubscriberVault": [
-        EntryPoint("open_vault", "OPERATOR", payable=True,
-                   args={"subscriber_address": "string", "initial_deposit": "u512",
-                         "lock_blocks": "u64", "auto_renew": "bool",
-                         "monthly_spend_limit": "u512", "current_block": "u64"},
-                   returns="unit",
-                   notes="payable — attached CSPR must equal initial_deposit"),
-        EntryPoint("withdraw", "OPERATOR",
-                   args={"subscriber_address": "string", "amount": "u512", "current_block": "u64"},
-                   returns="unit"),
+        EntryPoint(
+            "open_vault",
+            "OPERATOR",
+            payable=True,
+            args={
+                "subscriber_address": "string",
+                "initial_deposit": "u512",
+                "lock_blocks": "u64",
+                "auto_renew": "bool",
+                "monthly_spend_limit": "u512",
+                "current_block": "u64",
+            },
+            returns="unit",
+            notes="payable — attached CSPR must equal initial_deposit",
+        ),
+        EntryPoint("withdraw", "OPERATOR", args={"subscriber_address": "string", "amount": "u512", "current_block": "u64"}, returns="unit"),
         EntryPoint("get_contract_balance", "public", args={}, returns="u512"),
-        EntryPoint("deduct", "OPERATOR",
-                   args={"subscriber_address": "string", "amount": "u512"}, returns="bool"),
-        EntryPoint("top_up", "OPERATOR", payable=True,
-                   args={"subscriber_address": "string", "amount": "u512"}, returns="unit",
-                   notes="payable — attached CSPR must equal amount"),
+        EntryPoint("deduct", "OPERATOR", args={"subscriber_address": "string", "amount": "u512"}, returns="bool"),
+        EntryPoint(
+            "top_up",
+            "OPERATOR",
+            payable=True,
+            args={"subscriber_address": "string", "amount": "u512"},
+            returns="unit",
+            notes="payable — attached CSPR must equal amount",
+        ),
         EntryPoint("get_account", "public", args={"subscriber_address": "string"}, returns="Option<VaultAccount>"),
         EntryPoint("get_balance", "public", args={"subscriber_address": "string"}, returns="u512"),
         EntryPoint("get_total_locked", "public", args={}, returns="u512"),
         *_rbac_suite(),
     ],
     "AgentBehaviorIndex": [
-        EntryPoint("record_decision", "OPERATOR",
-                   args={"agent_name": "string", "confidence": "u8",
-                         "correction_applied": "bool", "safety_rejected": "bool",
-                         "block_height": "u64"},
-                   returns="unit", notes="recomputes trust_score on-chain"),
+        EntryPoint(
+            "record_decision",
+            "OPERATOR",
+            args={"agent_name": "string", "confidence": "u8", "correction_applied": "bool", "safety_rejected": "bool", "block_height": "u64"},
+            returns="unit",
+            notes="recomputes trust_score on-chain",
+        ),
         EntryPoint("get_metrics", "public", args={"agent_name": "string"}, returns="Option<AgentMetrics>"),
         EntryPoint("get_trust_score", "public", args={"agent_name": "string"}, returns="u8"),
         EntryPoint("get_agent_count", "public", args={}, returns="u64"),

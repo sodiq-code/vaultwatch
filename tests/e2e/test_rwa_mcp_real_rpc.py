@@ -102,9 +102,19 @@ async def test_audit_recent_findings_returned():
         assert d["count"] >= 1
         f = d["findings"][0]
         # Every parsed finding must have the full struct shape
-        for key in ("id", "address", "risk_type", "severity", "confidence",
-                    "description", "rwa_enriched", "agent_model",
-                    "block_height", "timestamp", "tx_hash"):
+        for key in (
+            "id",
+            "address",
+            "risk_type",
+            "severity",
+            "confidence",
+            "description",
+            "rwa_enriched",
+            "agent_model",
+            "block_height",
+            "timestamp",
+            "tx_hash",
+        ):
             assert key in f, f"finding missing field {key}: {f}"
 
 

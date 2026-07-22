@@ -29,7 +29,9 @@ import time
 import json
 import base64
 import asyncio
+import hashlib
 import logging
+import random as _random
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -363,9 +365,9 @@ async def list_rwa_assets() -> Dict[str, Any]:
 # Verified contract transaction hashes on Casper Testnet (July 2026 redeploy).
 # Kept in sync with dashboard/src/liveApi.js + transaction_hashes_live.json.
 _AGENT_CONTRACT_HASHES: Dict[str, str] = {
-    "RiskOracle":         "e071aacc460a62e538092f5006930710f49e632598846c4c843e3daf0c5a7c9d",
-    "SentinelAlertLog":   "53317e080ffdffcf097447ea3375c9195c6936fe7b1ed53795bf46134322a925",
-    "RiskPolicyManager":  "93e35d6488dcab8524a22c82241c7ddc6d07b0f7c011544e6c4a296c1a0eee2e",
+    "RiskOracle": "e071aacc460a62e538092f5006930710f49e632598846c4c843e3daf0c5a7c9d",
+    "SentinelAlertLog": "53317e080ffdffcf097447ea3375c9195c6936fe7b1ed53795bf46134322a925",
+    "RiskPolicyManager": "93e35d6488dcab8524a22c82241c7ddc6d07b0f7c011544e6c4a296c1a0eee2e",
 }
 
 
@@ -422,8 +424,7 @@ async def agent_health() -> Dict[str, Any]:
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
                 resp = await client.get(
-                    "https://api.coingecko.com/api/v3/simple/price"
-                    "?ids=casper-network&vs_currencies=usd",
+                    "https://api.coingecko.com/api/v3/simple/price?ids=casper-network&vs_currencies=usd",
                 )
                 if resp.status_code == 200:
                     val = resp.json().get("casper-network", {}).get("usd")
@@ -464,8 +465,7 @@ async def agent_risk_query(req: AgentRiskQueryRequest) -> Dict[str, Any]:
             span.set_attribute("agent.safety_blocked", True)
             return {
                 "result": {
-                    "summary": "Query blocked by SafetyGuard: "
-                    + safe_result.get("reason", ""),
+                    "summary": "Query blocked by SafetyGuard: " + safe_result.get("reason", ""),
                     "risk_factors": [],
                     "confidence": 0.0,
                     "severity": "LOW",
@@ -519,11 +519,7 @@ async def agent_anomaly_detect(req: AgentAnomalyRequest) -> Dict[str, Any]:
         }
         result: AnomalyResult = await agent.detect(metrics)
         span.set_attribute("risk_score", result.risk_score)
-        confidence = (
-            float(result.confidence)
-            if isinstance(result.confidence, (int, float))
-            else 0.85
-        )
+        confidence = float(result.confidence) if isinstance(result.confidence, (int, float)) else 0.85
         return {
             "risk_score": float(result.risk_score),
             "anomalies": list(result.anomalies or []),
@@ -1111,8 +1107,6 @@ async def intel_resource(
 # (data_source = "vaultwatch_mock"). attestation_proof contains SHA-256
 # hashes + timestamps for audit verification.
 # ---------------------------------------------------------------------------
-import hashlib
-import random as _random
 
 
 async def _fetch_coingecko_rwa_data() -> Dict[str, Any]:
@@ -1132,8 +1126,7 @@ async def _fetch_coingecko_rwa_data() -> Dict[str, Any]:
         async with httpx.AsyncClient(timeout=8.0) as cg:
             # CSPR price (same pattern as /agent/health)
             resp = await cg.get(
-                "https://api.coingecko.com/api/v3/simple/price"
-                "?ids=casper-network&vs_currencies=usd",
+                "https://api.coingecko.com/api/v3/simple/price?ids=casper-network&vs_currencies=usd",
             )
             if resp.status_code == 200:
                 cspr_val = resp.json().get("casper-network", {}).get("usd")
@@ -1142,8 +1135,7 @@ async def _fetch_coingecko_rwa_data() -> Dict[str, Any]:
 
             # PAXG (tokenised gold) price — best free proxy for real gold
             resp = await cg.get(
-                "https://api.coingecko.com/api/v3/simple/price"
-                "?ids=pax-gold&vs_currencies=usd",
+                "https://api.coingecko.com/api/v3/simple/price?ids=pax-gold&vs_currencies=usd",
             )
             if resp.status_code == 200:
                 paxg_val = resp.json().get("pax-gold", {}).get("usd")
@@ -1152,8 +1144,7 @@ async def _fetch_coingecko_rwa_data() -> Dict[str, Any]:
 
             # Stablecoin depeg detection: USDC and USDT should be ≈ $1.00
             resp = await cg.get(
-                "https://api.coingecko.com/api/v3/simple/price"
-                "?ids=usd-coin,tether&vs_currencies=usd",
+                "https://api.coingecko.com/api/v3/simple/price?ids=usd-coin,tether&vs_currencies=usd",
             )
             if resp.status_code == 200:
                 sc_data = resp.json()
@@ -1203,19 +1194,17 @@ async def _fetch_fred_rwa_data() -> Dict[str, Any]:
     now = int(time.time())
     # FRED series IDs for key RWA indicators
     series_map = {
-        "treasury_10y_yield": "DGS10",     # 10-Year Treasury
-        "treasury_2y_yield": "DGS2",       # 2-Year Treasury
-        "treasury_3m_yield": "DGS3MO",     # 3-Month Treasury
-        "baa_spread": "BAA10YM",           # BAA corporate spread
-        "effective_fed_rate": "EFFR",      # Effective Fed Funds Rate
+        "treasury_10y_yield": "DGS10",  # 10-Year Treasury
+        "treasury_2y_yield": "DGS2",  # 2-Year Treasury
+        "treasury_3m_yield": "DGS3MO",  # 3-Month Treasury
+        "baa_spread": "BAA10YM",  # BAA corporate spread
+        "effective_fed_rate": "EFFR",  # Effective Fed Funds Rate
     }
     try:
         async with httpx.AsyncClient(timeout=8.0) as fred:
             for field, series_id in series_map.items():
                 resp = await fred.get(
-                    f"https://api.stlouisfed.org/fred/series/observations"
-                    f"?series_id={series_id}&api_key={fred_key}"
-                    f"&file_type=json&sort_order=desc&limit=1",
+                    f"https://api.stlouisfed.org/fred/series/observations?series_id={series_id}&api_key={fred_key}&file_type=json&sort_order=desc&limit=1",
                 )
                 if resp.status_code == 200:
                     obs = resp.json().get("observations", [])
@@ -1427,8 +1416,18 @@ async def _generate_rwa_feed_data(asset_type: Optional[str] = None) -> Dict[str,
     credit = {
         "ratings": [
             {"entity": "US Government", "rating": "AAA", "default_probability": 0.0003, "recovery_rate": 0.95},
-            {"entity": "IBM Corporation", "rating": "A+", "default_probability": round(rng.uniform(0.005, 0.01), 4), "recovery_rate": round(rng.uniform(0.40, 0.60), 4)},
-            {"entity": "SME Loan Pool", "rating": "BBB", "default_probability": round(rng.uniform(0.03, 0.06), 4), "recovery_rate": round(rng.uniform(0.30, 0.50), 4)},
+            {
+                "entity": "IBM Corporation",
+                "rating": "A+",
+                "default_probability": round(rng.uniform(0.005, 0.01), 4),
+                "recovery_rate": round(rng.uniform(0.40, 0.60), 4),
+            },
+            {
+                "entity": "SME Loan Pool",
+                "rating": "BBB",
+                "default_probability": round(rng.uniform(0.03, 0.06), 4),
+                "recovery_rate": round(rng.uniform(0.30, 0.50), 4),
+            },
         ],
         "aggregate_default_rate": round(rng.uniform(0.02, 0.05), 4),
         "average_recovery_rate": round(rng.uniform(0.40, 0.60), 4),

@@ -42,18 +42,13 @@ def test_compute_dict_address_matches_odra_formula():
     on-chain dictionary address observed in the execution effects of a real
     get_current_version deploy (verified on testnet).
     """
-    state_uref_addr = bytes.fromhex(
-        "dca768b2e203f0019a96626d800a7c5c9b0658df56c861346298a61b2b0117bf"
-    )
+    state_uref_addr = bytes.fromhex("dca768b2e203f0019a96626d800a7c5c9b0658df56c861346298a61b2b0117bf")
     # The on-chain current_policy dictionary address for RiskPolicyManager
     # (field index 1) — observed in the execution effects of deploy
     # 7d6c26c91d3311521cb9832934cec2e895651ce92c8381e07c7af00908d8ffdf.
     expected = "ef857c5ddcafeb0e3e98c8960068151a9dc8bef32de4115227517056e01db58b"
     actual = compute_dict_address(state_uref_addr, CURRENT_POLICY_FIELD_INDEX)
-    assert actual == expected, (
-        f"dict address mismatch: expected {expected}, got {actual}. "
-        "Odra storage-key derivation is broken."
-    )
+    assert actual == expected, f"dict address mismatch: expected {expected}, got {actual}. Odra storage-key derivation is broken."
 
 
 def test_compute_dict_address_distinct_per_index():
@@ -95,9 +90,7 @@ def test_parse_risk_policy_bytes_address_updated_by():
     Tag 0 = Key::Account → ``account-hash-<64 hex>``.
     Tag 1 = Key::Hash     → ``hash-<64 hex>``.
     """
-    account_hash_bytes = bytes.fromhex(
-        "3b4ffcfb21411ced5fc1560c3f6ffed86f4885e5ea05cde49d90962a48a14d95"
-    )
+    account_hash_bytes = bytes.fromhex("3b4ffcfb21411ced5fc1560c3f6ffed86f4885e5ea05cde49d90962a48a14d95")
     # Address::Account → Key tag 0 + 32-byte account hash
     data = (
         struct.pack("<I", 5)  # version: u32
@@ -115,9 +108,7 @@ def test_parse_risk_policy_bytes_address_updated_by():
     assert policy["source"] == "on-chain"
 
     # Address::Contract → Key tag 1 + 32-byte package hash
-    pkg_hash_bytes = bytes.fromhex(
-        "7ba9daac84bebee8111c186588f21ebca35550b6cf1244e71768bd871938be6a"
-    )
+    pkg_hash_bytes = bytes.fromhex("7ba9daac84bebee8111c186588f21ebca35550b6cf1244e71768bd871938be6a")
     data2 = (
         struct.pack("<I", 6)
         + bytes([70, 85, 65, 45, 2, 88])
@@ -193,8 +184,7 @@ async def test_read_current_policy_returns_on_chain_data():
     policy = await read_current_policy()
     # Must be the on-chain policy, not the fallback
     assert policy["source"] == "on-chain", (
-        f"expected on-chain policy, got source={policy['source']}. "
-        "Either the testnet is unreachable or the storage-key derivation is broken."
+        f"expected on-chain policy, got source={policy['source']}. Either the testnet is unreachable or the storage-key derivation is broken."
     )
     # The on-chain policy was upgraded to v3 (via demo_upgrade_policy).
     assert policy["version"] >= 1, f"version must be >= 1, got {policy['version']}"
@@ -242,9 +232,7 @@ def test_odra_key_derivation_reference():
     This test re-derives the address independently to ensure
     compute_dict_address matches the reference formula.
     """
-    state_uref_addr = bytes.fromhex(
-        "dca768b2e203f0019a96626d800a7c5c9b0658df56c861346298a61b2b0117bf"
-    )
+    state_uref_addr = bytes.fromhex("dca768b2e203f0019a96626d800a7c5c9b0658df56c861346298a61b2b0117bf")
     idx = CURRENT_POLICY_FIELD_INDEX
     # Reference formula (hand-rolled)
     index_bytes = idx.to_bytes(4, "big")
