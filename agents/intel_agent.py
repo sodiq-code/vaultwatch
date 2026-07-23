@@ -11,7 +11,6 @@ OTel: span with payment_amount, query_type, subscriber
 """
 
 import asyncio
-import json
 import logging
 import os
 import time
@@ -19,6 +18,7 @@ from dataclasses import dataclass
 from typing import Optional
 from opentelemetry import trace
 from groq import Groq
+from .ai_providers import MultiProviderClient
 from .audit_agent import OnChainRecord
 
 logger = logging.getLogger("vaultwatch.intel")
@@ -76,14 +76,24 @@ class IntelAgent:
         # empty summary/risk_factors. Same model the SafetyGuard/AnomalyAgent/
         # ScannerAgent already use successfully.
         self._model = "llama-3.3-70b-versatile"
-        # Inject a pre-built client (tests / DI) or construct one from the key.
+        # Build multi-provider client (Groq → OpenRouter → heuristic fallback)
         if groq_client is not None:
-            self._client = groq_client
+            self._mp_client = MultiProviderClient(
+                groq_api_key=self._groq_key or "mock-key",
+                openrouter_api_key=os.getenv("OPENROUTER_API_KEY", ""),
+                groq_client=groq_client,
+            )
+        elif self._groq_key:
+            self._mp_client = MultiProviderClient(
+                groq_api_key=self._groq_key,
+                openrouter_api_key=os.getenv("OPENROUTER_API_KEY", ""),
+            )
         else:
-            self._client = Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
+            self._mp_client = None
+        self._client = groq_client if groq_client is not None else (Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None)
 
     async def _call_groq(self, prompt: str) -> dict:
-        if not self._client:
+        if not self._mp_client:
             return {
                 "summary": "No API key",
                 "risk_factors": [],
@@ -91,7 +101,7 @@ class IntelAgent:
                 "confidence": 0.0,
                 "error": "no_key",
             }
-        resp = self._client.chat.completions.create(
+        result = self._mp_client.chat_completion_json(
             model=self._model,
             messages=[
                 {
@@ -102,7 +112,15 @@ class IntelAgent:
             ],
             response_format={"type": "json_object"},
         )
-        return json.loads(resp.choices[0].message.content)
+        if result is not None:
+            return result
+        return {
+            "summary": "AI providers unavailable",
+            "risk_factors": [],
+            "findings_count": 0,
+            "confidence": 0.0,
+            "error": "providers_failed",
+        }
 
     async def analyze(self, query: str, protocol: str = None, extra_context: dict = None) -> dict:
         """Analyze a risk query using the Groq Compound model."""

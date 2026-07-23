@@ -22,6 +22,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 from opentelemetry import trace
 from groq import Groq
+from .ai_providers import MultiProviderClient
 import httpx
 from .anomaly_agent import AnomalyResult
 
@@ -96,11 +97,21 @@ class RWAAgent:
             self._groq_key = os.getenv("GROQ_API_KEY", "")
         else:
             self._groq_key = groq_api_key
-        # Inject a pre-built client (tests / DI) or construct one from the key.
+        # Build multi-provider client (Groq → OpenRouter → heuristic fallback)
         if groq_client is not None:
-            self._client = groq_client
+            self._mp_client = MultiProviderClient(
+                groq_api_key=self._groq_key or "mock-key",
+                openrouter_api_key=os.getenv("OPENROUTER_API_KEY", ""),
+                groq_client=groq_client,
+            )
+        elif self._groq_key:
+            self._mp_client = MultiProviderClient(
+                groq_api_key=self._groq_key,
+                openrouter_api_key=os.getenv("OPENROUTER_API_KEY", ""),
+            )
         else:
-            self._client = Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
+            self._mp_client = None
+        self._client = groq_client if groq_client is not None else (Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None)
         self._assets: list = []
         self._api_base_url = api_base_url
         self._httpx_client: Optional[httpx.AsyncClient] = None
@@ -176,14 +187,14 @@ class RWAAgent:
                 return RWAFeedData(feed_source="rwa_feed_api_error")
 
     async def _call_groq(self, prompt: str) -> dict:
-        if not self._client:
+        if not self._mp_client:
             return {
                 "verdict": "REVIEW",
                 "risk_score": 50.0,
                 "notes": "No API key",
                 "error": "no_key",
             }
-        resp = self._client.chat.completions.create(
+        result = self._mp_client.chat_completion_json(
             model="llama-3.3-70b-versatile",
             messages=[
                 {
@@ -194,9 +205,14 @@ class RWAAgent:
             ],
             response_format={"type": "json_object"},
         )
-        import json
-
-        return json.loads(resp.choices[0].message.content)
+        if result is not None:
+            return result
+        return {
+            "verdict": "REVIEW",
+            "risk_score": 50.0,
+            "notes": "AI providers unavailable",
+            "error": "providers_failed",
+        }
 
     async def assess(self, asset_data: dict) -> dict:
         """Assess a real-world asset for on-chain tokenisation viability."""

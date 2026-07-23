@@ -14,6 +14,7 @@ import time
 from dataclasses import dataclass
 from opentelemetry import trace
 from groq import Groq
+from .ai_providers import MultiProviderClient
 from .scanner_agent import RawEvent
 
 logger = logging.getLogger("vaultwatch.anomaly")
@@ -82,21 +83,34 @@ class AnomalyAgent:
             self._groq_key = os.getenv("GROQ_API_KEY", "")
         else:
             self._groq_key = groq_api_key
-        # Inject a pre-built client (tests / DI) or construct one from the key.
+        # Build a multi-provider client for resilience (Groq → OpenRouter → heuristic).
+        # If a pre-built Groq client is supplied (tests / DI), wrap it.
+        # Otherwise build from the key + optional OpenRouter key from env.
         if groq_client is not None:
-            self._client = groq_client
+            self._mp_client = MultiProviderClient(
+                groq_api_key=self._groq_key or "mock-key",
+                openrouter_api_key=os.getenv("OPENROUTER_API_KEY", ""),
+                groq_client=groq_client,
+            )
+        elif self._groq_key:
+            self._mp_client = MultiProviderClient(
+                groq_api_key=self._groq_key,
+                openrouter_api_key=os.getenv("OPENROUTER_API_KEY", ""),
+            )
         else:
-            self._client = Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
+            self._mp_client = None
+        # Keep legacy _client for backward compat (tests that check _client directly)
+        self._client = groq_client if groq_client is not None else (Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None)
 
     async def _call_groq(self, prompt: str) -> dict:
-        if not self._client:
+        if not self._mp_client:
             return {
                 "risk_score": 0,
                 "anomalies": [],
                 "recommendation": "No API key",
                 "error": "no_key",
             }
-        resp = self._client.chat.completions.create(
+        result = self._mp_client.chat_completion_json(
             model="llama-3.3-70b-versatile",
             messages=[
                 {
@@ -107,9 +121,15 @@ class AnomalyAgent:
             ],
             response_format={"type": "json_object"},
         )
-        import json
-
-        return json.loads(resp.choices[0].message.content)
+        if result is not None:
+            return result
+        # Both providers failed — heuristic fallback will be handled by detect()
+        return {
+            "risk_score": 0,
+            "anomalies": [],
+            "recommendation": "AI providers unavailable",
+            "error": "providers_failed",
+        }
 
     async def detect(self, metrics: dict) -> "AnomalyResult":
         """Detect anomalies from protocol metrics dict."""

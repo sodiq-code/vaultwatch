@@ -6,12 +6,12 @@ Position: between RWAAgent and AuditAgent — nothing writes to chain without pa
 OTel: span with safety_score, APPROVED/REJECTED, rejection_reason
 """
 
-import json
 import logging
 import os
 from dataclasses import dataclass
 from opentelemetry import trace
 from groq import Groq
+from .ai_providers import MultiProviderClient
 from .rwa_agent import EnrichedFinding
 
 logger = logging.getLogger("vaultwatch.safetyguard")
@@ -59,18 +59,26 @@ class SafetyGuard:
             self._groq_key = os.getenv("GROQ_API_KEY", "")
         else:
             self._groq_key = groq_api_key
-        # Inject a pre-built client (tests / DI) or construct one from the key.
-        # When neither is supplied, self._client is None and validate() is
-        # fail-closed (rejects unverified findings).
+        # Build multi-provider client (Groq → OpenRouter → heuristic fallback)
         if groq_client is not None:
-            self._client = groq_client
+            self._mp_client = MultiProviderClient(
+                groq_api_key=self._groq_key or "mock-key",
+                openrouter_api_key=os.getenv("OPENROUTER_API_KEY", ""),
+                groq_client=groq_client,
+            )
+        elif self._groq_key:
+            self._mp_client = MultiProviderClient(
+                groq_api_key=self._groq_key,
+                openrouter_api_key=os.getenv("OPENROUTER_API_KEY", ""),
+            )
         else:
-            self._client = Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
+            self._mp_client = None
+        self._client = groq_client if groq_client is not None else (Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None)
 
     async def _call_groq(self, prompt: str) -> dict:
-        if not self._client:
+        if not self._mp_client:
             return {"safe": True, "reason": "No API key — defaulting safe"}
-        resp = self._client.chat.completions.create(
+        result = self._mp_client.chat_completion_json(
             model=SAFETY_MODEL,
             messages=[
                 {
@@ -90,7 +98,9 @@ class SafetyGuard:
             temperature=0.0,
             max_tokens=200,
         )
-        return json.loads(resp.choices[0].message.content)
+        if result is not None:
+            return result
+        return {"safe": True, "reason": "AI providers unavailable — defaulting safe"}
 
     async def check(self, query: str) -> dict:
         """Check if a query is safe to process.

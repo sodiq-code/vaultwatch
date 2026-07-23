@@ -1,5 +1,6 @@
 """VaultWatch Agent Pipeline"""
 
+from .ai_providers import MultiProviderClient, create_client
 from .scanner_agent import ScannerAgent, RawEvent
 from .anomaly_agent import AnomalyAgent, AnomalyResult
 from .self_correction_agent import SelfCorrectionAgent, CorrectionResult
@@ -15,6 +16,8 @@ from .agent_wallet import (
 )
 
 __all__ = [
+    "MultiProviderClient",
+    "create_client",
     "ScannerAgent",
     "RawEvent",
     "AnomalyAgent",

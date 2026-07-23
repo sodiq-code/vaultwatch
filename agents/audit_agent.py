@@ -29,6 +29,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional
 from opentelemetry import trace
 from groq import Groq
+from .ai_providers import MultiProviderClient
 from .rwa_agent import EnrichedFinding, RWAFeedData
 from .safety_guard import SafetyResult
 
@@ -112,20 +113,26 @@ class AuditAgent:
         self._log: list = []
         # Legacy compat
         self.casper_client = casper_client
-        # Groq client for _format_description (LLM-formatted on-chain text).
-        # Injected via constructor (tests / DI) or built from groq_api_key /
-        # GROQ_API_KEY. When neither is supplied, _format_description falls
-        # back to a static template string — on-chain writes still succeed.
-        if groq_client is not None:
-            self._client = groq_client
+        # Build multi-provider client (Groq → OpenRouter → static template fallback)
+        # for _format_description (LLM-formatted on-chain text).
+        if groq_api_key is AuditAgent._UNSET:
+            _key = os.getenv("GROQ_API_KEY", "")
         else:
-            # When groq_api_key is explicitly provided (even as ""), use it directly.
-            # When not provided (default sentinel), fall back to env var.
-            if groq_api_key is AuditAgent._UNSET:
-                _key = os.getenv("GROQ_API_KEY", "")
-            else:
-                _key = groq_api_key
-            self._client = Groq(api_key=_key or "mock-key") if _key else None
+            _key = groq_api_key
+        if groq_client is not None:
+            self._mp_client = MultiProviderClient(
+                groq_api_key=_key or "mock-key",
+                openrouter_api_key=os.getenv("OPENROUTER_API_KEY", ""),
+                groq_client=groq_client,
+            )
+        elif _key:
+            self._mp_client = MultiProviderClient(
+                groq_api_key=_key,
+                openrouter_api_key=os.getenv("OPENROUTER_API_KEY", ""),
+            )
+        else:
+            self._mp_client = None
+        self._client = groq_client if groq_client is not None else (Groq(api_key=_key or "mock-key") if _key else None)
 
     async def record(self, action: str, actor: str, details: str = "") -> str:
         """Record an audit entry on-chain (or mock). Returns deploy hash.
@@ -339,22 +346,23 @@ class AuditAgent:
     async def _format_description(self, finding: EnrichedFinding) -> str:
         """Use fast LLM to format a concise on-chain description"""
         base = finding.base
+        static_desc = f"{base.risk_type} | {base.severity} | {base.confidence:.0%} confidence | {base.event.address[:20]}"
         try:
-            # Fail-safe: with no model client configured, use the static
-            # template — the on-chain write must never block on LLM availability.
-            if self._client is None:
-                return f"{base.risk_type} | {base.severity} | {base.confidence:.0%} confidence | {base.event.address[:20]}"
-            response = self._client.chat.completions.create(
+            if self._mp_client is None:
+                return static_desc
+            result = self._mp_client.chat_completion(
                 model="llama-3.3-70b-versatile",
                 messages=[
                     {
                         "role": "user",
                         "content": (
-                            f"Write a 1-sentence on-chain audit description (max 200 chars) for:\n"
+                            f"Write a 1-sentence on-chain audit description "
+                            f"(max 200 chars) for:\n"
                             f"Risk: {base.risk_type} | Severity: {base.severity} | "
-                            f"Confidence: {base.confidence:.0%} | Address: {base.event.address[:20]} | "
-                            f"Amount: {base.event.amount_motes / 1_000_000_000:.0f} CSPR | "
-                            f"Reasoning: {base.reasoning[:100]}\n"
+                            f"Confidence: {base.confidence:.0%} | "
+                            f"Address: {base.event.address[:20]} | "
+                            f"Amount: {base.event.amount_motes / 1_000_000_000:.0f} "
+                            f"CSPR | Reasoning: {base.reasoning[:100]}\n"
                             f"Be factual and concise."
                         ),
                     }
@@ -362,9 +370,11 @@ class AuditAgent:
                 temperature=0.1,
                 max_tokens=64,
             )
-            return response.choices[0].message.content.strip()[:200]
+            if result is not None:
+                return result.first_content.strip()[:200]
+            return static_desc
         except Exception:
-            return f"{base.risk_type} | {base.severity} | {base.confidence:.0%} confidence | {base.event.address[:20]}"
+            return static_desc
 
     # ------------------------------------------------------------------
     # EAS-style RWA attestation methods (Task 3-5)

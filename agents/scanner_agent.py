@@ -15,6 +15,7 @@ from dataclasses import dataclass
 import httpx
 from opentelemetry import trace
 from groq import Groq
+from .ai_providers import MultiProviderClient
 
 logger = logging.getLogger("vaultwatch.scanner")
 tracer = trace.get_tracer("vaultwatch.scanner_agent")
@@ -58,24 +59,32 @@ class ScannerAgent:
             self._groq_key = os.getenv("GROQ_API_KEY", "")
         else:
             self._groq_key = groq_api_key
-        # Inject a pre-built client (tests / DI) or construct one from the key.
-        # When neither is supplied, ``self._client`` is None and the LLM-backed
-        # methods degrade gracefully (no-key fallbacks).
+        # Build multi-provider client (Groq → OpenRouter → heuristic fallback)
         if groq_client is not None:
-            self._client = groq_client
+            self._mp_client = MultiProviderClient(
+                groq_api_key=self._groq_key or "mock-key",
+                openrouter_api_key=os.getenv("OPENROUTER_API_KEY", ""),
+                groq_client=groq_client,
+            )
+        elif self._groq_key:
+            self._mp_client = MultiProviderClient(
+                groq_api_key=self._groq_key,
+                openrouter_api_key=os.getenv("OPENROUTER_API_KEY", ""),
+            )
         else:
-            self._client = Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None
+            self._mp_client = None
+        self._client = groq_client if groq_client is not None else (Groq(api_key=self._groq_key or "mock-key") if self._groq_key else None)
 
     async def _call_groq(self, prompt: str) -> dict:
-        """Call Groq for protocol scan analysis."""
-        if not self._client:
+        """Call Groq (or OpenRouter fallback) for protocol scan analysis."""
+        if not self._mp_client:
             return {
                 "risk_level": "UNKNOWN",
                 "vulnerabilities": [],
                 "summary": "No API key",
                 "error": "no_key",
             }
-        resp = self._client.chat.completions.create(
+        result = self._mp_client.chat_completion_json(
             model="llama-3.3-70b-versatile",
             messages=[
                 {
@@ -86,9 +95,14 @@ class ScannerAgent:
             ],
             response_format={"type": "json_object"},
         )
-        import json
-
-        return json.loads(resp.choices[0].message.content)
+        if result is not None:
+            return result
+        return {
+            "risk_level": "UNKNOWN",
+            "vulnerabilities": [],
+            "summary": "AI providers unavailable",
+            "error": "providers_failed",
+        }
 
     async def scan(self, protocol: str, contract_address: str = None, chain: str = "casper") -> dict:
         """Scan a protocol for vulnerabilities and return risk assessment."""
