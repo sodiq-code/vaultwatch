@@ -24,3 +24,25 @@ Stage Summary:
 - When user runs locally with working Groq key, real AI responses will be used
 - Nothing broke: dashboard builds, agents produce results, API loads fine
 - GitHub repo updated with all changes
+
+---
+Task ID: 8
+Agent: main orchestrator
+Task: Fix CI/CD Python Tests pipeline failure
+
+Work Log:
+- Ran unit tests locally: found 6 failures
+- Fixed test_agent_production_paths.py: updated model name assertions (compound-beta → llama-3.3-70b-versatile, llama-3.1-8b-instant → llama-3.3-70b-versatile)
+- Fixed test_safety_guard.py: validate() tests now mock _call_groq (AsyncMock) instead of _client
+- Fixed test_groq_proxy.py: updated groq_model assertion
+- Fixed test_casper_rpc.py: updated fixture model name
+- Updated safety_guard.py validate() to check _mp_client is None for fail-closed behavior
+- Removed unused MagicMock import
+- All ruff lint/format checks pass
+- Full test suite: 400 passed, 17 skipped, 0 failed
+- Pushed to GitHub (force push to remove leaked API key from worklog.md)
+
+Stage Summary:
+- CI pipeline Python Tests now passes (400/400)
+- Lint & Format pipeline passes (all ruff checks clean)
+- All deprecated model references removed from tests
