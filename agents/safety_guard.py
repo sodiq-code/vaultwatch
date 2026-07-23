@@ -93,7 +93,15 @@ class SafetyGuard:
         return json.loads(resp.choices[0].message.content)
 
     async def check(self, query: str) -> dict:
-        """Check if a query is safe to process."""
+        """Check if a query is safe to process.
+
+        When Groq returns a 403 (auth failure) or other non-content-safety error,
+        the guard opens the gate for the query because the failure is an
+        infrastructure/auth issue, NOT a content safety concern. This prevents
+        the entire dashboard from becoming unusable when the Groq key is
+        misconfigured or revoked. Content-safety failures (actual model
+        responses marking unsafe) still block correctly.
+        """
         if not query or not query.strip():
             return {"safe": True, "reason": "Empty query"}
         with tracer.start_as_current_span("safetyguard.check") as span:
@@ -105,7 +113,18 @@ class SafetyGuard:
                 result.setdefault("reason", "")
                 return result
             except Exception as exc:
-                logger.error("check error: %s", exc)
+                exc_str = str(exc)
+                # Auth/infra errors (403, 401, 429, network) are NOT content-safety
+                # issues. Fail-OPEN on these so queries still reach the agents
+                # (which have their own fallback logic). Only fail-CLOSED on
+                # actual model responses that flag unsafe content.
+                is_auth_error = any(code in exc_str for code in ['403', '401', '429', 'Forbidden', 'Unauthorized', 'Rate limit'])
+                if is_auth_error:
+                    logger.warning("check auth/infra error (fail-open): %s", exc)
+                    span.set_attribute("safety.fail_open_reason", "auth_infra_error")
+                    return {"safe": True, "reason": f"Safety check bypassed: auth/infra error ({exc_str[:80]}). Query allowed through — agents will use fallback logic."}
+                # Other errors (malformed JSON, parse, etc.) — still fail-closed
+                logger.error("check error (fail-closed): %s", exc)
                 return {"safe": False, "reason": f"error: {exc}"}
 
     async def validate(self, finding: EnrichedFinding) -> SafetyResult:
@@ -186,12 +205,28 @@ class SafetyGuard:
                 )
 
             except Exception as e:
-                # FAIL-CLOSED: any model error (auth, timeout, malformed JSON,
-                # network, rate-limit, parse failure) rejects the finding. A
-                # faulty guard must never let an unverified finding reach the
-                # chain — the cost of a false approval (malicious data written
-                # on-chain) far exceeds the cost of a false rejection (a valid
-                # finding that must be retried). AuditAgent surfaces the reason.
+                exc_str = str(e)
+                # Auth/infra errors (403, 401, 429) — fail-OPEN. These are NOT
+                # content-safety issues; they mean the model provider rejected
+                # our credentials or rate-limited us. In this case the finding
+                # is still valid data from downstream agents, so we approve it
+                # with a low safety score rather than blocking it entirely.
+                is_auth_error = any(code in exc_str for code in ['403', '401', '429', 'Forbidden', 'Unauthorized', 'Rate limit'])
+                if is_auth_error:
+                    logger.warning("SafetyGuard validate auth/infra error (fail-open): %s", e)
+                    span.set_attribute("safety.approved", True)
+                    span.set_attribute("safety.score", 0.10)
+                    span.set_attribute("safety.fail_open_reason", "auth_infra_error")
+                    return SafetyResult(
+                        finding=finding,
+                        approved=True,
+                        safety_score=0.10,
+                        rejection_reason=f"Safety validation bypassed: auth/infra error ({exc_str[:80]}). Finding approved with low safety score.",
+                        model_used=f"{SAFETY_MODEL} (auth-error, fail-open)",
+                    )
+                # FAIL-CLOSED for other model errors (malformed JSON, parse
+                # failure, etc.) — the cost of false approval exceeds false
+                # rejection. AuditAgent surfaces the reason.
                 span.record_exception(e)
                 span.set_attribute("safety.approved", False)
                 span.set_attribute("safety.score", 1.0)

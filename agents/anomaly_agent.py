@@ -129,6 +129,35 @@ class AnomalyAgent:
                 )
             except Exception as exc:
                 logger.error("detect error: %s", exc)
+                exc_str = str(exc)
+                is_auth_error = any(code in exc_str for code in ['403', '401', '429', 'Forbidden', 'Unauthorized', 'Rate limit'])
+                if is_auth_error:
+                    # Heuristic-based anomaly detection when Groq auth fails.
+                    # Uses the input metrics to compute a rule-based risk score
+                    # instead of returning empty/zero values.
+                    score = min(100.0, max(0.0, 
+                        abs(metrics.get('price_change_1h', 0)) * 15 +
+                        (1 - metrics.get('liquidity_ratio', 0.5)) * 40 +
+                        (metrics.get('volume_24h', 0) / 5000) * 10
+                    ))
+                    anomalies_list = []
+                    if abs(metrics.get('price_change_1h', 0)) > 3:
+                        anomalies_list.append({"metric": "Price Impact", "value": abs(metrics.get('price_change_1h', 0)), "threshold": 3, "severity": "HIGH"})
+                    if metrics.get('liquidity_ratio', 0.5) < 0.5:
+                        anomalies_list.append({"metric": "Liquidity Depth", "value": metrics.get('liquidity_ratio', 0.5), "threshold": 0.5, "severity": "CRITICAL"})
+                    if metrics.get('volume_24h', 0) > 3000:
+                        anomalies_list.append({"metric": "Volume Spike", "value": metrics.get('volume_24h', 0), "threshold": 3000, "severity": "MEDIUM"})
+                    severity = "CRITICAL" if score > 70 else "HIGH" if score > 50 else "MEDIUM" if score > 30 else "LOW"
+                    return AnomalyResult(
+                        protocol=metrics.get('protocol', protocol),
+                        risk_score=round(score, 1),
+                        anomalies=anomalies_list,
+                        recommendation=f"VaultWatch heuristic analysis (Groq unavailable): Risk score {score:.1f}/100. Severity: {severity}. Full AI analysis requires valid Groq key.",
+                        timestamp=time.time(),
+                        confidence=0.4,
+                        severity=severity,
+                        model_used="AnomalyAgent (heuristic-fallback)",
+                    )
                 return AnomalyResult(
                     protocol=protocol,
                     risk_score=0.0,
