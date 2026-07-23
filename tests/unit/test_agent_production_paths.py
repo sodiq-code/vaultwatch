@@ -143,8 +143,8 @@ async def test_classify_no_client_returns_manual_review():
 
 
 @pytest.mark.asyncio
-async def test_enrich_production_path_parses_compound_response():
-    """_enrich calls self._client with compound-beta and parses the RWA JSON."""
+async def test_enrich_production_path_parses_llm_response():
+    """_enrich calls self._client with llama-3.3-70b-versatile and parses the RWA JSON."""
     payload = {
         "rwa_context": "USDC depeg risk elevated; collateral ratio dropping.",
         "collateral_signals": ["usdc_depeg", "collateral_drop"],
@@ -152,7 +152,7 @@ async def test_enrich_production_path_parses_compound_response():
         "depeg_alerts": ["USDC below peg by 0.3%"],
         "sources_found": 3,
     }
-    # Compound may wrap JSON in tool-call text; _enrich extracts the {...} block.
+    # LLM may wrap JSON in tool-call text; _enrich extracts the {...} block.
     client = _mock_groq_client(f"Here is the analysis:\n{json.dumps(payload)}\nDone.")
     agent = RWAAgent(groq_client=client)
 
@@ -160,7 +160,7 @@ async def test_enrich_production_path_parses_compound_response():
 
     client.chat.completions.create.assert_called_once()
     kwargs = client.chat.completions.create.call_args.kwargs
-    assert kwargs["model"] == "compound-beta"
+    assert kwargs["model"] == "llama-3.3-70b-versatile"
 
     assert result.enriched is True
     # Context now includes feed data prefix alongside Groq web intelligence
@@ -173,7 +173,7 @@ async def test_enrich_production_path_parses_compound_response():
     # Feed data counts as 1 additional source (3 from Groq + 1 from feed)
     assert result.rwa_sources_count >= 3
     # Model now includes feed source alongside Groq
-    assert result.enrichment_model == "groq/compound+rwa_feed"
+    assert result.enrichment_model == "llama-3.3-70b-versatile+rwa_feed"
     # New fields: feed_source and x402_payment_id
     assert result.feed_source is not None
     assert isinstance(result.x402_payment_id, str)
@@ -199,7 +199,7 @@ async def test_enrich_no_client_returns_unenriched():
 
 @pytest.mark.asyncio
 async def test_llm_filter_production_path_filters_events():
-    """_llm_filter calls self._client with llama-3.1-8b-instant and filters by index."""
+    """_llm_filter calls self._client with llama-3.3-70b-versatile and filters by index."""
     client = _mock_groq_client("[0, 2]")  # keep events at index 0 and 2
     agent = ScannerAgent(groq_client=client)
 
@@ -212,7 +212,7 @@ async def test_llm_filter_production_path_filters_events():
 
     client.chat.completions.create.assert_called_once()
     kwargs = client.chat.completions.create.call_args.kwargs
-    assert kwargs["model"] == "llama-3.1-8b-instant"
+    assert kwargs["model"] == "llama-3.3-70b-versatile"
     assert len(filtered) == 2
     assert filtered[0].event_type == "whale_movement"
     assert filtered[1].event_type == "contract_call"
@@ -298,15 +298,17 @@ async def test_retry_with_context_malformed_json_returns_original():
 
 @pytest.mark.asyncio
 async def test_format_description_production_path_uses_llm():
-    """_format_description calls self._client with llama-3.1-8b-instant."""
+    """_format_description calls via MultiProviderClient with llama-3.3-70b-versatile."""
     client = _mock_groq_client("Whale dump of 500k CSPR detected on CasperSwap.")
     agent = AuditAgent(casper_client=None, groq_client=client)
 
     desc = await agent._format_description(_make_enriched_finding())
 
+    # _format_description now uses MultiProviderClient.chat_completion()
+    # which internally calls _try_groq() → self._groq_client.chat.completions.create()
     client.chat.completions.create.assert_called_once()
     kwargs = client.chat.completions.create.call_args.kwargs
-    assert kwargs["model"] == "llama-3.1-8b-instant"
+    assert kwargs["model"] == "llama-3.3-70b-versatile"
     assert "Whale dump" in desc
     assert len(desc) <= 200
 

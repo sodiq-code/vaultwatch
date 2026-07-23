@@ -1,7 +1,7 @@
 """Unit tests — SafetyGuard"""
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 from agents.anomaly_agent import AnomalyResult
 from agents.rwa_agent import EnrichedFinding
@@ -121,10 +121,13 @@ async def test_concurrent_checks(guard):
 
 @pytest.mark.asyncio
 async def test_validate_fails_closed_on_model_error(guard):
-    """A model error (timeout / auth / parse) must REJECT, not approve."""
+    """A model error (timeout / auth / parse) must REJECT, not approve.
+
+    _call_groq now raises exceptions; a non-auth error like RuntimeError
+    triggers fail-closed in validate()."""
     finding = _make_finding()
-    with patch.object(guard, "_client") as mock_client:
-        mock_client.chat.completions.create.side_effect = RuntimeError("API timeout")
+    with patch.object(guard, "_call_groq", new_callable=AsyncMock) as mock_groq:
+        mock_groq.side_effect = RuntimeError("API timeout")
         result = await guard.validate(finding)
     assert result.approved is False
     assert result.safety_score == 1.0
@@ -136,7 +139,7 @@ async def test_validate_fails_closed_on_model_error(guard):
 async def test_validate_fails_closed_when_no_client():
     """No Groq client configured → cannot verify → REJECT (fail-closed)."""
     guard_no_key = SafetyGuard(groq_api_key="")
-    assert guard_no_key._client is None
+    assert guard_no_key._mp_client is None
     result = await guard_no_key.validate(_make_finding())
     assert result.approved is False
     assert result.safety_score == 1.0
@@ -145,13 +148,11 @@ async def test_validate_fails_closed_when_no_client():
 
 @pytest.mark.asyncio
 async def test_validate_rejects_injection_finding(guard):
-    """Prompt-injection classification must REJECT (score 0.95 >= 0.80)."""
-    import json as _json
+    """Prompt-injection classification must REJECT (score 0.95 >= 0.80).
 
-    fake_resp = MagicMock()
-    fake_resp.choices = [MagicMock(message=MagicMock(content=_json.dumps({"safe": False, "score": 0.95, "reason": "injection detected"})))]
-    with patch.object(guard, "_client") as mock_client:
-        mock_client.chat.completions.create.return_value = fake_resp
+    Uses _call_groq mock to return injection detection directly."""
+    with patch.object(guard, "_call_groq", new_callable=AsyncMock) as mock_groq:
+        mock_groq.return_value = {"safe": False, "score": 0.95, "reason": "injection detected"}
         result = await guard.validate(_make_finding())
     assert result.approved is False
     assert result.safety_score == 0.95
@@ -159,13 +160,11 @@ async def test_validate_rejects_injection_finding(guard):
 
 @pytest.mark.asyncio
 async def test_validate_approves_benign_finding(guard):
-    """Benign classification must APPROVE (happy path still works)."""
-    import json as _json
+    """Benign classification must APPROVE (happy path still works).
 
-    fake_resp = MagicMock()
-    fake_resp.choices = [MagicMock(message=MagicMock(content=_json.dumps({"safe": True, "score": 0.05, "reason": "benign finding"})))]
-    with patch.object(guard, "_client") as mock_client:
-        mock_client.chat.completions.create.return_value = fake_resp
+    Uses _call_groq mock to return benign classification directly."""
+    with patch.object(guard, "_call_groq", new_callable=AsyncMock) as mock_groq:
+        mock_groq.return_value = {"safe": True, "score": 0.05, "reason": "benign finding"}
         result = await guard.validate(_make_finding())
     assert result.approved is True
     assert result.safety_score == 0.05

@@ -624,7 +624,7 @@ def test_agent_rwa_assess_returns_dashboard_shape(monkeypatch):
     assert assessment["verdict"] == "APPROVED"
     assert assessment["risk_score"] == 12.0
     assert "sovereign" in assessment["notes"].lower()
-    assert assessment["groq_model"] == "compound-beta (Groq Compound)"
+    assert assessment["groq_model"] == "llama-3.3-70b-versatile (Groq)"
     assert assessment["on_chain_contract"] == "RiskPolicyManager"
     assert isinstance(assessment["on_chain_hash"], str) and len(assessment["on_chain_hash"]) == 64
     # The Groq key must NEVER appear in the response

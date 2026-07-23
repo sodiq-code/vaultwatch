@@ -114,7 +114,7 @@ def test_parse_finding_bytes_roundtrip():
         confidence=78,
         description="Flash loan attack pattern detected",
         rwa_enriched=True,
-        agent_model="llama-3.1-8b-instant",
+        agent_model="llama-3.3-70b-versatile",
         block_height=9_876_543,
         timestamp=1_751_111_111,
         tx_hash="deadbeef" * 16,
@@ -127,7 +127,7 @@ def test_parse_finding_bytes_roundtrip():
     assert f["confidence"] == 78
     assert f["description"] == "Flash loan attack pattern detected"
     assert f["rwa_enriched"] is True
-    assert f["agent_model"] == "llama-3.1-8b-instant"
+    assert f["agent_model"] == "llama-3.3-70b-versatile"
     assert f["block_height"] == 9_876_543
     assert f["timestamp"] == 1_751_111_111
     assert f["tx_hash"] == "deadbeef" * 16

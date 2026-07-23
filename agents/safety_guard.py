@@ -170,7 +170,7 @@ class SafetyGuard:
                 # written to chain. Previously this fell through to the shared
                 # module-level client (which silently used a mock key and then
                 # fail-opened on the resulting auth error).
-                if self._client is None:
+                if self._mp_client is None:
                     rejection_reason = "SafetyGuard fail-closed: no model client configured (GROQ_API_KEY missing) — cannot verify finding safety"
                     span.set_attribute("safety.approved", False)
                     span.set_attribute("safety.score", 1.0)
