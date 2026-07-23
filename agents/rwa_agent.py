@@ -219,23 +219,35 @@ class RWAAgent:
             except Exception as exc:
                 logger.error("assess error: %s", exc)
                 exc_str = str(exc)
-                is_auth_error = any(code in exc_str for code in ['403', '401', '429', 'Forbidden', 'Unauthorized', 'Rate limit'])
+                is_auth_error = any(code in exc_str for code in ["403", "401", "429", "Forbidden", "Unauthorized", "Rate limit"])
                 # Heuristic-based RWA assessment when Groq auth fails.
                 if is_auth_error:
                     collateral_ratio = asset_data.get("collateral_ratio", 1.0)
                     credit_rating = asset_data.get("credit_rating", "BBB")
                     score = 0
-                    if collateral_ratio < 1.0: score += 30
-                    elif collateral_ratio < 1.15: score += 15
-                    if credit_rating in ("AAA", "AA"): score += 10
-                    elif credit_rating in ("BBB", "BB"): score += 25
-                    elif credit_rating in ("B", "CCC"): score += 40
+                    if collateral_ratio < 1.0:
+                        score += 30
+                    elif collateral_ratio < 1.15:
+                        score += 15
+                    if credit_rating in ("AAA", "AA"):
+                        score += 10
+                    elif credit_rating in ("BBB", "BB"):
+                        score += 25
+                    elif credit_rating in ("B", "CCC"):
+                        score += 40
                     score += 15  # base risk for unverified AI assessment
                     verdict = "REJECTED" if score > 70 else "REVIEW" if score > 40 else "APPROVED"
                     return {
                         "verdict": verdict,
                         "risk_score": min(100.0, score),
-                        "notes": f"VaultWatch heuristic RWA assessment (Groq unavailable): {asset_data.get('asset_type', 'unknown')} asset '{asset_data.get('asset_id', 'unknown')}' with collateral ratio {collateral_ratio:.2f} and credit rating {credit_rating}. Heuristic verdict: {verdict}. Full AI analysis requires valid Groq key.",
+                        "notes": (
+                            f"VaultWatch heuristic RWA assessment (Groq unavailable): "
+                            f"{asset_data.get('asset_type', 'unknown')} asset "
+                            f"'{asset_data.get('asset_id', 'unknown')}' with collateral "
+                            f"ratio {collateral_ratio:.2f} and credit rating {credit_rating}. "
+                            f"Heuristic verdict: {verdict}. "
+                            f"Full AI analysis requires valid Groq key."
+                        ),
                         "risk_factors": ["valuation_uncertainty", "market_volatility", "groq_auth_failure"],
                         "collateral_assessment": f"Collateral ratio {collateral_ratio:.2f} — {'below' if collateral_ratio < 1.0 else 'above'} 1.0x threshold",
                         "regulatory_status": "Pending AI verification (heuristic fallback)",

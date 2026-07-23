@@ -118,11 +118,14 @@ class SafetyGuard:
                 # issues. Fail-OPEN on these so queries still reach the agents
                 # (which have their own fallback logic). Only fail-CLOSED on
                 # actual model responses that flag unsafe content.
-                is_auth_error = any(code in exc_str for code in ['403', '401', '429', 'Forbidden', 'Unauthorized', 'Rate limit'])
+                is_auth_error = any(code in exc_str for code in ["403", "401", "429", "Forbidden", "Unauthorized", "Rate limit"])
                 if is_auth_error:
                     logger.warning("check auth/infra error (fail-open): %s", exc)
                     span.set_attribute("safety.fail_open_reason", "auth_infra_error")
-                    return {"safe": True, "reason": f"Safety check bypassed: auth/infra error ({exc_str[:80]}). Query allowed through — agents will use fallback logic."}
+                    return {
+                        "safe": True,
+                        "reason": f"Safety check bypassed: auth/infra error ({exc_str[:80]}). Query allowed through — agents will use fallback logic.",
+                    }
                 # Other errors (malformed JSON, parse, etc.) — still fail-closed
                 logger.error("check error (fail-closed): %s", exc)
                 return {"safe": False, "reason": f"error: {exc}"}
@@ -211,7 +214,7 @@ class SafetyGuard:
                 # our credentials or rate-limited us. In this case the finding
                 # is still valid data from downstream agents, so we approve it
                 # with a low safety score rather than blocking it entirely.
-                is_auth_error = any(code in exc_str for code in ['403', '401', '429', 'Forbidden', 'Unauthorized', 'Rate limit'])
+                is_auth_error = any(code in exc_str for code in ["403", "401", "429", "Forbidden", "Unauthorized", "Rate limit"])
                 if is_auth_error:
                     logger.warning("SafetyGuard validate auth/infra error (fail-open): %s", e)
                     span.set_attribute("safety.approved", True)

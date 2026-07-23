@@ -136,7 +136,7 @@ class IntelAgent:
             except Exception as exc:
                 logger.error("analyze error: %s", exc)
                 exc_str = str(exc)
-                is_auth_error = any(code in exc_str for code in ['403', '401', '429', 'Forbidden', 'Unauthorized', 'Rate limit'])
+                is_auth_error = any(code in exc_str for code in ["403", "401", "429", "Forbidden", "Unauthorized", "Rate limit"])
                 if is_auth_error:
                     # Produce a heuristic-based fallback analysis when Groq auth fails.
                     # This ensures the dashboard still delivers useful risk intelligence
@@ -153,7 +153,11 @@ class IntelAgent:
                     if not matched_factors:
                         matched_factors = ["whale_concentration", "liquidity_risk"]
                     return {
-                        "summary": f"VaultWatch heuristic analysis (Groq unavailable): {query}. Protocol {protocol or 'unknown'} shows risk indicators requiring monitoring. AI-assisted analysis pending valid API key.",
+                        "summary": (
+                            f"VaultWatch heuristic analysis (Groq unavailable): {query}. "
+                            f"Protocol {protocol or 'unknown'} shows risk indicators "
+                            f"requiring monitoring. AI-assisted analysis pending valid API key."
+                        ),
                         "risk_factors": matched_factors,
                         "findings_count": len(matched_factors),
                         "confidence": 0.4,

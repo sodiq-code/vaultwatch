@@ -2209,9 +2209,9 @@ async def x402_wcspr_info() -> Dict[str, Any]:
                             if contract_info:
                                 info["contractFound"] = True
                                 info["contractPackageHash"] = contract_info.get("contract_package_hash", "")
-                                info["contractEntryPoint"] = list(
-                                    contract_info.get("entry_points", {}).keys()
-                                )[:5] if isinstance(contract_info.get("entry_points"), dict) else []
+                                info["contractEntryPoint"] = (
+                                    list(contract_info.get("entry_points", {}).keys())[:5] if isinstance(contract_info.get("entry_points"), dict) else []
+                                )
                             else:
                                 info["contractFound"] = False
                         else:
@@ -2274,12 +2274,7 @@ async def x402_wcspr_balance(account_hash: str) -> Dict[str, Any]:
                     raise HTTPException(status_code=502, detail=f"RPC block query failed: {block_resp.status_code}")
 
                 block_data = block_resp.json()
-                state_root_hash = (
-                    block_data.get("result", {})
-                    .get("block", {})
-                    .get("header", {})
-                    .get("state_root_hash", "")
-                )
+                state_root_hash = block_data.get("result", {}).get("block", {}).get("header", {}).get("state_root_hash", "")
                 if not state_root_hash:
                     raise HTTPException(status_code=502, detail="Could not obtain state root hash")
 
