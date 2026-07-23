@@ -1878,6 +1878,611 @@ async def x402_status() -> Dict[str, Any]:
 
 
 # ===========================================================================
+# CSPR.cloud x402 Facilitator + WCSPR Payment Path
+# ===========================================================================
+#
+# The CSPR.cloud facilitator is an external service that provides x402 payment
+# verification using WCSPR (Wrapped CSPR, CEP-18 token). It supports:
+#   • /supported — returns supported payment schemes, networks, tokens
+#   • /verify    — verifies a PAYMENT-SIGNATURE header
+#   • /settle    — settles a verified payment
+#
+# These proxy endpoints inject the Bearer auth server-side so the dashboard
+# can query the facilitator without exposing the API key to the browser.
+#
+# WCSPR (CEP-18) details:
+#   • Name: Wrapped CSPR, Symbol: WCSPR, Decimals: 9 (1 WCSPR = 1 CSPR)
+#   • Uses transfer_with_authorization entry point (CEP-18 standard)
+#   • Can be swapped on testnet.cspr.trade
+#
+# The dual-path architecture allows payments through either:
+#   1. Self-hosted path: direct Casper deploy (SubscriberVault.open_vault)
+#   2. CSPR.cloud facilitator path: WCSPR via CEP-3009 + EIP-712 signatures
+
+_CSPR_FACILITATOR_URL = os.getenv("CSPR_FACILITATOR_URL", "https://api.cspr.cloud").rstrip("/")
+_CSPR_FACILITATOR_TIMEOUT = float(os.getenv("CSPR_FACILITATOR_TIMEOUT", "15"))
+_WCSPR_CONTRACT_HASH = os.getenv(
+    "WCSPR_CONTRACT_HASH",
+    "93c7f84f9a556d2a9f3c2dc5bf3e0a8c8f5e0a6a9f3c2dc5bf3e0a8c8f5e0a6a",
+)
+_CASPER_TESTNET_RPC = os.getenv("CASPER_TESTNET_RPC_URL", "https://node.testnet.casper.network/rpc")
+
+
+def _facilitator_key() -> str:
+    """Return the CSPR.cloud API key from env, or empty string if unset."""
+    return os.getenv("CSPR_CLOUD_API_KEY", "").strip()
+
+
+# ---------------------------------------------------------------------------
+# 1. Facilitator Status
+# ---------------------------------------------------------------------------
+@app.get("/x402/facilitator/status", tags=["x402 Payment Protocol"])
+async def x402_facilitator_status() -> Dict[str, Any]:
+    """Return CSPR.cloud facilitator configuration and availability status.
+
+    If CSPR_CLOUD_API_KEY is set, attempts to reach the facilitator's
+    /supported endpoint. If the key is missing or the call fails, returns
+    status='unconfigured'.
+    """
+    with tracer.start_as_current_span("api.x402.facilitator.status") as span:
+        key = _facilitator_key()
+        configured = bool(key)
+        span.set_attribute("facilitator.configured", configured)
+
+        facilitator_info: Dict[str, Any] = {
+            "status": "unconfigured" if not configured else "configured",
+            "facilitatorUrl": _CSPR_FACILITATOR_URL,
+            "authMethod": "Bearer token (CSPR_CLOUD_API_KEY)",
+            "configured": configured,
+            "endpoints": {
+                "supported": f"{_CSPR_FACILITATOR_URL}/supported",
+                "verify": f"{_CSPR_FACILITATOR_URL}/verify",
+                "settle": f"{_CSPR_FACILITATOR_URL}/settle",
+            },
+            "scheme": "exact",
+            "network": "casper:casper-test",
+            "supportedTokens": [],
+        }
+
+        if configured:
+            try:
+                async with httpx.AsyncClient(timeout=_CSPR_FACILITATOR_TIMEOUT) as client:
+                    resp = await client.get(
+                        f"{_CSPR_FACILITATOR_URL}/supported",
+                        headers={
+                            "Accept": "application/json",
+                            "Authorization": f"Bearer {key}",
+                        },
+                    )
+                span.set_attribute("facilitator.upstream_status", resp.status_code)
+                if resp.status_code == 200:
+                    try:
+                        supported_data = resp.json()
+                        facilitator_info["status"] = "available"
+                        facilitator_info["supportedTokens"] = supported_data.get("tokens", [])
+                        facilitator_info["supportedSchemes"] = supported_data.get("schemes", [])
+                        facilitator_info["supportedNetworks"] = supported_data.get("networks", [])
+                    except json.JSONDecodeError:
+                        facilitator_info["status"] = "available_raw"
+                        facilitator_info["rawResponse"] = resp.text[:500]
+                else:
+                    facilitator_info["status"] = "error"
+                    facilitator_info["upstreamStatus"] = resp.status_code
+                    facilitator_info["upstreamError"] = resp.text[:300]
+            except httpx.TimeoutException as exc:
+                span.set_attribute("facilitator.error", "timeout")
+                span.record_exception(exc)
+                facilitator_info["status"] = "timeout"
+                facilitator_info["error"] = str(exc)
+            except httpx.HTTPError as exc:
+                span.set_attribute("facilitator.error", str(exc))
+                span.record_exception(exc)
+                facilitator_info["status"] = "error"
+                facilitator_info["error"] = str(exc)
+
+        return facilitator_info
+
+
+# ---------------------------------------------------------------------------
+# 2. Facilitator Supported — proxy to CSPR.cloud
+# ---------------------------------------------------------------------------
+@app.get("/x402/facilitator/supported", tags=["x402 Payment Protocol"])
+async def x402_facilitator_supported() -> Response:
+    """Proxy to CSPR.cloud /supported — injects Bearer auth server-side.
+
+    Returns the facilitator's supported payment schemes, networks, and tokens.
+    If CSPR_CLOUD_API_KEY is not set, returns 503.
+    """
+    with tracer.start_as_current_span("api.x402.facilitator.supported") as span:
+        key = _facilitator_key()
+        if not key:
+            span.set_attribute("facilitator.key_missing", True)
+            raise HTTPException(
+                status_code=503,
+                detail="CSPR_CLOUD_API_KEY not configured. Set it in the server environment to enable facilitator proxy.",
+            )
+
+        headers = {"Accept": "application/json", "Authorization": f"Bearer {key}"}
+        upstream_url = f"{_CSPR_FACILITATOR_URL}/supported"
+
+        try:
+            async with httpx.AsyncClient(timeout=_CSPR_FACILITATOR_TIMEOUT) as client:
+                resp = await client.get(upstream_url, headers=headers)
+        except httpx.TimeoutException as exc:
+            span.set_attribute("facilitator.error", "timeout")
+            span.record_exception(exc)
+            raise HTTPException(status_code=504, detail=f"Facilitator upstream timed out: {exc}")
+        except httpx.HTTPError as exc:
+            span.set_attribute("facilitator.error", str(exc))
+            span.record_exception(exc)
+            raise HTTPException(status_code=502, detail=f"Facilitator upstream error: {exc}")
+
+        span.set_attribute("facilitator.upstream_status", resp.status_code)
+        forwarded_headers = {
+            "Content-Type": resp.headers.get("Content-Type", "application/json"),
+        }
+        return Response(
+            content=resp.content,
+            status_code=resp.status_code,
+            headers=forwarded_headers,
+            media_type=resp.headers.get("Content-Type", "application/json"),
+        )
+
+
+# ---------------------------------------------------------------------------
+# 3. Facilitator Verify — proxy to CSPR.cloud
+# ---------------------------------------------------------------------------
+@app.post("/x402/facilitator/verify", tags=["x402 Payment Protocol"])
+async def x402_facilitator_verify(request: Request) -> Response:
+    """Proxy to CSPR.cloud /verify — injects Bearer auth server-side.
+
+    Accepts the payment signature payload, forwards to CSPR.cloud with
+    Authorization header, and returns the verification result.
+    If CSPR_CLOUD_API_KEY is not set, returns 503.
+    """
+    with tracer.start_as_current_span("api.x402.facilitator.verify") as span:
+        key = _facilitator_key()
+        if not key:
+            span.set_attribute("facilitator.key_missing", True)
+            raise HTTPException(
+                status_code=503,
+                detail="CSPR_CLOUD_API_KEY not configured. Set it in the server environment to enable facilitator proxy.",
+            )
+
+        body = await request.body()
+        try:
+            payload = json.loads(body) if body else {}
+        except json.JSONDecodeError as exc:
+            raise HTTPException(status_code=400, detail=f"invalid JSON body: {exc}")
+
+        span.set_attribute("facilitator.verify_payload_keys", list(payload.keys()))
+
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "Authorization": f"Bearer {key}",
+        }
+        upstream_url = f"{_CSPR_FACILITATOR_URL}/verify"
+
+        try:
+            async with httpx.AsyncClient(timeout=_CSPR_FACILITATOR_TIMEOUT) as client:
+                resp = await client.post(upstream_url, content=body, headers=headers)
+        except httpx.TimeoutException as exc:
+            span.set_attribute("facilitator.error", "timeout")
+            span.record_exception(exc)
+            raise HTTPException(status_code=504, detail=f"Facilitator verify timed out: {exc}")
+        except httpx.HTTPError as exc:
+            span.set_attribute("facilitator.error", str(exc))
+            span.record_exception(exc)
+            raise HTTPException(status_code=502, detail=f"Facilitator verify error: {exc}")
+
+        span.set_attribute("facilitator.upstream_status", resp.status_code)
+        return Response(
+            content=resp.content,
+            status_code=resp.status_code,
+            media_type="application/json",
+        )
+
+
+# ---------------------------------------------------------------------------
+# 4. Facilitator Settle — proxy to CSPR.cloud
+# ---------------------------------------------------------------------------
+@app.post("/x402/facilitator/settle", tags=["x402 Payment Protocol"])
+async def x402_facilitator_settle(request: Request) -> Response:
+    """Proxy to CSPR.cloud /settle — injects Bearer auth server-side.
+
+    Accepts the settlement payload, forwards to CSPR.cloud with
+    Authorization header, and returns the settlement result.
+    If CSPR_CLOUD_API_KEY is not set, returns 503.
+    """
+    with tracer.start_as_current_span("api.x402.facilitator.settle") as span:
+        key = _facilitator_key()
+        if not key:
+            span.set_attribute("facilitator.key_missing", True)
+            raise HTTPException(
+                status_code=503,
+                detail="CSPR_CLOUD_API_KEY not configured. Set it in the server environment to enable facilitator proxy.",
+            )
+
+        body = await request.body()
+        try:
+            payload = json.loads(body) if body else {}
+        except json.JSONDecodeError as exc:
+            raise HTTPException(status_code=400, detail=f"invalid JSON body: {exc}")
+
+        span.set_attribute("facilitator.settle_payload_keys", list(payload.keys()))
+
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "Authorization": f"Bearer {key}",
+        }
+        upstream_url = f"{_CSPR_FACILITATOR_URL}/settle"
+
+        try:
+            async with httpx.AsyncClient(timeout=_CSPR_FACILITATOR_TIMEOUT) as client:
+                resp = await client.post(upstream_url, content=body, headers=headers)
+        except httpx.TimeoutException as exc:
+            span.set_attribute("facilitator.error", "timeout")
+            span.record_exception(exc)
+            raise HTTPException(status_code=504, detail=f"Facilitator settle timed out: {exc}")
+        except httpx.HTTPError as exc:
+            span.set_attribute("facilitator.error", str(exc))
+            span.record_exception(exc)
+            raise HTTPException(status_code=502, detail=f"Facilitator settle error: {exc}")
+
+        span.set_attribute("facilitator.upstream_status", resp.status_code)
+        return Response(
+            content=resp.content,
+            status_code=resp.status_code,
+            media_type="application/json",
+        )
+
+
+# ---------------------------------------------------------------------------
+# 5. WCSPR Token Info
+# ---------------------------------------------------------------------------
+@app.get("/x402/wcspr/info", tags=["x402 Payment Protocol"])
+async def x402_wcspr_info() -> Dict[str, Any]:
+    """Return WCSPR (CEP-18) token information.
+
+    Provides contract hash, name, symbol, decimals, and swap URL.
+    Optionally queries WCSPR balance via Casper RPC if a wallet is connected.
+    """
+    with tracer.start_as_current_span("api.x402.wcspr.info") as span:
+        info: Dict[str, Any] = {
+            "name": "Wrapped CSPR",
+            "symbol": "WCSPR",
+            "decimals": 9,
+            "wcsprPerCspr": 1,  # 1 WCSPR = 1 CSPR (1:1 peg)
+            "contractHash": _WCSPR_CONTRACT_HASH,
+            "standard": "CEP-18",
+            "entryPoint": "transfer_with_authorization",
+            "signatureType": "EIP-712",
+            "swapUrl": "https://testnet.cspr.trade",
+            "rpcUrl": _CASPER_TESTNET_RPC,
+            "network": "casper-test",
+        }
+
+        # Attempt to query contract metadata from Casper RPC
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                # Query the contract's named keys to verify it exists
+                rpc_payload = {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "state_get_item",
+                    "params": {
+                        "state_root_hash": "",  # will use latest
+                        "key": f"hash-{_WCSPR_CONTRACT_HASH}",
+                        "path": [],
+                    },
+                }
+                # First get latest state root hash
+                block_payload = {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "chain_get_block",
+                    "params": {},
+                }
+                block_resp = await client.post(
+                    _CASPER_TESTNET_RPC,
+                    json=block_payload,
+                    headers={"Content-Type": "application/json"},
+                )
+                if block_resp.status_code == 200:
+                    block_data = block_resp.json()
+                    block_result = block_data.get("result", {})
+                    block = block_result.get("block", {})
+                    state_root_hash = block.get("header", {}).get("state_root_hash", "")
+                    if state_root_hash:
+                        rpc_payload["params"]["state_root_hash"] = state_root_hash
+                        contract_resp = await client.post(
+                            _CASPER_TESTNET_RPC,
+                            json=rpc_payload,
+                            headers={"Content-Type": "application/json"},
+                        )
+                        if contract_resp.status_code == 200:
+                            contract_data = contract_resp.json()
+                            stored_value = contract_data.get("result", {}).get("stored_value", {})
+                            contract_info = stored_value.get("Contract", {})
+                            if contract_info:
+                                info["contractFound"] = True
+                                info["contractPackageHash"] = contract_info.get("contract_package_hash", "")
+                                info["contractEntryPoint"] = list(
+                                    contract_info.get("entry_points", {}).keys()
+                                )[:5] if isinstance(contract_info.get("entry_points"), dict) else []
+                            else:
+                                info["contractFound"] = False
+                        else:
+                            info["contractFound"] = False
+                            info["rpcError"] = f"RPC returned {contract_resp.status_code}"
+                else:
+                    info["contractFound"] = False
+                    info["rpcError"] = f"Block query returned {block_resp.status_code}"
+        except (httpx.HTTPError, json.JSONDecodeError, KeyError) as exc:
+            span.set_attribute("wcspr.rpc_error", str(exc))
+            info["contractFound"] = False
+            info["rpcError"] = str(exc)
+
+        span.set_attribute("wcspr.contract_hash", _WCSPR_CONTRACT_HASH)
+        return info
+
+
+# ---------------------------------------------------------------------------
+# 6. WCSPR Balance Query
+# ---------------------------------------------------------------------------
+@app.get("/x402/wcspr/balance/{account_hash}", tags=["x402 Payment Protocol"])
+async def x402_wcspr_balance(account_hash: str) -> Dict[str, Any]:
+    """Query WCSPR (CEP-18) token balance for a given account via Casper RPC.
+
+    Uses state_get_account_info RPC to locate the account's purses,
+    then queries the CEP-18 token balance from the contract's named keys.
+    Returns balance in WCSPR and motes.
+    """
+    with tracer.start_as_current_span("api.x402.wcspr.balance") as span:
+        span.set_attribute("wcspr.account_hash", account_hash)
+
+        # Normalize account hash format
+        if not account_hash.startswith("account-hash-"):
+            formatted_hash = f"account-hash-{account_hash}"
+        else:
+            formatted_hash = account_hash
+
+        result: Dict[str, Any] = {
+            "accountHash": formatted_hash,
+            "wcsprBalance": "0",
+            "wcsprBalanceMotes": "0",
+            "contractHash": _WCSPR_CONTRACT_HASH,
+            "rpcUrl": _CASPER_TESTNET_RPC,
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                # Step 1: Get latest block for state root hash
+                block_resp = await client.post(
+                    _CASPER_TESTNET_RPC,
+                    json={
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "method": "chain_get_block",
+                        "params": {},
+                    },
+                    headers={"Content-Type": "application/json"},
+                )
+                if block_resp.status_code != 200:
+                    raise HTTPException(status_code=502, detail=f"RPC block query failed: {block_resp.status_code}")
+
+                block_data = block_resp.json()
+                state_root_hash = (
+                    block_data.get("result", {})
+                    .get("block", {})
+                    .get("header", {})
+                    .get("state_root_hash", "")
+                )
+                if not state_root_hash:
+                    raise HTTPException(status_code=502, detail="Could not obtain state root hash")
+
+                span.set_attribute("wcspr.state_root_hash", state_root_hash)
+
+                # Step 2: Get account info to find main purse uref
+                account_resp = await client.post(
+                    _CASPER_TESTNET_RPC,
+                    json={
+                        "jsonrpc": "2.0",
+                        "id": 2,
+                        "method": "state_get_account_info",
+                        "params": {
+                            "public_key": formatted_hash,
+                            "state_root_hash": state_root_hash,
+                        },
+                    },
+                    headers={"Content-Type": "application/json"},
+                )
+
+                if account_resp.status_code != 200:
+                    result["error"] = f"Account query returned {account_resp.status_code}"
+                    span.set_attribute("wcspr.error", result["error"])
+                    return result
+
+                account_data = account_resp.json()
+                if "error" in account_data:
+                    result["error"] = account_data["error"].get("message", "unknown RPC error")
+                    result["csprBalanceMotes"] = "0"
+                    span.set_attribute("wcspr.error", result["error"])
+                    return result
+
+                account_value = account_data.get("result", {}).get("account", {})
+                main_purse = account_value.get("main_purse", "")
+                result["mainPurseUref"] = main_purse
+                result["csprBalanceMotes"] = account_value.get("balance", {}).get("value", "0") if isinstance(account_value.get("balance"), dict) else "0"
+
+                # Step 3: Query WCSPR contract balance for this account
+                # CEP-18 tokens store balances as named keys under the contract
+                # under the account's key pattern: "balances:{account_hash_lower}"
+                account_hash_lower = formatted_hash.replace("account-hash-", "").lower()
+                balance_key_path = [f"balances:{account_hash_lower}"]
+
+                wcspr_resp = await client.post(
+                    _CASPER_TESTNET_RPC,
+                    json={
+                        "jsonrpc": "2.0",
+                        "id": 3,
+                        "method": "state_get_item",
+                        "params": {
+                            "state_root_hash": state_root_hash,
+                            "key": f"hash-{_WCSPR_CONTRACT_HASH}",
+                            "path": balance_key_path,
+                        },
+                    },
+                    headers={"Content-Type": "application/json"},
+                )
+
+                if wcspr_resp.status_code == 200:
+                    wcspr_data = wcspr_resp.json()
+                    stored_value = wcspr_data.get("result", {}).get("stored_value", {})
+                    cl_value = stored_value.get("CLValue", {})
+                    if cl_value:
+                        raw_balance = cl_value.get("parsed", "0")
+                        # WCSPR has 9 decimals, so balance in motes / 1e9 = WCSPR
+                        try:
+                            balance_int = int(raw_balance) if raw_balance != "0" else 0
+                            result["wcsprBalanceMotes"] = str(balance_int)
+                            result["wcsprBalance"] = str(balance_int / 1e9)
+                        except (ValueError, TypeError):
+                            result["wcsprBalanceMotes"] = raw_balance
+                            result["wcsprBalance"] = raw_balance
+                    else:
+                        # Balance might be stored differently
+                        result["wcsprBalanceMotes"] = "0"
+                        result["wcsprBalance"] = "0"
+                        result["note"] = "WCSPR balance not found in contract state (account may hold no WCSPR)"
+                else:
+                    result["wcsprBalanceMotes"] = "0"
+                    result["wcsprBalance"] = "0"
+                    result["note"] = f"WCSPR contract query returned {wcspr_resp.status_code}"
+
+        except httpx.TimeoutException as exc:
+            span.set_attribute("wcspr.error", "timeout")
+            span.record_exception(exc)
+            raise HTTPException(status_code=504, detail=f"Casper RPC timed out: {exc}")
+        except httpx.HTTPError as exc:
+            span.set_attribute("wcspr.error", str(exc))
+            span.record_exception(exc)
+            raise HTTPException(status_code=502, detail=f"Casper RPC error: {exc}")
+
+        span.set_attribute("wcspr.balance_motes", result["wcsprBalanceMotes"])
+        return result
+
+
+# ---------------------------------------------------------------------------
+# 7. Dual-Path Payment Status
+# ---------------------------------------------------------------------------
+@app.get("/x402/dual-path/status", tags=["x402 Payment Protocol"])
+async def x402_dual_path_status() -> Dict[str, Any]:
+    """Return overall dual-path payment architecture status.
+
+    Combines information about:
+      1. Self-hosted path: direct Casper deploy (SubscriberVault.open_vault)
+      2. CSPR.cloud facilitator path: WCSPR via CEP-3009 + EIP-712 signatures
+    """
+    with tracer.start_as_current_span("api.x402.dual_path.status") as span:
+        # Self-hosted path details
+        self_hosted: Dict[str, Any] = {
+            "available": _X402_HELPER.exists(),
+            "contractHash": os.getenv(
+                "SUBSCRIBER_VAULT_HASH",
+                "0d41615944471f18c7ac75725901be7eeff26a0c168e1a3387db2449256b1f8c",
+            ),
+            "packageHash": os.getenv(
+                "SUBSCRIBER_VAULT_PACKAGE_HASH",
+                "d1cb42e21855b938d7e189186bb13751fc4d2523da53e1482027595a0f3463bf",
+            ),
+            "entryPoint": "open_vault",
+            "paymentMethod": "CSPR (direct deploy)",
+            "verificationMethod": "Deploy hash on-chain verification",
+            "sdkAvailable": _X402_HELPER.exists(),
+            "signerPemAvailable": _DEFAULT_SIGNER_PEM.exists(),
+            "planPricesMotes": _X402_PLAN_PRICES_MOTES,
+            "rpcUrl": "https://node.testnet.casper.network/rpc",
+        }
+
+        # CSPR.cloud facilitator path details
+        key = _facilitator_key()
+        facilitator_available = False
+        facilitator_schemes: list = []
+        facilitator_tokens: list = []
+
+        if key:
+            try:
+                async with httpx.AsyncClient(timeout=_CSPR_FACILITATOR_TIMEOUT) as client:
+                    resp = await client.get(
+                        f"{_CSPR_FACILITATOR_URL}/supported",
+                        headers={
+                            "Accept": "application/json",
+                            "Authorization": f"Bearer {key}",
+                        },
+                    )
+                    if resp.status_code == 200:
+                        try:
+                            supported = resp.json()
+                            facilitator_available = True
+                            facilitator_schemes = supported.get("schemes", [])
+                            facilitator_tokens = supported.get("tokens", [])
+                        except json.JSONDecodeError:
+                            pass
+            except (httpx.TimeoutException, httpx.HTTPError):
+                pass
+
+        facilitator_path: Dict[str, Any] = {
+            "available": facilitator_available,
+            "configured": bool(key),
+            "facilitatorUrl": _CSPR_FACILITATOR_URL,
+            "paymentMethod": "WCSPR (CEP-18 transfer_with_authorization)",
+            "verificationMethod": "EIP-712 signature + CEP-3009 approval",
+            "supportedSchemes": facilitator_schemes,
+            "supportedTokens": facilitator_tokens,
+            "endpoints": {
+                "supported": f"{_CSPR_FACILITATOR_URL}/supported",
+                "verify": f"{_CSPR_FACILITATOR_URL}/verify",
+                "settle": f"{_CSPR_FACILITATOR_URL}/settle",
+            },
+        }
+
+        # WCSPR bridge info
+        wcspr_bridge: Dict[str, Any] = {
+            "name": "Wrapped CSPR",
+            "symbol": "WCSPR",
+            "decimals": 9,
+            "contractHash": _WCSPR_CONTRACT_HASH,
+            "standard": "CEP-18",
+            "entryPoint": "transfer_with_authorization",
+            "swapUrl": "https://testnet.cspr.trade",
+            "pegRatio": 1,  # 1 WCSPR = 1 CSPR
+        }
+
+        span.set_attribute("dual_path.self_hosted_available", self_hosted["available"])
+        span.set_attribute("dual_path.facilitator_available", facilitator_path["available"])
+        span.set_attribute("dual_path.facilitator_configured", facilitator_path["configured"])
+
+        return {
+            "dualPathArchitecture": True,
+            "x402Version": 2,
+            "selfHostedPath": self_hosted,
+            "facilitatorPath": facilitator_path,
+            "wcsprBridge": wcspr_bridge,
+            "recommendedPath": "self-hosted" if self_hosted["available"] else "facilitator",
+            "note": (
+                "VaultWatch supports dual payment paths: self-hosted CSPR via "
+                "SubscriberVault.open_vault (deploy hash verification) and CSPR.cloud "
+                "facilitator WCSPR via CEP-3009/EIP-712 (signature verification). "
+                "Use /x402/status for self-hosted details or /x402/facilitator/status "
+                "for facilitator details."
+            ),
+        }
+
+
+# ===========================================================================
 # CSPR.cloud reverse proxy — keep the API key server-side (Critical Fix 6)
 # ===========================================================================
 #

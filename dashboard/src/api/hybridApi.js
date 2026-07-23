@@ -327,7 +327,7 @@ function mockAttestations() {
   ]
 }
 
-// ─── NEW: Mock x402 Payments ───
+// ─── NEW: Mock x402 Payments (enhanced with dual-path) ───
 function mockX402Status() {
   return {
     x402Version: 2,
@@ -342,19 +342,65 @@ function mockX402Status() {
       SubscriberVault: {
         contractHash: CONTRACT_HASHES.SubscriberVault,
         entryPoint: 'open_vault',
+        path: 'native',
+        label: 'Native CSPR Escrow',
+      },
+      WCSPR_CEP18: {
+        contractHash: 'contract-hash-wcspr-cep18',
+        entryPoint: 'transfer_with_authorization',
+        path: 'wcspr',
+        label: 'WCSPR CEP-18 Transfer',
       },
     },
     planPrices: {
-      standard: { amount_motes: 1_000_000_000, amount_cspr: 1.0, queries: 100 },
-      premium:  { amount_motes: 5_000_000_000, amount_cspr: 5.0, queries: 500 },
+      standard: { amount_motes: 1_000_000_000, amount_cspr: 1.0, amount_wcspr: 1.0, queries: 100 },
+      premium:  { amount_motes: 5_000_000_000, amount_cspr: 5.0, amount_wcspr: 5.0, queries: 500 },
     },
     recentPayments: [
-      { id: 'pay-001', subscriber: '0x203cd…bace7', plan: 'standard', amount_cspr: 1.0, deploy_hash: '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join(''), timestamp: Date.now() - 180_000, status: 'verified' },
-      { id: 'pay-002', subscriber: '0xabc12…def34', plan: 'premium',  amount_cspr: 5.0, deploy_hash: '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join(''), timestamp: Date.now() - 600_000, status: 'verified' },
-      { id: 'pay-003', subscriber: '0x789ef…012ab', plan: 'standard', amount_cspr: 1.0, deploy_hash: '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join(''), timestamp: Date.now() - 1_200_000, status: 'pending' },
+      { id: 'pay-001', subscriber: '0x203cd…bace7', plan: 'standard', amount_cspr: 1.0, paymentPath: 'native', deploy_hash: '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join(''), timestamp: Date.now() - 180_000, status: 'verified' },
+      { id: 'pay-002', subscriber: '0xabc12…def34', plan: 'premium',  amount_cspr: 5.0, amount_wcspr: 5.0, paymentPath: 'wcspr', deploy_hash: '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join(''), timestamp: Date.now() - 600_000, status: 'verified' },
+      { id: 'pay-003', subscriber: '0x789ef…012ab', plan: 'standard', amount_cspr: 1.0, paymentPath: 'native', deploy_hash: '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join(''), timestamp: Date.now() - 1_200_000, status: 'pending' },
+      { id: 'pay-004', subscriber: '0xdef45…67890', plan: 'premium',  amount_wcspr: 5.0, paymentPath: 'wcspr', deploy_hash: '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join(''), timestamp: Date.now() - 2_400_000, status: 'verified' },
     ],
     helperAvailable: true,
     signerAvailable: true,
+    facilitatorAvailable: true,
+  }
+}
+
+// ─── NEW: Mock CSPR.cloud Facilitator Status ───
+function mockFacilitatorStatus() {
+  return {
+    facilitator: {
+      baseUrl: 'https://api.cspr.cloud',
+      endpoints: ['/supported', '/verify', '/settle'],
+      authMethod: 'Bearer CSPR_CLOUD_API_KEY',
+      status: 'configured',
+      scheme: 'exact',
+      network: 'casper:casper-test',
+      supportedTokens: ['WCSPR'],
+      reachable: true,
+      lastChecked: Date.now(),
+    },
+    _source: 'fallback',
+  }
+}
+
+// ─── NEW: Mock WCSPR Token Info ───
+function mockWCSPRInfo() {
+  return {
+    wcspr: {
+      contractHash: 'contract-hash-wcspr-cep18',
+      name: 'Wrapped CSPR',
+      symbol: 'WCSPR',
+      decimals: 9,
+      swapUrl: 'https://testnet.cspr.trade',
+      balance: null, // populated when wallet connected
+      totalSupply: '1,000,000,000 WCSPR',
+      price: '1 WCSPR ≈ 1 CSPR',
+      standard: 'CEP-18',
+    },
+    _source: 'fallback',
   }
 }
 
@@ -520,6 +566,26 @@ const hybridApi = {
       return null
     },
     () => ({ ...mockX402Status(), _source: 'fallback' })
+  ),
+
+  // ─── NEW: CSPR.cloud Facilitator Status ───
+  getFacilitatorStatus: withFallback(
+    async () => {
+      const d = await apiFetch('/x402/facilitator/status', { timeout: 6000 })
+      if (d?.facilitator) return { ...d, _source: 'live' }
+      return null
+    },
+    () => ({ ...mockFacilitatorStatus(), _source: 'fallback' })
+  ),
+
+  // ─── NEW: WCSPR Token Info ───
+  getWCSPRInfo: withFallback(
+    async () => {
+      const d = await apiFetch('/x402/wcspr/info', { timeout: 6000 })
+      if (d?.wcspr) return { ...d, _source: 'live' }
+      return null
+    },
+    () => ({ ...mockWCSPRInfo(), _source: 'fallback' })
   ),
 
   // Static data — always the same

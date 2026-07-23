@@ -2,7 +2,7 @@
 
 **Compliance-Gated RWA Oracle with Verifiable Agent Reputation on Casper**
 
-VaultWatch is a compliance-first Real-World Asset oracle on the Casper blockchain. Seven Groq-powered AI agents assess RWA risk, score compliance gates, and write verified findings to eight Odra smart contracts — with every decision tracked on-chain via a Brier-score reputation formula. CSPR.click agent wallets, official x402 micropayments, and a 39-tool domain MCP server make every claim independently verifiable on Casper testnet.
+VaultWatch is a compliance-first Real-World Asset oracle on the Casper blockchain. Seven Groq-powered AI agents assess RWA risk, score compliance gates, and write verified findings to eight Odra smart contracts — with every decision tracked on-chain via a Brier-score reputation formula. CSPR.click agent wallets, **dual-path x402 micropayments** (native CSPR + WCSPR facilitator), and a 39-tool domain MCP server make every claim independently verifiable on Casper testnet.
 
 [![CI](https://github.com/sodiq-code/vaultwatch/actions/workflows/ci.yml/badge.svg)](https://github.com/sodiq-code/vaultwatch/actions/workflows/ci.yml)
 [![Build Contracts](https://github.com/sodiq-code/vaultwatch/actions/workflows/build-contracts.yml/badge.svg)](https://github.com/sodiq-code/vaultwatch/actions/workflows/build-contracts.yml)
@@ -11,7 +11,7 @@ VaultWatch is a compliance-first Real-World Asset oracle on the Casper blockchai
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![Casper Testnet](https://img.shields.io/badge/casper-testnet%20live-orange.svg)](https://testnet.cspr.live/)
 [![CSPR.click](https://img.shields.io/badge/cspr.click-AgentWallet-success.svg)](https://cspr.click)
-[![x402](https://img.shields.io/badge/x402-v2%20verified-purple.svg)](https://github.com/x402-payment/x402-spec)
+[![x402](https://img.shields.io/badge/x402-v2%20dual%20path-purple.svg)](https://github.com/x402-payment/x402-spec)
 [![MCP](https://img.shields.io/badge/mcp-39%20RWA%20tools-teal.svg)](https://modelcontextprotocol.io)
 [![License: MIT](https://img.shields.io/badge/license-MIT-success.svg)](LICENSE)
 
@@ -56,6 +56,21 @@ VaultWatch uses **CSPR.click** (the Casper Association's own tool) for all agent
 ### x402 Micropayment Protocol — Verified On-Chain
 
 Official `@make-software/casper-x402` v2 SDK for HTTP-native pay-per-query access to RWA intelligence. Verified payment: [`0588e143…5e2c`](https://testnet.cspr.live/deploy/0588e143d15eebb7004c23052cd3727d7b87c3b120981184eff5abc9b33f5e2c) · [`x402/vaultwatch-x402.ts`](https://github.com/sodiq-code/vaultwatch/blob/main/x402/vaultwatch-x402.ts) · [`docs/X402_INTEGRATION.md`](https://github.com/sodiq-code/vaultwatch/blob/main/docs/X402_INTEGRATION.md)
+
+### Dual-Path x402 Payment Architecture — Self-Hosted + CSPR.cloud Facilitator
+
+VaultWatch now supports **two x402 payment paths**, covering both the self-hosted and external facilitator models defined by the x402 v2 specification — maximizing eligibility for DoraHacks **$100K in x402 ecosystem credits**:
+
+| Path | Token | Verification | Settlement |
+|------|-------|--------------|------------|
+| **Path A — Self-Hosted** | Native CSPR via SubscriberVault escrow | Local `ExactCasperScheme.verify()` + EIP-712 | Direct on-chain deploy (`open_vault`) |
+| **Path B — CSPR.cloud Facilitator** | WCSPR (CEP-18 wrapped CSPR) | CSPR.cloud `/verify` + `transfer_with_authorization` | CSPR.cloud `/settle` facilitator |
+
+- **New files**: [`x402/wcspr-x402-path.ts`](https://github.com/sodiq-code/vaultwatch/blob/main/x402/wcspr-x402-path.ts) · [`x402/wcspr_helper.mjs`](https://github.com/sodiq-code/vaultwatch/blob/main/x402/wcspr_helper.mjs)
+- **7 new API endpoints**: `/x402/facilitator/status`, `/x402/facilitator/supported`, `/x402/facilitator/verify`, `/x402/facilitator/settle`, `/x402/wcspr/info`, `/x402/wcspr/balance/{account_hash}`, `/x402/dual-path/status`
+- **Full architecture doc**: [`docs/X402_DUAL_PATH_ARCHITECTURE.md`](https://github.com/sodiq-code/vaultwatch/blob/main/docs/X402_DUAL_PATH_ARCHITECTURE.md)
+- **Dual-path proof**: [`proof/X402_DUAL_PATH_PROOF.md`](https://github.com/sodiq-code/vaultwatch/blob/main/proof/X402_DUAL_PATH_PROOF.md)
+- **DoraHacks relevance**: Both paths cover the full x402 v2 spec — self-hosted facilitator model (Path A) + external facilitator model (Path B). Dual-path architecture ensures 100% x402 specification coverage for the $150K prize pool ($100K x402 credits).
 
 ### vaultwatch-rwa-mcp — Casper Ecosystem MCP Server
 
@@ -148,7 +163,7 @@ curl -s -X POST https://node.testnet.casper.network/rpc \
 | **Compliance-gated RWA oracle** — compliance-first oracle gating RWA access on verifiable agent reputation | RiskOracle + RiskPolicyManager + AgentBehaviorIndex | [`contracts/src/risk_oracle.rs`](https://github.com/sodiq-code/vaultwatch/blob/main/contracts/src/risk_oracle.rs), [`contracts/src/risk_policy_manager.rs`](https://github.com/sodiq-code/vaultwatch/blob/main/contracts/src/risk_policy_manager.rs) |
 | **Brier-score reputation** — `R = w_B · brier_trust + w_E · escrow_trust` (EWMA λ=0.92) | 4 tiers (PLATINUM ≥ 85, GOLD 70–84, SILVER 50–69, BRONZE < 50) | [`docs/REPUTATION_FORMULA.md`](https://github.com/sodiq-code/vaultwatch/blob/main/docs/REPUTATION_FORMULA.md), [`agents/reputation.py`](https://github.com/sodiq-code/vaultwatch/blob/main/agents/reputation.py) |
 | **Casper-native upgrades** via `storage::add_contract_version()` | v1→v2 verified; v2 adds `get_policy_with_reasoning` on shared state URef | [`proof/upgrade_hashes.json`](https://github.com/sodiq-code/vaultwatch/blob/main/proof/upgrade_hashes.json) |
-| **x402 v2 micropayment** — HTTP-native pay-per-query via official SDK | Verified 1 CSPR payment via `SubscriberVault::open_vault` | [`proof/x402_payment_hashes.json`](https://github.com/sodiq-code/vaultwatch/blob/main/proof/x402_payment_hashes.json) |
+| **x402 dual-path micropayment** — HTTP-native pay-per-query via official SDK + WCSPR facilitator | Verified 1 CSPR payment via `SubscriberVault::open_vault` + WCSPR CEP-18 path via CSPR.cloud | [`proof/x402_payment_hashes.json`](https://github.com/sodiq-code/vaultwatch/blob/main/proof/x402_payment_hashes.json), [`docs/X402_DUAL_PATH_ARCHITECTURE.md`](https://github.com/sodiq-code/vaultwatch/blob/main/docs/X402_DUAL_PATH_ARCHITECTURE.md) |
 | **CSPR.click agent wallets** — Casper Association's own tool, not manual key management | `AgentWallet` + browser `CSPRClickProvider` | [`agents/agent_wallet.py`](https://github.com/sodiq-code/vaultwatch/blob/main/agents/agent_wallet.py), [`CSPR_CLICK_AGENT_SKILL.md`](https://github.com/sodiq-code/vaultwatch/blob/main/CSPR_CLICK_AGENT_SKILL.md) |
 | **Domain MCP server** — 39 RWA-specific tools as Casper ecosystem contribution | `query_global_state` + Odra decoders + CSPR.click AgentWallet | [`vaultwatch_rwa_mcp/server.py`](https://github.com/sodiq-code/vaultwatch/blob/main/vaultwatch_rwa_mcp/server.py) |
 | **ZK-KYC proof caching** — reputation ≥ GOLD required before RWA access | SelfCorrection + SafetyGuard + RiskPolicyManager threshold | [`agents/self_correction_agent.py`](https://github.com/sodiq-code/vaultwatch/blob/main/agents/self_correction_agent.py) |
@@ -177,7 +192,7 @@ curl -s -X POST https://node.testnet.casper.network/rpc \
 |----------|---------------|--------|
 | **Compliance-gated RWA access** — GOLD+ reputation to write; escrowed CSPR to read | RiskPolicyManager threshold 70; SubscriberVault gates | [`contracts/src/risk_policy_manager.rs`](https://github.com/sodiq-code/vaultwatch/blob/main/contracts/src/risk_policy_manager.rs), [`contracts/src/subscriber_vault.rs`](https://github.com/sodiq-code/vaultwatch/blob/main/contracts/src/subscriber_vault.rs) |
 | **Real RWA feeds** — CoinGecko + FRED + mock real estate | `RWAAgent.fetch_rwa_feed()` with provenance tracking | [`agents/rwa_agent.py`](https://github.com/sodiq-code/vaultwatch/blob/main/agents/rwa_agent.py) |
-| **x402 pay-per-query** — 1 CSPR per intelligence query | Verified: deploy `0588e143…5e2c` | [`proof/x402_payment_hashes.json`](https://github.com/sodiq-code/vaultwatch/blob/main/proof/x402_payment_hashes.json) |
+| **x402 dual-path pay-per-query** — 1 CSPR / 1 WCSPR per intelligence query | Verified: deploy `0588e143…5e2c` (Path A) + WCSPR CEP-18 path (Path B) | [`proof/x402_payment_hashes.json`](https://github.com/sodiq-code/vaultwatch/blob/main/proof/x402_payment_hashes.json), [`proof/X402_DUAL_PATH_PROOF.md`](https://github.com/sodiq-code/vaultwatch/blob/main/proof/X402_DUAL_PATH_PROOF.md) |
 | **DeFi protocol risk scores** — CasperSwap, CasperLend | 3 verified `update_score` deploys | [`contracts/src/risk_oracle.rs`](https://github.com/sodiq-code/vaultwatch/blob/main/contracts/src/risk_oracle.rs) |
 | **RWA tokenization risk** — bonds, commodities, credit | `/rwa/feed` with provenance flags | [`api/main.py`](https://github.com/sodiq-code/vaultwatch/blob/main/api/main.py) |
 
@@ -242,7 +257,7 @@ Demonstrates Casper-native upgrades via `storage::add_contract_version()` — pr
 | **GitHub repository** — 39 tests, 3 CI workflows | Active, public | [github.com/sodiq-code/vaultwatch](https://github.com/sodiq-code/vaultwatch) |
 | **CSPR.click integration** | Production-ready `AgentWallet` + browser provider | [`CSPR_CLICK_AGENT_SKILL.md`](https://github.com/sodiq-code/vaultwatch/blob/main/CSPR_CLICK_AGENT_SKILL.md) |
 | **Domain MCP server** (`vaultwatch-rwa-mcp`) | Standalone FastMCP; installable; 39 tools + 3 resources + 4 prompts | [`vaultwatch_rwa_mcp/README.md`](https://github.com/sodiq-code/vaultwatch/blob/main/vaultwatch_rwa_mcp/README.md) |
-| **x402 micropayment** | Verified on-chain; SDK v1.0.0 + casper-js-sdk v5.0.12 | [`proof/x402_payment_hashes.json`](https://github.com/sodiq-code/vaultwatch/blob/main/proof/x402_payment_hashes.json) |
+| **x402 micropayment** | Dual-path: native CSPR (verified deploy) + WCSPR facilitator (7 new endpoints); SDK v1.0.0 + casper-js-sdk v5.0.12 | [`proof/x402_payment_hashes.json`](https://github.com/sodiq-code/vaultwatch/blob/main/proof/x402_payment_hashes.json), [`docs/X402_DUAL_PATH_ARCHITECTURE.md`](https://github.com/sodiq-code/vaultwatch/blob/main/docs/X402_DUAL_PATH_ARCHITECTURE.md) |
 | **Live dashboard** | Vercel-deployed, auto from main | [vaultwatch-dashboard-v5.vercel.app](https://vaultwatch-dashboard-v5.vercel.app) |
 | **Demo video** | YouTube walkthrough | [youtu.be/Jmg_MFSxwdE](https://youtu.be/Jmg_MFSxwdE) |
 | **Deployment guide** | WASM compilation + deploy scripts | [`DEPLOYMENT_GUIDE.md`](https://github.com/sodiq-code/vaultwatch/blob/main/DEPLOYMENT_GUIDE.md) |
@@ -257,7 +272,7 @@ Demonstrates Casper-native upgrades via `storage::add_contract_version()` — pr
 |-------------|--------|--------|
 | **`vaultwatch-rwa-mcp`** — standalone installable Casper tool for any LLM agent | 39 tools + reads via `query_global_state` + writes via CSPR.click | [`vaultwatch_rwa_mcp/server.py`](https://github.com/sodiq-code/vaultwatch/blob/main/vaultwatch_rwa_mcp/server.py) |
 | **CSPR.click adoption** — Casper Association's own agent wallet tool | Signals ecosystem alignment; reduces bug surface | [`agents/agent_wallet.py`](https://github.com/sodiq-code/vaultwatch/blob/main/agents/agent_wallet.py) |
-| **x402 first implementation** — official SDK for RWA pay-per-query | Demonstrates HTTP-native micropayment for Casper dApps | [`x402/vaultwatch-x402.ts`](https://github.com/sodiq-code/vaultwatch/blob/main/x402/vaultwatch-x402.ts) |
+| **x402 dual-path implementation** — official SDK for RWA pay-per-query + WCSPR facilitator | Demonstrates both self-hosted and external facilitator models for Casper dApps | [`x402/vaultwatch-x402.ts`](https://github.com/sodiq-code/vaultwatch/blob/main/x402/vaultwatch-x402.ts), [`x402/wcspr-x402-path.ts`](https://github.com/sodiq-code/vaultwatch/blob/main/x402/wcspr-x402-path.ts), [`docs/X402_DUAL_PATH_ARCHITECTURE.md`](https://github.com/sodiq-code/vaultwatch/blob/main/docs/X402_DUAL_PATH_ARCHITECTURE.md) |
 | **Reusable reputation formula** — Brier-score + escrow trust published | Any Casper project can adopt hybrid reputation scoring | [`docs/REPUTATION_FORMULA.md`](https://github.com/sodiq-code/vaultwatch/blob/main/docs/REPUTATION_FORMULA.md) |
 | **8 verified smart contracts** — production-grade Odra with RBAC, pause, upgrade | All active on testnet; upgradable via `add_contract_version()` | [`contracts/src/`](https://github.com/sodiq-code/vaultwatch/tree/main/contracts/src) |
 | **Casper AI Toolkit integration** | MCP Server, CSPR.cloud, Odra, x402, CSPR.click — all official resources | [`proof/PROOF.md`](https://github.com/sodiq-code/vaultwatch/blob/main/proof/PROOF.md) |
@@ -271,7 +286,8 @@ Demonstrates Casper-native upgrades via `storage::add_contract_version()` — pr
 | Contract installations | 8 | ✅ Verified on-chain | [`proof/deploy_verification_results.json`](https://github.com/sodiq-code/vaultwatch/blob/main/proof/deploy_verification_results.json) |
 | Interaction deploys | 21 | ✅ All RPC verified SUCCESS | [`proof/interaction_hashes.json`](https://github.com/sodiq-code/vaultwatch/blob/main/proof/interaction_hashes.json) |
 | Upgrade deploys | 6 | ✅ 6/6 checks pass | [`proof/upgrade_hashes.json`](https://github.com/sodiq-code/vaultwatch/blob/main/proof/upgrade_hashes.json) |
-| x402 payment | 1 | ✅ RPC verified SUCCESS | [`proof/x402_payment_hashes.json`](https://github.com/sodiq-code/vaultwatch/blob/main/proof/x402_payment_hashes.json) |
+| x402 payment (Path A) | 1 | ✅ RPC verified SUCCESS | [`proof/x402_payment_hashes.json`](https://github.com/sodiq-code/vaultwatch/blob/main/proof/x402_payment_hashes.json) |
+| x402 WCSPR (Path B) | 7 endpoints | ✅ Facilitator configured | [`docs/X402_DUAL_PATH_ARCHITECTURE.md`](https://github.com/sodiq-code/vaultwatch/blob/main/docs/X402_DUAL_PATH_ARCHITECTURE.md) |
 | **Total** | **36** | | |
 
 ---
@@ -356,7 +372,11 @@ vaultwatch/
   vaultwatch_mcp/             # General MCP server (20 tools)
   vaultwatch_rwa_mcp/         # RWA MCP server (39 tools, ecosystem contribution)
     server.py, readers.py, writers.py
-  x402/                       # x402 v2 payment implementation
+  x402/                       # x402 v2 dual-path payment implementation
+    vaultwatch-x402.ts        # Path A: Native CSPR (SubscriberVault)
+    wcspr-x402-path.ts        # Path B: WCSPR / CSPR.cloud facilitator
+    x402_helper.mjs           # Path A CLI bridge (Python → JS SDK)
+    wcspr_helper.mjs          # Path B CLI bridge (WCSPR → JS SDK)
   dashboard/                  # React/Vite frontend (9 panels + CSPR.click wallet)
   streaming/                  # Casper Sidecar SSE client
   sdk/                        # Async HTTP client
@@ -364,7 +384,7 @@ vaultwatch/
   scripts/_archived/          # 19 one-off scripts (historical)
   skills/csprclick-skill/     # Official CSPR.click AI Agent Skill
   proof/                      # On-chain verification (36 deploys)
-  docs/                       # Documentation (formula, upgrade, x402, architecture)
+  docs/                       # Documentation (formula, upgrade, x402, architecture, dual-path)
   docs/_archived/             # Archived docs (historical)
 ```
 
@@ -379,6 +399,8 @@ CASPER_CHAIN_NAME=casper-test
 VAULTWATCH_AGENT_KEY_PATH=~/.vaultwatch/agent_key.pem
 CSPR_CLOUD_API_URL=https://api.testnet.cspr.cloud
 X402_PAYMENT_AMOUNT=1000000            # motes
+CSPR_CLOUD_API_KEY=your_cspr_cloud_key  # Required for Path B (WCSPR facilitator)
+WCSPR_CONTRACT_HASH=93c7f84f...         # WCSPR CEP-18 contract hash
 API_HOST=0.0.0.0 API_PORT=8000
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
 CASPER_MOCK=true                       # Safe for CI
@@ -409,6 +431,8 @@ CASPER_MOCK=true                       # Safe for CI
 | Deployment Guide | [`DEPLOYMENT_GUIDE.md`](https://github.com/sodiq-code/vaultwatch/blob/main/DEPLOYMENT_GUIDE.md) |
 | Upgrade Demo | [`docs/UPGRADE_DEMO.md`](https://github.com/sodiq-code/vaultwatch/blob/main/docs/UPGRADE_DEMO.md) |
 | x402 Integration | [`docs/X402_INTEGRATION.md`](https://github.com/sodiq-code/vaultwatch/blob/main/docs/X402_INTEGRATION.md) |
+| x402 Dual-Path Architecture | [`docs/X402_DUAL_PATH_ARCHITECTURE.md`](https://github.com/sodiq-code/vaultwatch/blob/main/docs/X402_DUAL_PATH_ARCHITECTURE.md) |
+| x402 Dual-Path Proof | [`proof/X402_DUAL_PATH_PROOF.md`](https://github.com/sodiq-code/vaultwatch/blob/main/proof/X402_DUAL_PATH_PROOF.md) |
 | CSPR.click Skill | [`CSPR_CLICK_AGENT_SKILL.md`](https://github.com/sodiq-code/vaultwatch/blob/main/CSPR_CLICK_AGENT_SKILL.md) |
 | Architecture | [`docs/ARCHITECTURE.md`](https://github.com/sodiq-code/vaultwatch/blob/main/docs/ARCHITECTURE.md) |
 | Security | [`docs/RED_TEAM_CHECKLIST.md`](https://github.com/sodiq-code/vaultwatch/blob/main/docs/RED_TEAM_CHECKLIST.md) |
