@@ -59,7 +59,7 @@ Official `@make-software/casper-x402` v2 SDK for HTTP-native pay-per-query acces
 
 ### Dual-Path x402 Payment Architecture — Self-Hosted + CSPR.cloud Facilitator
 
-VaultWatch now supports **two x402 payment paths**, covering both the self-hosted and external facilitator models defined by the x402 v2 specification — maximizing eligibility for DoraHacks **$100K in x402 ecosystem credits**:
+VaultWatch now supports **two x402 payment paths**, covering both the self-hosted and external facilitator models defined by the x402 v2 specification 
 
 | Path | Token | Verification | Settlement |
 |------|-------|--------------|------------|
@@ -70,7 +70,7 @@ VaultWatch now supports **two x402 payment paths**, covering both the self-hoste
 - **7 new API endpoints**: `/x402/facilitator/status`, `/x402/facilitator/supported`, `/x402/facilitator/verify`, `/x402/facilitator/settle`, `/x402/wcspr/info`, `/x402/wcspr/balance/{account_hash}`, `/x402/dual-path/status`
 - **Full architecture doc**: [`docs/X402_DUAL_PATH_ARCHITECTURE.md`](https://github.com/sodiq-code/vaultwatch/blob/main/docs/X402_DUAL_PATH_ARCHITECTURE.md)
 - **Dual-path proof**: [`proof/X402_DUAL_PATH_PROOF.md`](https://github.com/sodiq-code/vaultwatch/blob/main/proof/X402_DUAL_PATH_PROOF.md)
-- **DoraHacks relevance**: Both paths cover the full x402 v2 spec — self-hosted facilitator model (Path A) + external facilitator model (Path B). Dual-path architecture ensures 100% x402 specification coverage for the $150K prize pool ($100K x402 credits).
+- **DoraHacks relevance**: Both paths cover the full x402 v2 spec — self-hosted facilitator model (Path A) + external facilitator model (Path B). Dual-path architecture ensures 100% x402 specification coverage.
 
 ### vaultwatch-rwa-mcp — Casper Ecosystem MCP Server
 
