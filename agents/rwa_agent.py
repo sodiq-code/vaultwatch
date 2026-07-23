@@ -188,12 +188,7 @@ class RWAAgent:
 
     async def _call_groq(self, prompt: str) -> dict:
         if not self._mp_client:
-            return {
-                "verdict": "REVIEW",
-                "risk_score": 50.0,
-                "notes": "No API key",
-                "error": "no_key",
-            }
+            raise Exception("403 Forbidden — no AI providers configured")
         result = self._mp_client.chat_completion_json(
             model="llama-3.3-70b-versatile",
             messages=[
@@ -207,12 +202,7 @@ class RWAAgent:
         )
         if result is not None:
             return result
-        return {
-            "verdict": "REVIEW",
-            "risk_score": 50.0,
-            "notes": "AI providers unavailable",
-            "error": "providers_failed",
-        }
+        raise Exception("403 Forbidden — all AI providers unavailable")
 
     async def assess(self, asset_data: dict) -> dict:
         """Assess a real-world asset for on-chain tokenisation viability."""

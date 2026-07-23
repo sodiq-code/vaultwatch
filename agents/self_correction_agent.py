@@ -73,13 +73,7 @@ class SelfCorrectionAgent:
 
     async def _call_groq(self, prompt: str) -> dict:
         if not self._mp_client:
-            return {
-                "corrected_score": 0.0,
-                "confidence": 0.5,
-                "reasoning": "no_key",
-                "action": "none",
-                "error": "no_key",
-            }
+            raise Exception("403 Forbidden — no AI providers configured")
         result = self._mp_client.chat_completion_json(
             model="llama-3.3-70b-versatile",
             messages=[
@@ -93,13 +87,7 @@ class SelfCorrectionAgent:
         )
         if result is not None:
             return result
-        return {
-            "corrected_score": 0.0,
-            "confidence": 0.5,
-            "reasoning": "providers_failed",
-            "action": "none",
-            "error": "providers_failed",
-        }
+        raise Exception("403 Forbidden — all AI providers unavailable")
 
     async def correct(self, anomaly_result: "AnomalyResult") -> dict:
         """Apply self-correction logic to an anomaly result."""

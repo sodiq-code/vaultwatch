@@ -77,7 +77,7 @@ class SafetyGuard:
 
     async def _call_groq(self, prompt: str) -> dict:
         if not self._mp_client:
-            return {"safe": True, "reason": "No API key — defaulting safe"}
+            raise Exception("403 Forbidden — no AI providers configured")
         result = self._mp_client.chat_completion_json(
             model=SAFETY_MODEL,
             messages=[
@@ -100,7 +100,7 @@ class SafetyGuard:
         )
         if result is not None:
             return result
-        return {"safe": True, "reason": "AI providers unavailable — defaulting safe"}
+        raise Exception("403 Forbidden — all AI providers unavailable")
 
     async def check(self, query: str) -> dict:
         """Check if a query is safe to process.

@@ -94,13 +94,7 @@ class IntelAgent:
 
     async def _call_groq(self, prompt: str) -> dict:
         if not self._mp_client:
-            return {
-                "summary": "No API key",
-                "risk_factors": [],
-                "findings_count": 0,
-                "confidence": 0.0,
-                "error": "no_key",
-            }
+            raise Exception("403 Forbidden — no AI providers configured")
         result = self._mp_client.chat_completion_json(
             model=self._model,
             messages=[
@@ -114,13 +108,7 @@ class IntelAgent:
         )
         if result is not None:
             return result
-        return {
-            "summary": "AI providers unavailable",
-            "risk_factors": [],
-            "findings_count": 0,
-            "confidence": 0.0,
-            "error": "providers_failed",
-        }
+        raise Exception("403 Forbidden — all AI providers unavailable")
 
     async def analyze(self, query: str, protocol: str = None, extra_context: dict = None) -> dict:
         """Analyze a risk query using the Groq Compound model."""

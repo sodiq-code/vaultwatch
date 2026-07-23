@@ -78,12 +78,7 @@ class ScannerAgent:
     async def _call_groq(self, prompt: str) -> dict:
         """Call Groq (or OpenRouter fallback) for protocol scan analysis."""
         if not self._mp_client:
-            return {
-                "risk_level": "UNKNOWN",
-                "vulnerabilities": [],
-                "summary": "No API key",
-                "error": "no_key",
-            }
+            raise Exception("403 Forbidden — no AI providers configured")
         result = self._mp_client.chat_completion_json(
             model="llama-3.3-70b-versatile",
             messages=[
@@ -97,12 +92,7 @@ class ScannerAgent:
         )
         if result is not None:
             return result
-        return {
-            "risk_level": "UNKNOWN",
-            "vulnerabilities": [],
-            "summary": "AI providers unavailable",
-            "error": "providers_failed",
-        }
+        raise Exception("403 Forbidden — all AI providers unavailable")
 
     async def scan(self, protocol: str, contract_address: str = None, chain: str = "casper") -> dict:
         """Scan a protocol for vulnerabilities and return risk assessment."""

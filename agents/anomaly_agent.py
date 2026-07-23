@@ -104,12 +104,9 @@ class AnomalyAgent:
 
     async def _call_groq(self, prompt: str) -> dict:
         if not self._mp_client:
-            return {
-                "risk_score": 0,
-                "anomalies": [],
-                "recommendation": "No API key",
-                "error": "no_key",
-            }
+            # Raise 403-like exception so detect()'s except block triggers
+            # heuristic fallback logic (same path as when Groq auth fails).
+            raise Exception("403 Forbidden — no AI providers configured")
         result = self._mp_client.chat_completion_json(
             model="llama-3.3-70b-versatile",
             messages=[
@@ -123,13 +120,8 @@ class AnomalyAgent:
         )
         if result is not None:
             return result
-        # Both providers failed — heuristic fallback will be handled by detect()
-        return {
-            "risk_score": 0,
-            "anomalies": [],
-            "recommendation": "AI providers unavailable",
-            "error": "providers_failed",
-        }
+        # Both providers failed — raise to trigger heuristic fallback
+        raise Exception("403 Forbidden — all AI providers unavailable")
 
     async def detect(self, metrics: dict) -> "AnomalyResult":
         """Detect anomalies from protocol metrics dict."""
