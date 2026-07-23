@@ -1,6 +1,6 @@
 """
 AuditAgent — Layer 5: On-chain write to Casper contracts
-Model: llama-3.1-8b-instant (fast formatting — no heavy reasoning needed here)
+Model: llama-3.3-70b-versatile (reliable JSON-mode — replaces deprecated llama-3.1-8b-instant)
 Input: approved enriched finding from SafetyGuard
 Actions:
   - Write to AuditTrail.rs
@@ -345,7 +345,7 @@ class AuditAgent:
             if self._client is None:
                 return f"{base.risk_type} | {base.severity} | {base.confidence:.0%} confidence | {base.event.address[:20]}"
             response = self._client.chat.completions.create(
-                model="llama-3.1-8b-instant",
+                model="llama-3.3-70b-versatile",
                 messages=[
                     {
                         "role": "user",

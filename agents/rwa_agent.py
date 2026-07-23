@@ -1,15 +1,15 @@
 """
 RWAAgent — Layer 4: Real-World Asset enrichment via live web intelligence
-Model: groq/compound (built-in live web search — NO extra API keys)
+Model: llama-3.3-70b-versatile (JSON-mode RWA enrichment — replaces deprecated compound-beta)
 Input: confirmed anomaly finding
-Output: enriched finding with live RWA context (yield rates, depeg news, vault health)
+Output: enriched finding with RWA context (yield rates, depeg news, vault health)
 OTel: span with rwa_sources, collateral_ratio, enrichment_type
 
 Task 3-5 additions:
   • RWAFeedData dataclass for structured feed data from /rwa/feed API
   • fetch_rwa_feed() method that calls the x402-gated /rwa/feed endpoint
   • _enrich() now FIRST fetches from the dedicated RWA feed API, THEN also
-    calls Groq Compound for additional web intelligence, merging both
+    calls Groq llama-3.3-70b-versatile for additional intelligence, merging both
   • EnrichedFinding now tracks feed_source and x402_payment_id
 """
 
@@ -184,7 +184,7 @@ class RWAAgent:
                 "error": "no_key",
             }
         resp = self._client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="llama-3.3-70b-versatile",
             messages=[
                 {
                     "role": "system",
@@ -248,7 +248,7 @@ class RWAAgent:
                         depeg_alerts=[],
                         enriched=False,
                         rwa_sources_count=0,
-                        enrichment_model="groq/compound",
+                        enrichment_model="llama-3.3-70b-versatile",
                     )
                 )
             finally:
@@ -256,13 +256,13 @@ class RWAAgent:
 
     async def _enrich(self, result: AnomalyResult) -> EnrichedFinding:
         """Enrich finding by FIRST fetching from the dedicated RWA feed API,
-        THEN calling Groq Compound for additional web intelligence, and
-        merging structured feed data with Groq's web search results.
+        THEN calling Groq llama-3.3-70b-versatile for additional intelligence, and
+        merging structured feed data with Groq's analysis results.
         """
         with tracer.start_as_current_span("rwa.enrich") as span:
             span.set_attribute("rwa.risk_type", result.risk_type)
             span.set_attribute("rwa.severity", result.severity)
-            span.set_attribute("rwa.model", "groq/compound+rwa_feed")
+            span.set_attribute("rwa.model", "llama-3.3-70b-versatile+rwa_feed")
 
             # ---- Step 1: Fetch structured RWA feed data from /rwa/feed ----
             # Determine which asset category to query based on risk type
@@ -307,17 +307,17 @@ class RWAAgent:
                     x402_payment_id=feed_data.x402_payment_id,
                 )
 
-            # ---- Step 3: Call Groq Compound for web intelligence ----
+            # ---- Step 3: Call Groq llama-3.3-70b-versatile for analysis ----
             response = self._client.chat.completions.create(
-                model="compound-beta",  # groq/compound with live web search
+                model="llama-3.3-70b-versatile",  # JSON-mode enrichment (compound-beta deprecated)
                 messages=[
                     {
                         "role": "system",
                         "content": (
                             "You are VaultWatch RWAAgent. Enrich DeFi risk findings with real-world context. "
-                            "Search for current stablecoin depeg status, DeFi protocol health, tokenized asset yields, "
+                            "Analyze stablecoin depeg risk, DeFi protocol health, tokenized asset yields, "
                             "and collateral ratios relevant to the finding. "
-                            "When structured feed data is provided, cross-reference it with your live search results. "
+                            "When structured feed data is provided, cross-reference it with your analysis. "
                             "Return JSON: "
                             '{"rwa_context": str, "collateral_signals": [str], "yield_data": str, '
                             '"depeg_alerts": [str], "sources_found": int}'
@@ -327,6 +327,7 @@ class RWAAgent:
                 ],
                 temperature=0.3,
                 max_tokens=1024,
+                response_format={"type": "json_object"},
             )
 
             content = response.choices[0].message.content
@@ -335,7 +336,7 @@ class RWAAgent:
             span.set_attribute("rwa.tokens_used", tokens)
 
             try:
-                # Extract JSON from response (Compound may include tool call text)
+                # Extract JSON from response (model returns structured JSON)
                 start = content.find("{")
                 end = content.rfind("}") + 1
                 if start >= 0 and end > start:
@@ -370,7 +371,7 @@ class RWAAgent:
                     depeg_alerts=merged_depeg,
                     enriched=True,
                     rwa_sources_count=total_sources,
-                    enrichment_model="groq/compound+rwa_feed",
+                    enrichment_model="llama-3.3-70b-versatile+rwa_feed",
                     feed_source=feed_data.feed_source,
                     x402_payment_id=feed_data.x402_payment_id,
                 )
@@ -387,7 +388,7 @@ class RWAAgent:
                     depeg_alerts=[],
                     enriched=True,
                     rwa_sources_count=1 if feed_summary else 0,
-                    enrichment_model="groq/compound+rwa_feed",
+                    enrichment_model="llama-3.3-70b-versatile+rwa_feed",
                     feed_source=feed_data.feed_source,
                     x402_payment_id=feed_data.x402_payment_id,
                 )

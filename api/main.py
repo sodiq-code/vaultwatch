@@ -574,7 +574,7 @@ async def agent_rwa_assess(req: AgentRWARequest) -> Dict[str, Any]:
                 "risk_score": float(risk_score),
                 "notes": notes,
                 "risk_factors": risk_factors,
-                "groq_model": "compound-beta (Groq Compound)",
+                "groq_model": "llama-3.3-70b-versatile (Groq)",
                 "collateral_assessment": raw.get("collateral_assessment") or "",
                 "regulatory_status": raw.get("regulatory_status") or "",
                 "on_chain_contract": "RiskPolicyManager",

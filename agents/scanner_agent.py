@@ -1,6 +1,6 @@
 """
 ScannerAgent — Layer 1 of VaultWatch pipeline
-Model: llama-3.1-8b-instant (560 t/s — fastest Groq model)
+Model: llama-3.3-70b-versatile (reliable JSON-mode — replaces deprecated llama-3.1-8b-instant)
 Data sources: CSPR.cloud REST API + Casper Sidecar SSE
 Output: structured event stream → AnomalyAgent queue
 OTel: span per scan cycle with event_count, latency, source
@@ -215,10 +215,10 @@ class ScannerAgent:
         return events
 
     async def _llm_filter(self, events: list[RawEvent]) -> list[RawEvent]:
-        """Use llama-3.1-8b-instant to filter noise — keep only suspicious events"""
+        """Use llama-3.3-70b-versatile to filter noise — keep only suspicious events"""
         with tracer.start_as_current_span("scanner.llm_filter") as span:
             span.set_attribute("scanner.raw_event_count", len(events))
-            span.set_attribute("scanner.model", "llama-3.1-8b-instant")
+            span.set_attribute("scanner.model", "llama-3.3-70b-versatile")
 
             # Summarize events for LLM
             summary = [
@@ -241,7 +241,7 @@ class ScannerAgent:
                     return events
 
                 response = self._client.chat.completions.create(
-                    model="llama-3.1-8b-instant",
+                    model="llama-3.3-70b-versatile",
                     messages=[
                         {
                             "role": "system",
