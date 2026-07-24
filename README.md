@@ -19,9 +19,9 @@ VaultWatch is a compliance-first Real-World Asset oracle on the Casper blockchai
 
 ## Demo
 
-[![VaultWatch Demo](https://img.youtube.com/vi/Jmg_MFSxwdE/maxresdefault.jpg)](https://youtu.be/Jmg_MFSxwdE)
+[![VaultWatch Demo](https://img.youtube.com/vi/aWwmSC361ac/maxresdefault.jpg)](https://youtu.be/aWwmSC361ac)
 
-**[Watch on YouTube](https://youtu.be/Jmg_MFSxwdE)** · **[Live Dashboard](https://vaultwatch-dashboard-v5.vercel.app)**
+**[Watch on YouTube](https://youtu.be/aWwmSC361ac)** · **[Live Dashboard](https://vaultwatch-dashboard-v5.vercel.app)**
 
 ---
 
@@ -259,7 +259,7 @@ Demonstrates Casper-native upgrades via `storage::add_contract_version()` — pr
 | **Domain MCP server** (`vaultwatch-rwa-mcp`) | Standalone FastMCP; installable; 39 tools + 3 resources + 4 prompts | [`vaultwatch_rwa_mcp/README.md`](https://github.com/sodiq-code/vaultwatch/blob/main/vaultwatch_rwa_mcp/README.md) |
 | **x402 micropayment** | Dual-path: native CSPR (verified deploy) + WCSPR facilitator (7 new endpoints); SDK v1.0.0 + casper-js-sdk v5.0.12 | [`proof/x402_payment_hashes.json`](https://github.com/sodiq-code/vaultwatch/blob/main/proof/x402_payment_hashes.json), [`docs/X402_DUAL_PATH_ARCHITECTURE.md`](https://github.com/sodiq-code/vaultwatch/blob/main/docs/X402_DUAL_PATH_ARCHITECTURE.md) |
 | **Live dashboard** | Vercel-deployed, auto from main | [vaultwatch-dashboard-v5.vercel.app](https://vaultwatch-dashboard-v5.vercel.app) |
-| **Demo video** | YouTube walkthrough | [youtu.be/Jmg_MFSxwdE](https://youtu.be/Jmg_MFSxwdE) |
+| **Demo video** | YouTube walkthrough | [youtu.be/aWwmSC361ac](https://youtu.be/aWwmSC361ac) |
 | **Deployment guide** | WASM compilation + deploy scripts | [`DEPLOYMENT_GUIDE.md`](https://github.com/sodiq-code/vaultwatch/blob/main/DEPLOYMENT_GUIDE.md) |
 | **Docker Compose** | API + Dashboard + MCP + Pipeline | [`docker-compose.yml`](https://github.com/sodiq-code/vaultwatch/blob/main/docker-compose.yml) |
 | **Author** | GitHub profile | [github.com/sodiq-code](https://github.com/sodiq-code) |
@@ -381,11 +381,9 @@ vaultwatch/
   streaming/                  # Casper Sidecar SSE client
   sdk/                        # Async HTTP client
   scripts/                    # 11 core scripts (deploy, verify, wallet)
-  scripts/_archived/          # 19 one-off scripts (historical)
   skills/csprclick-skill/     # Official CSPR.click AI Agent Skill
   proof/                      # On-chain verification (36 deploys)
   docs/                       # Documentation (formula, upgrade, x402, architecture, dual-path)
-  docs/_archived/             # Archived docs (historical)
 ```
 
 ---
@@ -413,7 +411,7 @@ CASPER_MOCK=true                       # Safe for CI
 | Resource | URL |
 |----------|-----|
 | Repository | https://github.com/sodiq-code/vaultwatch |
-| Demo Video | https://youtu.be/Jmg_MFSxwdE |
+| Demo Video | https://youtu.be/aWwmSC361ac |
 | Live Dashboard | https://vaultwatch-dashboard-v5.vercel.app |
 | Deployer (main) | [testnet.cspr.live](https://testnet.cspr.live/account/0203cd257525b180a32cab4efc0d9d9a365bf9bc1b8d2e76ebfb9186a4eeb23bace7) |
 | Deployer (secondary) | [testnet.cspr.live](https://testnet.cspr.live/account/02031300f7e7a8c0a9390ce7f365e315bae45c91e2cdcedaf754156b1a6bac13e3db) |
