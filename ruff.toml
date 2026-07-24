@@ -2,7 +2,7 @@
 # Line length is generous because AI prompt strings are embedded in Python code
 
 line-length = 160
-target-version = "py311"
+target-version = "py312"
 
 # Markdown files contain illustrative Python snippets that are meant for
 # reader readability (aligned comments, single-quoted strings for examples).

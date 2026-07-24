@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 LABEL maintainer="VaultWatch <dev@vaultwatch.io>"
 LABEL description="VaultWatch — Compliance-Gated RWA Oracle on Casper"

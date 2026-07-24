@@ -36,14 +36,14 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
 
       - name: Install Python deps (for CodeQL to trace imports)
         run: |
           pip install --upgrade pip
           pip install groq fastapi "uvicorn[standard]" pydantic httpx aiohttp
           pip install opentelemetry-api opentelemetry-sdk
-          pip install fastmcp pycspr
+          pip install "fastmcp>=2.0.0,<4.0.0" "pycspr>=1.0.0,<2.0.0"
           pip install -e sdk/
         continue-on-error: true
 
