@@ -16,7 +16,7 @@ opentelemetry-sdk>=1.25.0
 opentelemetry-instrumentation-fastapi>=0.46b0
 
 # MCP
-fastmcp>=2.0.0,<4.0.0
+fastmcp>=3.4.4,<4.0.0
 
 # Casper SDK
 pycspr>=1.0.0,<2.0.0
