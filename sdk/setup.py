@@ -45,6 +45,6 @@ setup(
     keywords="casper defi risk intelligence blockchain sdk vaultwatch sentinel",
     project_urls={
         "Source": "https://github.com/sodiq-code/vaultwatch",
-        "Dashboard": "https://dashboard-rho-amber-89.vercel.app",
+        "Dashboard": "https://vaultwatch-dashboard-v5.vercel.app",
     },
 )

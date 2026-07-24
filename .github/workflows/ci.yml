@@ -41,7 +41,9 @@ jobs:
     needs: lint
     env:
       GROQ_API_KEY: mock-key-for-ci
+      OPENROUTER_API_KEY: mock-key-for-ci
       CASPER_MOCK: "true"
+      PYTHONPATH: .
     steps:
       - uses: actions/checkout@v4
 
@@ -54,27 +56,17 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install groq fastapi "uvicorn[standard]" pydantic httpx aiohttp
-          pip install opentelemetry-api opentelemetry-sdk
-          pip install --pre opentelemetry-instrumentation-fastapi
-          pip install fastmcp pycspr
-          pip install pytest pytest-asyncio pytest-cov python-dotenv
+          pip install -r requirements.txt
           pip install -e sdk/
 
       - name: Run unit tests
         run: pytest tests/unit/ -v --tb=short
-        env:
-          PYTHONPATH: .
 
       - name: Run integration tests
         run: pytest tests/integration/ -v --tb=short
-        env:
-          PYTHONPATH: .
 
       - name: Run demo scenario tests
         run: pytest tests/demo/ -v -s --tb=short
-        env:
-          PYTHONPATH: .
 
   # SDK Validation
   validate-sdk:
@@ -95,17 +87,19 @@ jobs:
           pip install -e sdk/
           python -c "from vaultwatch import VaultWatchClient; print('SDK import OK')"
 
-  # Rust Contracts
+  # Rust Contract Tests (smoke test only — full WASM build in build-contracts.yml)
   test-contracts:
-    name: Rust Contracts
+    name: Rust Contract Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust nightly toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: nightly-2026-01-01
           targets: wasm32-unknown-unknown
+          components: rust-src
 
       - name: Cache Cargo registry
         uses: actions/cache@v4
@@ -120,10 +114,10 @@ jobs:
 
       - name: Run contract tests
         working-directory: contracts
-        run: cargo test
+        run: cargo +nightly-2026-01-01 test --lib --target x86_64-unknown-linux-gnu
         continue-on-error: true
 
-  # Docker Build
+  # Docker Build (main branch only)
   docker-build:
     name: Docker Build
     runs-on: ubuntu-latest

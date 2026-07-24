@@ -1,23 +1,21 @@
 FROM python:3.11-slim
 
 LABEL maintainer="VaultWatch <dev@vaultwatch.io>"
-LABEL description="VaultWatch — DeFi Risk Intelligence on Casper"
+LABEL description="VaultWatch — Compliance-Gated RWA Oracle on Casper"
 LABEL version="4.0.0"
 
 # System deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
-    build-essential \
+    nodejs \
+    npm \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 # Copy requirements first (Docker cache layer)
 COPY requirements.txt .
-# Install in two passes: stable packages, then pre-release otel instrumentation
-RUN pip install --no-cache-dir groq fastapi "uvicorn[standard]" pydantic httpx aiohttp \
-    opentelemetry-api opentelemetry-sdk fastmcp pycspr python-dotenv && \
-    pip install --no-cache-dir --pre opentelemetry-instrumentation-fastapi
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project
 COPY . .
