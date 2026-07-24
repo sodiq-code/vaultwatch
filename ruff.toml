@@ -4,6 +4,12 @@
 line-length = 160
 target-version = "py311"
 
+# Markdown files contain illustrative Python snippets that are meant for
+# reader readability (aligned comments, single-quoted strings for examples).
+# ruff format would reformat them, breaking the readability of code examples
+# in documentation and causing CI "Lint & Format" checks to always fail.
+extend-exclude = ["*.md"]
+
 [lint]
 select = ["E", "F", "W"]
 ignore = []

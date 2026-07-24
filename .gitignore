@@ -38,3 +38,6 @@ secret_key*.pem
 *.pem
 !contracts/wasm/*.wasm
 .vercel
+
+# Internal development artifacts (not meant for reviewers)
+worklog.md
