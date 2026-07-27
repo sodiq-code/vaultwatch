@@ -27,7 +27,7 @@ pytest-asyncio>=0.23.0
 pytest-cov>=5.0.0
 
 # Dev tools
-ruff>=0.4.0
+ruff>=0.16.0
 
 # Env
 python-dotenv>=1.0.0
